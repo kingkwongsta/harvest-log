@@ -1,0 +1,39 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Harvest Log App - AI-Powered Harvest Tracking
+
+## Project Overview
+Smart harvest logging application that combines traditional data entry with AI-powered insights, photo analysis, and beautiful visualizations to help users track, analyze, and optimize their fruit harvests.
+
+## Technology Stack
+- **Frontend**: Next.js 14+ with App Router, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes (CRUD) + FastAPI (AI/ML services)
+- **Database**: Supabase (PostgreSQL + Auth + Real-time + RLS)
+- **Image Storage**: Supabase Storage with built-in transformations
+- **AI/ML**: FastAPI + TensorFlow/PyTorch + Computer Vision models
+- **Authentication**: Supabase Auth with Row Level Security
+- **Package Manager**: pnpm (preferred over npm/yarn)
+
+## Architecture Patterns
+- **Full-stack Next.js**: Server components, App Router, API routes for simple CRUD
+- **Hybrid Backend**: Next.js API routes + separate FastAPI service for AI/ML
+- **Database-first**: Supabase with RLS policies for data security
+- **Image Optimization**: Client-side compression + Supabase transforms
+- **Responsive Design**: Mobile-first, works across all screen sizes
+
+## Code Conventions
+- Use TypeScript interfaces for all data structures
+- Implement proper error handling with user-friendly messages
+- Follow Next.js App Router patterns (Server/Client components)
+- Use Tailwind CSS for styling with responsive design principles
+- Write descriptive commit messages and maintain clean git history
+- Prioritize performance and user experience in all decisions
+
+## Implementation Priority
+1. **MVP**: Basic logging, photo capture, simple visualization
+2. **AI Integration**: Fruit recognition, quality assessment
+3. **Advanced Analytics**: Predictions, correlations, exports
+4. **Smart Features**: Voice input, AR identification, community features

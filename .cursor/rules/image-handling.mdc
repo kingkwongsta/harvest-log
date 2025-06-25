@@ -1,0 +1,28 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Image Storage & Optimization Guidelines
+
+## Strategy
+- **Compression**: Client-side compression before upload (60-80% reduction)
+- **Multiple Sizes**: Thumbnail (300px), Medium (800px), Full (1920px)
+- **Formats**: Auto WebP/AVIF conversion via Supabase transforms
+- **Organization**: `userId/harvestId/timestamp_filename.jpg` structure
+- **Progressive Loading**: Thumbnail → Medium → Full resolution
+
+## Implementation Requirements
+- Always compress images on client-side before upload
+- Generate multiple size variants using Supabase transforms
+- Store metadata in database with file paths and optimization stats
+- Use Next.js Image component for optimal loading
+- Implement proper error handling for upload failures
+
+## Database Structure
+```sql
+photos: 
+  id, harvest_id, storage_path, public_url, 
+  thumbnail_url, medium_url, metadata (jsonb),
+  ai_analysis_status, created_at
+```

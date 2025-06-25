@@ -1,0 +1,32 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# AI/ML Integration Guidelines
+
+## Architecture
+- **Processing Pipeline**: FastAPI backend handles all ML workloads
+- **Computer Vision**: Fruit recognition, quality assessment, quantity estimation  
+- **Predictive Analytics**: Harvest forecasting, yield prediction, weather correlation
+- **Model Management**: Version tracking, confidence scores, fallback handling
+
+## FastAPI Service Structure
+- Separate FastAPI service from Next.js app
+- Handle image processing, computer vision, and ML inference
+- Async processing with status tracking in database
+- Proper error handling and timeout management
+
+## Database Integration
+```sql
+ai_analysis: 
+  id, photo_id, fruit_type_detected, confidence_score,
+  quantity_estimated, quality_metrics (jsonb),
+  processing_time, model_version, created_at
+```
+
+## Implementation Notes
+- Use confidence thresholds before accepting AI results
+- Implement fallback mechanisms for failed analysis
+- Track model performance and version compatibility
+- Provide user feedback during processing

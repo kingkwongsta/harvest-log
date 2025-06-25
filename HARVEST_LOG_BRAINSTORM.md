@@ -129,13 +129,23 @@ harvests:
   created_at (timestamp), 
   updated_at (timestamp)
 
--- Photos
+-- Photos (Supabase Storage Integration)
 photos: 
   id (uuid, primary key), 
   harvest_id (uuid, references harvests.id), 
-  storage_path (text), -- path in chosen storage solution
-  public_url (text), -- CDN/public URL
-  metadata (jsonb), -- camera settings, GPS, etc.
+  storage_path (text), -- Supabase Storage path: "userId/harvestId/filename.jpg"
+  public_url (text), -- Full resolution CDN URL
+  thumbnail_url (text), -- 300x300 optimized URL via Supabase transforms
+  medium_url (text), -- 800px optimized URL via Supabase transforms
+  metadata (jsonb), /* {
+    originalSize: number,
+    compressedSize: number, 
+    compressionRatio: number,
+    dimensions: { width: number, height: number },
+    cameraSettings?: { iso, aperture, etc },
+    gps?: { lat, lng },
+    uploadedAt: string
+  } */
   ai_analysis_status (enum: 'pending', 'processing', 'completed', 'failed'),
   created_at (timestamp)
 
@@ -193,94 +203,227 @@ CREATE POLICY "Users can insert own harvests" ON harvests FOR INSERT WITH CHECK 
 
 ## 📸 Image Storage Solutions
 
-### Option 1: Supabase Storage ⭐ **RECOMMENDED FOR MVP**
+### ⭐ **SELECTED: Supabase Storage** 
+**Perfect for personal use with <2GB storage requirements**
+
 ```typescript
-// Pros:
-// - Seamless integration with Supabase
-// - Built-in RLS policies
-// - CDN distribution
-// - Automatic image transformations
-// - Cost-effective for small to medium scale
+// Why Supabase Storage:
+// ✅ Seamless integration with existing Supabase stack
+// ✅ Built-in RLS policies and authentication
+// ✅ CDN distribution via global edge network
+// ✅ Built-in image transformations and optimization
+// ✅ Free tier: 1GB storage + 2GB bandwidth/month
+// ✅ No additional service complexity
+// ✅ Same database for metadata storage
 
-// Cons:
-// - Limited advanced features vs dedicated services
-// - Newer service (less battle-tested)
-
-// Implementation:
-const { data, error } = await supabase.storage
-  .from('harvest-photos')
-  .upload(`${userId}/${harvestId}/${photoId}.jpg`, file)
+// Storage structure:
+const bucketStructure = {
+  'harvest-photos': {
+    path: `${userId}/${harvestId}/${timestamp}_${filename}`,
+    access: 'authenticated', // RLS policies apply
+    transforms: ['thumbnail', 'medium', 'webp']
+  }
+}
 ```
 
-### Option 2: Cloudinary ⭐ **RECOMMENDED FOR PRODUCTION**
+### 🖼️ **Image Optimization Strategy**
+
+#### **Client-Side Compression (Before Upload)**
 ```typescript
-// Pros:
-// - Advanced image transformations
-// - AI-powered auto-tagging
-// - Excellent CDN performance
-// - Built-in optimization
-// - Great developer experience
-
-// Cons:
-// - Additional cost
-// - Another service to manage
-
-// Features:
-// - Auto-crop and resize
-// - Quality optimization
-// - Format conversion (WebP, AVIF)
-// - Lazy loading support
-// - Face/object detection
-```
-
-### Option 3: AWS S3 + CloudFront
-```typescript
-// Pros:
-// - Highly scalable
-// - Cost-effective at scale
-// - Full control
-// - Enterprise reliability
-
-// Cons:
-// - More complex setup
-// - Manual optimization needed
-// - Higher maintenance
-
-// Best for: Large scale deployments
-```
-
-### Option 4: Vercel Blob Storage
-```typescript
-// Pros:
-// - Perfect Next.js integration
-// - Edge network distribution
-// - Simple API
-// - Built-in optimization
-
-// Cons:
-// - Newer service
-// - Vercel vendor lock-in
-// - Cost at scale
-
-// Perfect for: Next.js deployments on Vercel
-```
-
-### Recommended Architecture: **Hybrid Approach**
-```typescript
-// Development & MVP: Supabase Storage
-// Production: Cloudinary + Supabase metadata
-
-interface ImageStorageService {
-  upload(file: File, metadata: ImageMetadata): Promise<ImageUploadResult>
-  getOptimizedUrl(path: string, transforms?: ImageTransforms): string
-  delete(path: string): Promise<void>
+// 1. Canvas-based compression utility
+async function compressImage(file: File, maxWidth = 1920, quality = 0.8): Promise<File> {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')!
+    const img = new Image()
+    
+    img.onload = () => {
+      // Calculate new dimensions maintaining aspect ratio
+      const { width, height } = calculateDimensions(img, maxWidth)
+      
+      canvas.width = width
+      canvas.height = height
+      
+      // Draw and compress
+      ctx.drawImage(img, 0, 0, width, height)
+      
+      canvas.toBlob(
+        (blob) => {
+          const compressedFile = new File([blob!], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          })
+          resolve(compressedFile)
+        },
+        'image/jpeg',
+        quality
+      )
+    }
+    
+    img.src = URL.createObjectURL(file)
+  })
 }
 
-// Image optimization pipeline:
-// 1. Upload original to storage
-// 2. Generate thumbnails and optimized versions
-// 3. Store metadata and URLs in Supabase
-// 4. Serve via CDN with appropriate transforms
+// 2. Multiple quality presets
+const compressionPresets = {
+  thumbnail: { maxWidth: 300, quality: 0.7 },
+  medium: { maxWidth: 800, quality: 0.8 },
+  high: { maxWidth: 1920, quality: 0.9 }
+}
+
+// 3. Progressive upload with preview
+async function uploadWithCompression(file: File, harvestId: string) {
+  // Generate preview immediately
+  const thumbnail = await compressImage(file, 300, 0.7)
+  const optimized = await compressImage(file, 1920, 0.8)
+  
+  // Upload compressed version
+  const { data, error } = await supabase.storage
+    .from('harvest-photos')
+    .upload(`${userId}/${harvestId}/${Date.now()}_${file.name}`, optimized)
+    
+  return { data, thumbnail: URL.createObjectURL(thumbnail) }
+}
+```
+
+#### **Supabase Built-in Transformations (Backend)**
+```typescript
+// Supabase provides on-the-fly image transformations via URL parameters
+const getOptimizedImageUrl = (path: string, options: ImageTransformOptions = {}) => {
+  const { 
+    width = 800, 
+    height = 600, 
+    quality = 80, 
+    format = 'webp',
+    resize = 'cover' 
+  } = options
+  
+  return supabase.storage
+    .from('harvest-photos')
+    .getPublicUrl(path, {
+      transform: {
+        width,
+        height,
+        quality,
+        format, // auto-converts to WebP for modern browsers
+        resize  // 'cover', 'contain', 'fill'
+      }
+    }).data.publicUrl
+}
+
+// Usage examples:
+const thumbnailUrl = getOptimizedImageUrl(path, { width: 300, height: 300 })
+const galleryUrl = getOptimizedImageUrl(path, { width: 800, quality: 75 })
+const fullSizeUrl = getOptimizedImageUrl(path, { width: 1920, format: 'webp' })
+```
+
+#### **Complete Upload Implementation**
+```typescript
+interface ImageUploadResult {
+  path: string
+  publicUrl: string
+  thumbnailUrl: string
+  mediumUrl: string
+  metadata: ImageMetadata
+}
+
+async function uploadHarvestPhoto(
+  file: File, 
+  harvestId: string
+): Promise<ImageUploadResult> {
+  try {
+    // 1. Client-side compression
+    const compressedFile = await compressImage(file, 1920, 0.85)
+    
+    // 2. Generate unique filename
+    const filename = `${Date.now()}_${sanitizeFilename(file.name)}`
+    const path = `${userId}/${harvestId}/${filename}`
+    
+    // 3. Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('harvest-photos')
+      .upload(path, compressedFile, {
+        cacheControl: '3600',
+        upsert: false
+      })
+    
+    if (uploadError) throw uploadError
+    
+    // 4. Generate optimized URLs using Supabase transforms
+    const baseUrl = supabase.storage.from('harvest-photos').getPublicUrl(path).data.publicUrl
+    
+    const result: ImageUploadResult = {
+      path: uploadData.path,
+      publicUrl: baseUrl,
+      thumbnailUrl: getOptimizedImageUrl(path, { width: 300, height: 300, quality: 70 }),
+      mediumUrl: getOptimizedImageUrl(path, { width: 800, quality: 80 }),
+      metadata: {
+        originalSize: file.size,
+        compressedSize: compressedFile.size,
+        compressionRatio: Math.round((1 - compressedFile.size / file.size) * 100),
+        dimensions: await getImageDimensions(file),
+        uploadedAt: new Date().toISOString()
+      }
+    }
+    
+    // 5. Store metadata in database
+    await supabase.from('photos').insert({
+      harvest_id: harvestId,
+      storage_path: result.path,
+      public_url: result.publicUrl,
+      thumbnail_url: result.thumbnailUrl,
+      medium_url: result.mediumUrl,
+      metadata: result.metadata
+    })
+    
+    return result
+    
+  } catch (error) {
+    console.error('Image upload failed:', error)
+    throw new Error('Failed to upload image')
+  }
+}
+```
+
+### 🎯 **Optimization Benefits**
+- **File Size Reduction**: 60-80% smaller files through compression
+- **Fast Loading**: Multiple size variants for different use cases
+- **Modern Formats**: Automatic WebP/AVIF conversion via Supabase
+- **CDN Delivery**: Global edge network for fast image serving
+- **Progressive Loading**: Thumbnail → Medium → Full resolution
+- **Storage Efficiency**: Compressed uploads save storage space
+- **Bandwidth Savings**: Appropriate sizes for different screen sizes
+
+### 📱 **Responsive Image Strategy**
+```typescript
+// Next.js Image component with Supabase URLs
+<Image
+  src={mediumUrl}
+  alt="Harvest photo"
+  width={800}
+  height={600}
+  placeholder="blur"
+  blurDataURL={thumbnailUrl}
+  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+  className="rounded-lg object-cover"
+/>
+
+// Gallery grid with lazy loading
+const PhotoGallery = ({ photos }) => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    {photos.map((photo) => (
+      <div key={photo.id} className="aspect-square relative">
+        <Image
+          src={photo.thumbnail_url}
+          alt="Harvest"
+          fill
+          className="object-cover rounded-lg cursor-pointer hover:opacity-90"
+          onClick={() => openLightbox(photo.public_url)}
+        />
+      </div>
+    ))}
+  </div>
+)
 ```
 
 ## 🤖 AI Integration Details
