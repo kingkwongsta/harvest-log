@@ -63,62 +63,224 @@ A smart harvest logging application that combines traditional data entry with AI
 
 ## 🛠 Technical Architecture
 
-### Frontend Options
-1. **React Native** (Cross-platform mobile)
-   - Pros: Single codebase, native performance, camera integration
-   - Best for: Mobile-first experience
+### Frontend: Web Application ⭐ **SELECTED**
+**Next.js 14+ with App Router** (Full-stack React framework)
+- **Server-side rendering**: Better SEO and initial page load performance
+- **React Server Components**: Improved performance and reduced client bundle
+- **Built-in optimizations**: Image optimization, font optimization, code splitting
+- **API Routes**: Handle simple CRUD operations without separate backend
+- **TypeScript**: Full type safety across the application
+- **Responsive Design**: Works great on desktop, tablet, and mobile browsers
+- **File Upload**: Modern drag-and-drop interfaces with preview
+- **Camera Access**: Web APIs for photo capture on mobile browsers
 
-2. **Flutter** (Cross-platform)
-   - Pros: Beautiful UI, fast development, excellent camera support
-   - Best for: Consistent UI across platforms
-
-3. **PWA (Progressive Web App)**
-   - Pros: No app store needed, works offline, camera access
-   - Best for: Web-based deployment
-
-### Backend Architecture
+### Backend Architecture ⭐ **WEB-FOCUSED STACK**
 ```
-┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
-│   Mobile App    │    │   Web App    │    │   Admin Panel   │
-└─────────┬───────┘    └──────┬───────┘    └─────────┬───────┘
-          │                   │                      │
-          └───────────────────┼──────────────────────┘
-                              │
-                    ┌─────────▼──────────┐
-                    │    API Gateway     │
-                    │   (Express.js/     │
-                    │    FastAPI)        │
-                    └─────────┬──────────┘
-                              │
-          ┌───────────────────┼───────────────────┐
-          │                   │                   │
-    ┌─────▼─────┐    ┌───────▼────────┐   ┌─────▼─────┐
-    │ Database  │    │ AI/ML Services │   │ File       │
-    │ (MongoDB/ │    │ (Computer      │   │ Storage    │
-    │ PostgreSQL)│    │ Vision, NLP)   │   │ (AWS S3/   │
-    └───────────┘    └────────────────┘   │ Firebase)  │
-                                          └───────────┘
+┌─────────────────────────────────────────┐
+│           Next.js Web App               │
+│  ┌─────────────────┐ ┌─────────────────┐│
+│  │    Frontend     │ │   API Routes    ││
+│  │  (App Router)   │ │   (CRUD Ops)    ││
+│  └─────────────────┘ └─────────────────┘│
+└─────────────────┬───────────────────────┘
+                  │
+                  │ HTTP Requests
+                  │
+        ┌─────────▼──────────┐
+        │    FastAPI         │
+        │   (AI/ML Services  │
+        │    & Heavy Compute)│
+        └─────────┬──────────┘
+                  │
+    ┌─────────────┼─────────────┐
+    │             │             │
+┌───▼────┐ ┌─────▼─────┐ ┌─────▼─────┐
+│Supabase│ │  FastAPI  │ │   Image   │
+│Database│ │Computer   │ │  Storage  │
+│+ Auth  │ │Vision &   │ │           │
+│+ RLS   │ │ML Models  │ │           │
+└────────┘ └───────────┘ └───────────┘
 ```
 
-### Database Schema
+### Web-First Architecture Benefits
+- **Single Application**: One Next.js app handles everything
+- **Server Components**: Reduce client-side JavaScript
+- **Optimistic UI**: Fast interactions with proper loading states
+- **File Uploads**: Drag-and-drop with progress indicators
+- **Responsive**: Works on all screen sizes
+- **SEO Friendly**: Server-side rendering for discovery
+
+### Database Schema (Supabase PostgreSQL)
 ```sql
--- Users
-users: id, email, name, created_at, settings
+-- Users (managed by Supabase Auth)
+profiles: id (uuid, references auth.users), email, name, created_at, updated_at, settings (jsonb)
 
 -- Harvest Entries
-harvests: id, user_id, date, fruit_type, quantity, weight, location, weather_conditions, notes, created_at
+harvests: 
+  id (uuid, primary key), 
+  user_id (uuid, references profiles.id), 
+  date (date), 
+  fruit_type (text), 
+  quantity (integer), 
+  weight (decimal), 
+  location (point/geometry), 
+  weather_conditions (jsonb), 
+  notes (text), 
+  created_at (timestamp), 
+  updated_at (timestamp)
 
 -- Photos
-photos: id, harvest_id, file_path, metadata, ai_analysis, created_at
+photos: 
+  id (uuid, primary key), 
+  harvest_id (uuid, references harvests.id), 
+  storage_path (text), -- path in chosen storage solution
+  public_url (text), -- CDN/public URL
+  metadata (jsonb), -- camera settings, GPS, etc.
+  ai_analysis_status (enum: 'pending', 'processing', 'completed', 'failed'),
+  created_at (timestamp)
 
--- AI Analysis
-ai_analysis: id, photo_id, fruit_type_detected, quantity_estimated, quality_score, confidence_level
+-- AI Analysis Results
+ai_analysis: 
+  id (uuid, primary key), 
+  photo_id (uuid, references photos.id), 
+  fruit_type_detected (text), 
+  confidence_score (decimal), 
+  quantity_estimated (integer), 
+  quality_metrics (jsonb), -- ripeness, size, defects
+  processing_time (interval),
+  model_version (text),
+  created_at (timestamp)
 
 -- Plant/Tree Records
-plants: id, user_id, plant_type, variety, planting_date, location, health_status
+plants: 
+  id (uuid, primary key), 
+  user_id (uuid, references profiles.id), 
+  plant_type (text), 
+  variety (text), 
+  planting_date (date), 
+  location (point/geometry), 
+  health_status (jsonb),
+  created_at (timestamp), 
+  updated_at (timestamp)
 
--- Weather Data
-weather: id, date, location, temperature, humidity, precipitation, conditions
+-- Weather Data Cache
+weather_cache: 
+  id (uuid, primary key), 
+  date (date), 
+  location (point/geometry), 
+  temperature_high (decimal), 
+  temperature_low (decimal), 
+  humidity (decimal), 
+  precipitation (decimal), 
+  conditions (jsonb),
+  source (text), -- API source
+  created_at (timestamp)
+```
+
+### Row Level Security (RLS) Policies
+```sql
+-- Enable RLS on all tables
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE harvests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plants ENABLE ROW LEVEL SECURITY;
+
+-- Users can only access their own data
+CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can view own harvests" ON harvests FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own harvests" ON harvests FOR INSERT WITH CHECK (auth.uid() = user_id);
+```
+
+## 📸 Image Storage Solutions
+
+### Option 1: Supabase Storage ⭐ **RECOMMENDED FOR MVP**
+```typescript
+// Pros:
+// - Seamless integration with Supabase
+// - Built-in RLS policies
+// - CDN distribution
+// - Automatic image transformations
+// - Cost-effective for small to medium scale
+
+// Cons:
+// - Limited advanced features vs dedicated services
+// - Newer service (less battle-tested)
+
+// Implementation:
+const { data, error } = await supabase.storage
+  .from('harvest-photos')
+  .upload(`${userId}/${harvestId}/${photoId}.jpg`, file)
+```
+
+### Option 2: Cloudinary ⭐ **RECOMMENDED FOR PRODUCTION**
+```typescript
+// Pros:
+// - Advanced image transformations
+// - AI-powered auto-tagging
+// - Excellent CDN performance
+// - Built-in optimization
+// - Great developer experience
+
+// Cons:
+// - Additional cost
+// - Another service to manage
+
+// Features:
+// - Auto-crop and resize
+// - Quality optimization
+// - Format conversion (WebP, AVIF)
+// - Lazy loading support
+// - Face/object detection
+```
+
+### Option 3: AWS S3 + CloudFront
+```typescript
+// Pros:
+// - Highly scalable
+// - Cost-effective at scale
+// - Full control
+// - Enterprise reliability
+
+// Cons:
+// - More complex setup
+// - Manual optimization needed
+// - Higher maintenance
+
+// Best for: Large scale deployments
+```
+
+### Option 4: Vercel Blob Storage
+```typescript
+// Pros:
+// - Perfect Next.js integration
+// - Edge network distribution
+// - Simple API
+// - Built-in optimization
+
+// Cons:
+// - Newer service
+// - Vercel vendor lock-in
+// - Cost at scale
+
+// Perfect for: Next.js deployments on Vercel
+```
+
+### Recommended Architecture: **Hybrid Approach**
+```typescript
+// Development & MVP: Supabase Storage
+// Production: Cloudinary + Supabase metadata
+
+interface ImageStorageService {
+  upload(file: File, metadata: ImageMetadata): Promise<ImageUploadResult>
+  getOptimizedUrl(path: string, transforms?: ImageTransforms): string
+  delete(path: string): Promise<void>
+}
+
+// Image optimization pipeline:
+// 1. Upload original to storage
+// 2. Generate thumbnails and optimized versions
+// 3. Store metadata and URLs in Supabase
+// 4. Serve via CDN with appropriate transforms
 ```
 
 ## 🤖 AI Integration Details
@@ -153,36 +315,74 @@ weather: id, date, location, temperature, humidity, precipitation, conditions
    - Seasonal patterns
    - Plant age factors
 
-## 📱 User Experience Design
+## 🖥️ Web User Experience Design
 
 ### Navigation Structure
 ```
-Home Dashboard
-├── Quick Log
+Header Navigation
+├── Dashboard (Home)
+├── New Harvest (+ Button)
 ├── My Harvests
 │   ├── Calendar View
-│   ├── List View
+│   ├── List View  
+│   ├── Map View
 │   └── Photo Gallery
 ├── Analytics
-│   ├── Trends
+│   ├── Trends & Charts
 │   ├── Comparisons
-│   └── Predictions
+│   └── AI Insights
 ├── My Garden
 │   ├── Plant Records
-│   ├── Location Map
+│   ├── Garden Map
 │   └── Care Schedule
-└── Settings
-    ├── Profile
-    ├── Notifications
-    └── Export Options
+└── Profile & Settings
 ```
 
-### Key UI Components
-- **Floating Action Button**: Quick harvest entry
-- **Camera Integration**: One-tap photo capture
-- **Smart Forms**: Auto-completion and suggestions
-- **Gesture Controls**: Swipe navigation, pinch-to-zoom
-- **Offline Sync**: Work without internet, sync when connected
+### Web UI Components
+- **Sidebar Navigation**: Persistent navigation on desktop
+- **Action Bar**: Quick access to common actions
+- **Drag & Drop Upload**: Modern file upload with preview
+- **Data Tables**: Sortable, filterable harvest records
+- **Interactive Charts**: Hover states, zoom, filtering
+- **Modal Dialogs**: For forms and detailed views
+- **Responsive Grid**: Adapts from desktop to mobile
+- **Keyboard Shortcuts**: Power user efficiency
+- **Breadcrumbs**: Clear navigation hierarchy
+
+### Web-Specific Features
+```typescript
+// File Upload with Preview
+interface FileUploadZone {
+  acceptedTypes: string[]     // 'image/*'
+  maxFiles: number           // Multiple photo upload
+  maxSize: number           // File size limits
+  preview: boolean          // Show thumbnails
+  progress: boolean         // Upload progress bar
+}
+
+// Responsive Breakpoints
+const breakpoints = {
+  mobile: '640px',    // Single column, stacked navigation
+  tablet: '1024px',   // Two column, sidebar navigation
+  desktop: '1280px'   // Multi-column, full sidebar
+}
+
+// Keyboard Shortcuts
+const shortcuts = {
+  'Ctrl+N': 'New Harvest Entry',
+  'Ctrl+U': 'Upload Photos',
+  'Ctrl+S': 'Save Current Form',
+  '/': 'Focus Search',
+  'Esc': 'Close Modal/Dialog'
+}
+```
+
+### Browser Support
+- **Modern Browsers**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+- **Camera API**: getUserMedia() for photo capture
+- **File API**: Drag and drop, multiple file selection
+- **Local Storage**: Offline form data, user preferences
+- **Service Workers**: Background sync (future enhancement)
 
 ## 🔧 Implementation Phases
 
@@ -232,24 +432,57 @@ Home Dashboard
 5. **Community Features**: Share successes and learn from others
 6. **Scientific Accuracy**: Weather correlation and statistical analysis
 
-## 🚀 Technology Stack Recommendations
+## 🚀 Technology Stack Recommendations ⭐ **UPDATED**
 
 ### Recommended Stack
-- **Frontend**: React Native + TypeScript
-- **Backend**: Node.js + Express + TypeScript
-- **Database**: PostgreSQL + Redis (caching)
-- **File Storage**: AWS S3 + CloudFront CDN
-- **AI/ML**: TensorFlow + Python + Docker
-- **Authentication**: Firebase Auth or Auth0
-- **Analytics**: Mixpanel + Google Analytics
-- **Monitoring**: Sentry + DataDog
+- **Frontend**: Next.js 14+ (App Router) + TypeScript + Tailwind CSS
+- **Backend**: FastAPI + Python (for AI/ML) + Next.js API Routes (for CRUD)
+- **Database**: Supabase (PostgreSQL + Auth + Real-time + Storage)
+- **Image Storage**: Supabase Storage (MVP) → Cloudinary (Production)
+- **AI/ML**: FastAPI + TensorFlow/PyTorch + Docker + Hugging Face
+- **Authentication**: Supabase Auth (built-in)
+- **Analytics**: Vercel Analytics + PostHog
+- **Monitoring**: Sentry + Vercel Monitoring
+
+### Architecture Benefits
+```typescript
+// Next.js App Router advantages:
+// ✅ Server components for better performance
+// ✅ Built-in image optimization
+// ✅ API routes for simple CRUD operations
+// ✅ Static generation for marketing pages
+// ✅ Streaming and suspense for better UX
+
+// Supabase advantages:
+// ✅ All-in-one backend solution
+// ✅ Real-time subscriptions
+// ✅ Row Level Security
+// ✅ Built-in authentication
+// ✅ Edge functions for serverless compute
+
+// FastAPI advantages:
+// ✅ High performance async Python
+// ✅ Automatic API documentation
+// ✅ Perfect for ML workloads
+// ✅ Type hints and validation
+// ✅ Easy Docker deployment
+```
 
 ### Development Tools
 - **Version Control**: Git + GitHub
-- **CI/CD**: GitHub Actions
-- **Testing**: Jest + Cypress
-- **Code Quality**: ESLint + Prettier
-- **Documentation**: Storybook + Swagger
+- **CI/CD**: GitHub Actions + Vercel (Frontend) + Railway/Render (FastAPI)
+- **Testing**: 
+  - Frontend: Jest + React Testing Library + Playwright
+  - Backend: pytest + FastAPI TestClient
+- **Code Quality**: 
+  - Frontend: ESLint + Prettier + TypeScript strict mode
+  - Backend: Black + isort + mypy + ruff
+- **Documentation**: 
+  - API: FastAPI automatic docs (Swagger/OpenAPI)
+  - Components: Storybook (optional)
+- **Package Management**: 
+  - Frontend: pnpm (faster than npm/yarn)
+  - Backend: Poetry or pip-tools
 
 ## 📊 Success Metrics
 
