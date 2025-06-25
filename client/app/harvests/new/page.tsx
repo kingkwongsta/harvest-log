@@ -1,0 +1,338 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar, MapPin, Upload, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+
+interface HarvestForm {
+  fruit: string
+  variety: string
+  quantity: string
+  weight: string
+  date: string
+  location: string
+  weather: string
+  notes: string
+  quality: string
+}
+
+export default function NewHarvestPage() {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+  const [photos, setPhotos] = useState<File[]>([])
+  const [formData, setFormData] = useState<HarvestForm>({
+    fruit: "",
+    variety: "",
+    quantity: "",
+    weight: "",
+    date: new Date().toISOString().split("T")[0],
+    location: "",
+    weather: "",
+    notes: "",
+    quality: "",
+  })
+
+  const handleInputChange = (field: keyof HarvestForm, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setPhotos((prev) => [...prev, ...files].slice(0, 10)) // Max 10 photos
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false)
+      router.push("/harvests")
+    }, 1500)
+  }
+
+  const getCurrentWeather = () => {
+    // Simulate weather API call
+    const weather = "Sunny, 75°F, 65% humidity"
+    handleInputChange("weather", weather)
+  }
+
+  const getCurrentLocation = () => {
+    // Simulate GPS location
+    const location = "North Garden, Zone A"
+    handleInputChange("location", location)
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">New Harvest Entry</h1>
+              <p className="text-gray-600">Log your latest harvest with photos and details</p>
+            </div>
+            <Button variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="p-6 max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+              <CardDescription>Enter the essential details about your harvest</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fruit">Fruit Type *</Label>
+                  <Select value={formData.fruit} onValueChange={(value) => handleInputChange("fruit", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select fruit type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="apples">Apples</SelectItem>
+                      <SelectItem value="oranges">Oranges</SelectItem>
+                      <SelectItem value="berries">Berries</SelectItem>
+                      <SelectItem value="pears">Pears</SelectItem>
+                      <SelectItem value="peaches">Peaches</SelectItem>
+                      <SelectItem value="plums">Plums</SelectItem>
+                      <SelectItem value="cherries">Cherries</SelectItem>
+                      <SelectItem value="grapes">Grapes</SelectItem>
+                      <SelectItem value="strawberries">Strawberries</SelectItem>
+                      <SelectItem value="blueberries">Blueberries</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="variety">Variety</Label>
+                  <Input
+                    id="variety"
+                    placeholder="e.g., Honeycrisp, Gala"
+                    value={formData.variety}
+                    onChange={(e) => handleInputChange("variety", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantity *</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    placeholder="Number of items"
+                    value={formData.quantity}
+                    onChange={(e) => handleInputChange("quantity", e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="weight">Weight (lbs)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    step="0.1"
+                    placeholder="Total weight"
+                    value={formData.weight}
+                    onChange={(e) => handleInputChange("weight", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quality">Quality Rating</Label>
+                <Select value={formData.quality} onValueChange={(value) => handleInputChange("quality", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Rate the quality" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="excellent">Excellent</SelectItem>
+                    <SelectItem value="good">Good</SelectItem>
+                    <SelectItem value="fair">Fair</SelectItem>
+                    <SelectItem value="poor">Poor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Location & Date */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Location & Date</CardTitle>
+              <CardDescription>When and where was this harvest collected?</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="date">Harvest Date *</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange("date", e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="location"
+                        placeholder="Garden area or specific location"
+                        value={formData.location}
+                        onChange={(e) => handleInputChange("location", e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Button type="button" variant="outline" onClick={getCurrentLocation}>
+                      <MapPin className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Weather & Conditions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Weather & Conditions</CardTitle>
+              <CardDescription>Record the weather conditions during harvest</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="weather">Weather Conditions</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="weather"
+                    placeholder="e.g., Sunny, 75°F, light breeze"
+                    value={formData.weather}
+                    onChange={(e) => handleInputChange("weather", e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" onClick={getCurrentWeather}>
+                    Auto-fill
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Photos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Photos</CardTitle>
+              <CardDescription>Add photos of your harvest (up to 10 images)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Photo Upload Area */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="photo-upload"
+                />
+                <label htmlFor="photo-upload" className="cursor-pointer">
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-gray-600">Click to upload photos or drag and drop</p>
+                  <p className="text-sm text-gray-500 mt-1">PNG, JPG up to 10MB each</p>
+                </label>
+              </div>
+
+              {/* Photo Preview */}
+              {photos.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {photos.map((photo, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={URL.createObjectURL(photo) || "/placeholder.svg"}
+                        alt={`Harvest photo ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removePhoto(index)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Notes */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Additional Notes</CardTitle>
+              <CardDescription>Any additional observations or comments</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Notes about ripeness, taste, growing conditions, etc."
+                value={formData.notes}
+                onChange={(e) => handleInputChange("notes", e.target.value)}
+                rows={4}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Submit Buttons */}
+          <div className="flex justify-end space-x-4">
+            <Button type="button" variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700"
+              disabled={isLoading || !formData.fruit || !formData.quantity}
+            >
+              {isLoading ? "Saving..." : "Save Harvest"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
