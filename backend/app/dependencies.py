@@ -1,9 +1,10 @@
 from typing import List, Optional
 from uuid import UUID
 from supabase import Client
-from app.models import HarvestLog, HarvestLogCreate, HarvestLogUpdate
+from app.models import HarvestLog, HarvestLogCreate, HarvestLogUpdate, HarvestImage
 from app.database import get_supabase
 from app.logging_config import get_database_logger
+from app.storage import storage_service
 
 logger = get_database_logger()
 
@@ -11,6 +12,28 @@ logger = get_database_logger()
 def get_supabase_client() -> Client:
     """Dependency to get Supabase client"""
     return get_supabase()
+
+
+def get_db() -> Client:
+    """Alternative dependency name for Supabase client"""
+    return get_supabase()
+
+
+async def _fetch_harvest_images(harvest_log_id: str, client: Client) -> List[HarvestImage]:
+    """Helper function to fetch images for a harvest log"""
+    try:
+        result = client.table("harvest_images").select("*").eq("harvest_log_id", harvest_log_id).order("upload_order").execute()
+        
+        images = []
+        for image_data in result.data:
+            # Add public URL to each image
+            image_data["public_url"] = storage_service.get_public_url(image_data["file_path"])
+            images.append(HarvestImage(**image_data))
+        
+        return images
+    except Exception as e:
+        logger.warning(f"Failed to fetch images for harvest log {harvest_log_id}: {e}")
+        return []
 
 
 async def create_harvest_log_in_db(harvest_log_data: HarvestLogCreate, client: Client) -> HarvestLog:
@@ -48,7 +71,7 @@ async def create_harvest_log_in_db(harvest_log_data: HarvestLogCreate, client: C
 
 
 async def get_all_harvest_logs_from_db(client: Client) -> List[HarvestLog]:
-    """Get all harvest logs from Supabase"""
+    """Get all harvest logs from Supabase with their associated images"""
     logger.info("Retrieving all harvest logs")
     
     try:
@@ -56,8 +79,17 @@ async def get_all_harvest_logs_from_db(client: Client) -> List[HarvestLog]:
         result = client.table("harvest_logs").select("*").order("created_at", desc=True).execute()
         
         if result.data:
-            logs = [HarvestLog(**log_data) for log_data in result.data]
-            logger.info(f"✓ Successfully retrieved {len(logs)} harvest logs")
+            logs = []
+            for log_data in result.data:
+                # Create HarvestLog model
+                harvest_log = HarvestLog(**log_data)
+                
+                # Fetch associated images
+                harvest_log.images = await _fetch_harvest_images(str(harvest_log.id), client)
+                
+                logs.append(harvest_log)
+            
+            logger.info(f"✓ Successfully retrieved {len(logs)} harvest logs with images")
             return logs
         else:
             logger.info("No harvest logs found in database")
@@ -71,7 +103,7 @@ async def get_all_harvest_logs_from_db(client: Client) -> List[HarvestLog]:
 
 
 async def get_harvest_log_by_id_from_db(log_id: UUID, client: Client) -> Optional[HarvestLog]:
-    """Get a harvest log by ID from Supabase"""
+    """Get a harvest log by ID from Supabase with its associated images"""
     logger.info(f"Retrieving harvest log by ID: {log_id}")
     
     try:
@@ -79,9 +111,14 @@ async def get_harvest_log_by_id_from_db(log_id: UUID, client: Client) -> Optiona
         result = client.table("harvest_logs").select("*").eq("id", str(log_id)).execute()
         
         if result.data and len(result.data) > 0:
-            log = HarvestLog(**result.data[0])
-            logger.info(f"✓ Successfully retrieved harvest log: {log_id}")
-            return log
+            log_data = result.data[0]
+            harvest_log = HarvestLog(**log_data)
+            
+            # Fetch associated images
+            harvest_log.images = await _fetch_harvest_images(str(harvest_log.id), client)
+            
+            logger.info(f"✓ Successfully retrieved harvest log: {log_id} with {len(harvest_log.images)} images")
+            return harvest_log
         else:
             logger.info(f"Harvest log not found: {log_id}")
             return None
@@ -116,7 +153,12 @@ async def update_harvest_log_in_db(log_id: UUID, harvest_log_update: HarvestLogU
         result = client.table("harvest_logs").update(update_data).eq("id", str(log_id)).execute()
         
         if result.data and len(result.data) > 0:
-            updated_log = HarvestLog(**result.data[0])
+            log_data = result.data[0]
+            updated_log = HarvestLog(**log_data)
+            
+            # Fetch associated images
+            updated_log.images = await _fetch_harvest_images(str(updated_log.id), client)
+            
             logger.info(f"✓ Successfully updated harvest log: {log_id}")
             return updated_log
         else:
@@ -131,21 +173,29 @@ async def update_harvest_log_in_db(log_id: UUID, harvest_log_update: HarvestLogU
 
 
 async def delete_harvest_log_from_db(log_id: UUID, client: Client) -> Optional[HarvestLog]:
-    """Delete a harvest log from Supabase"""
+    """Delete a harvest log from Supabase (images will be cascade deleted)"""
     logger.info(f"Deleting harvest log: {log_id}")
     
     try:
-        # Get the log first
+        # Get the log first with its images
         log = await get_harvest_log_by_id_from_db(log_id, client)
         if not log:
             logger.warning(f"Harvest log not found for deletion: {log_id}")
             return None
         
-        # Delete from Supabase
+        # Delete associated images from storage
+        for image in log.images:
+            try:
+                await storage_service.delete_image(image.file_path)
+                logger.debug(f"Deleted image from storage: {image.file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to delete image from storage {image.file_path}: {e}")
+        
+        # Delete from Supabase (this will cascade delete images due to foreign key constraint)
         logger.debug(f"Executing DELETE query for ID: {log_id}")
         result = client.table("harvest_logs").delete().eq("id", str(log_id)).execute()
         
-        logger.info(f"✓ Successfully deleted harvest log: {log_id}")
+        logger.info(f"✓ Successfully deleted harvest log: {log_id} and {len(log.images)} associated images")
         # Return the deleted log
         return log
         

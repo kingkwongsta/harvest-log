@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from app.config import settings
-from app.routers import harvest_logs
+from app.routers import harvest_logs, images
 from app.database import init_supabase, create_harvest_logs_table
 from app.logging_config import setup_logging, get_app_logger
 from app.middleware import LoggingMiddleware, PerformanceMiddleware
@@ -75,6 +75,10 @@ app = FastAPI(
             "description": "Operations for managing harvest log entries",
         },
         {
+            "name": "images",
+            "description": "Operations for managing harvest images with Supabase Storage",
+        },
+        {
             "name": "health",
             "description": "Application health check endpoints",
         },
@@ -98,6 +102,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(harvest_logs.router)
+app.include_router(images.router)
 
 
 @app.get(
