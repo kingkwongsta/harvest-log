@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Apple, Calendar, MapPin, Camera, List } from "lucide-react"
 import Link from "next/link"
+import { harvestLogsApi, ApiError } from "@/lib/api"
 
 interface HarvestForm {
   fruit: string
@@ -44,20 +45,46 @@ export default function HomePage() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate saving
-    setTimeout(() => {
+    try {
+      // Map frontend form data to backend API format
+      const harvestLogData = {
+        crop_name: formData.fruit,
+        quantity: parseFloat(formData.quantity),
+        unit: formData.weight ? formData.weight : "pieces", // Use weight as unit if provided, otherwise default to "pieces"
+        harvest_date: new Date(formData.date).toISOString(),
+        location: undefined, // Can be added later if needed
+        notes: formData.notes || undefined
+      }
+
+      // Send data to FastAPI backend using API helper
+      const result = await harvestLogsApi.create(harvestLogData)
+      
+      if (result.success) {
+        // Reset form on success
+        setFormData({
+          fruit: "",
+          quantity: "",
+          weight: "",
+          date: new Date().toISOString().split("T")[0],
+          notes: "",
+        })
+        setPhotos([])
+        
+        alert("Harvest logged successfully!")
+      } else {
+        throw new Error(result.message || 'Failed to create harvest log')
+      }
+      
+    } catch (error) {
+      console.error('Error submitting harvest log:', error)
+      if (error instanceof ApiError) {
+        alert(`Failed to log harvest: ${error.message}`)
+      } else {
+        alert(`Failed to log harvest: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    } finally {
       setIsSubmitting(false)
-      // Reset form
-      setFormData({
-        fruit: "",
-        quantity: "",
-        weight: "",
-        date: new Date().toISOString().split("T")[0],
-        notes: "",
-      })
-      setPhotos([])
-      alert("Harvest logged successfully!")
-    }, 1000)
+    }
   }
 
   return (
@@ -133,10 +160,10 @@ export default function HomePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (optional)</Label>
+                  <Label htmlFor="weight">Unit/Weight (optional)</Label>
                   <Input
                     id="weight"
-                    placeholder="e.g., 2.5 lbs"
+                    placeholder="e.g., lbs, kg, pieces"
                     value={formData.weight}
                     onChange={(e) => handleInputChange("weight", e.target.value)}
                   />

@@ -7,34 +7,51 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.routers import harvest_logs
 from app.database import init_supabase, create_harvest_logs_table
+from app.logging_config import setup_logging, get_app_logger
+from app.middleware import LoggingMiddleware, PerformanceMiddleware
+
+# Setup logging
+setup_logging(
+    level=settings.log_level,
+    json_logs=settings.json_logs,
+    log_file=settings.log_file if settings.log_file else None
+)
+
+logger = get_app_logger()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan management"""
     # Startup
-    print(f"Starting {settings.app_name} v{settings.app_version}")
+    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
+    logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"Log level: {settings.log_level}")
     
     # Initialize Supabase connection
     if settings.supabase_url and settings.supabase_anon_key:
         try:
             supabase_client = init_supabase()
-            print("✓ Supabase connection initialized")
+            logger.info("✓ Supabase connection initialized")
             
             # Try to create table if it doesn't exist
             await create_harvest_logs_table()
-            print("✓ Database table checked/created")
+            logger.info("✓ Database table checked/created")
             
         except Exception as e:
-            print(f"⚠ Warning: Supabase initialization failed: {e}")
-            print("Please check your SUPABASE_URL and SUPABASE_ANON_KEY environment variables")
+            logger.error(f"⚠ Supabase initialization failed: {e}", exc_info=True)
+            logger.error("Please check your SUPABASE_URL and SUPABASE_ANON_KEY environment variables")
     else:
-        print("⚠ Warning: Supabase credentials not found in environment variables")
-        print("Please set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file")
+        logger.warning("⚠ Supabase credentials not found in environment variables")
+        logger.warning("Please set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file")
+    
+    logger.info("✓ Application startup completed")
     
     yield
+    
     # Shutdown
-    print(f"Shutting down {settings.app_name}")
+    logger.info(f"Shutting down {settings.app_name}")
+    logger.info("✓ Application shutdown completed")
 
 
 # Create FastAPI app with configuration from settings
@@ -63,6 +80,10 @@ app = FastAPI(
     lifespan=lifespan,
     debug=settings.debug
 )
+
+# Add logging middleware
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(PerformanceMiddleware, slow_request_threshold=settings.slow_request_threshold)
 
 # Add CORS middleware
 app.add_middleware(

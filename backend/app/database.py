@@ -8,6 +8,9 @@ import uuid
 from typing import Optional
 
 from app.config import settings
+from app.logging_config import get_database_logger
+
+logger = get_database_logger()
 
 # Supabase client
 supabase: Optional[Client] = None
@@ -33,31 +36,42 @@ def init_supabase() -> Client:
     """Initialize Supabase client"""
     global supabase
     if not supabase and settings.supabase_url and settings.supabase_service_key:
-        supabase = create_client(settings.supabase_url, settings.supabase_service_key)
+        logger.info("Initializing Supabase client")
+        try:
+            supabase = create_client(settings.supabase_url, settings.supabase_service_key)
+            logger.info("✓ Supabase client created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create Supabase client: {e}", exc_info=True)
+            raise
     return supabase
 
 
 def get_supabase() -> Client:
     """Get Supabase client instance"""
     if not supabase:
+        logger.debug("Supabase client not initialized, initializing now")
         init_supabase()
     return supabase
 
 
 async def create_harvest_logs_table():
     """Create the harvest_logs table if it doesn't exist"""
+    logger.info("Checking harvest_logs table existence")
     client = get_supabase()
     
     # Check if table exists and create if it doesn't
     try:
         # Try to fetch from table to see if it exists
-        client.table("harvest_logs").select("*").limit(1).execute()
-    except Exception:
+        logger.debug("Testing harvest_logs table access")
+        result = client.table("harvest_logs").select("*").limit(1).execute()
+        logger.info("✓ harvest_logs table exists and is accessible")
+    except Exception as e:
         # Table doesn't exist, let's create it using SQL
         # Note: In a real application, you would typically use Supabase's SQL editor
         # or migrations to create tables
-        print("Harvest logs table may not exist. Please create it in Supabase SQL editor.")
-        print("""
+        logger.warning(f"harvest_logs table may not exist or is inaccessible: {e}")
+        logger.info("Please create the harvest_logs table in Supabase SQL editor using the following SQL:")
+        sql_script = """
         CREATE TABLE IF NOT EXISTS harvest_logs (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             crop_name VARCHAR(100) NOT NULL,
@@ -82,4 +96,5 @@ async def create_harvest_logs_table():
         CREATE TRIGGER update_harvest_logs_updated_at 
             BEFORE UPDATE ON harvest_logs 
             FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-        """) 
+        """
+        logger.info(sql_script) 

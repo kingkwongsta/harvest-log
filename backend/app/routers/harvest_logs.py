@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from typing import List
 from uuid import UUID
 from datetime import datetime
@@ -19,6 +19,9 @@ from app.dependencies import (
     update_harvest_log_in_db,
     delete_harvest_log_from_db
 )
+from app.logging_config import get_api_logger
+
+logger = get_api_logger()
 
 router = APIRouter(
     prefix="/api/harvest-logs",
@@ -40,6 +43,7 @@ router = APIRouter(
 )
 async def create_harvest_log(
     harvest_log_data: HarvestLogCreate,
+    request: Request,
     client = Depends(get_supabase_client)
 ) -> HarvestLogResponse:
     """
@@ -52,8 +56,16 @@ async def create_harvest_log(
     - **location**: Location where crop was harvested (optional)
     - **notes**: Additional notes about the harvest (optional)
     """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
     try:
+        logger.info(f"API: Creating new harvest log for crop '{harvest_log_data.crop_name}'", 
+                   extra={"request_id": request_id})
+        
         new_log = await create_harvest_log_in_db(harvest_log_data, client)
+        
+        logger.info(f"API: Successfully created harvest log with ID {new_log.id}", 
+                   extra={"request_id": request_id, "record_id": str(new_log.id)})
         
         return HarvestLogResponse(
             success=True,
@@ -61,6 +73,9 @@ async def create_harvest_log(
             data=new_log
         )
     except Exception as e:
+        logger.error(f"API: Failed to create harvest log: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create harvest log: {str(e)}"
@@ -74,6 +89,7 @@ async def create_harvest_log(
     description="Retrieve all harvest log entries."
 )
 async def get_harvest_logs(
+    request: Request,
     client = Depends(get_supabase_client)
 ) -> HarvestLogListResponse:
     """
@@ -81,8 +97,16 @@ async def get_harvest_logs(
     
     Returns a list of all harvest log entries in the system.
     """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
     try:
+        logger.info("API: Retrieving all harvest logs", extra={"request_id": request_id})
+        
         logs = await get_all_harvest_logs_from_db(client)
+        
+        logger.info(f"API: Successfully retrieved {len(logs)} harvest logs", 
+                   extra={"request_id": request_id})
+        
         return HarvestLogListResponse(
             success=True,
             message=f"Retrieved {len(logs)} harvest logs",
@@ -90,6 +114,9 @@ async def get_harvest_logs(
             total=len(logs)
         )
     except Exception as e:
+        logger.error(f"API: Failed to retrieve harvest logs: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve harvest logs: {str(e)}"
@@ -104,6 +131,7 @@ async def get_harvest_logs(
 )
 async def get_harvest_log(
     log_id: UUID,
+    request: Request,
     client = Depends(get_supabase_client)
 ) -> HarvestLogResponse:
     """
@@ -111,13 +139,23 @@ async def get_harvest_log(
     
     - **log_id**: Unique identifier of the harvest log (UUID format)
     """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
     try:
+        logger.info(f"API: Retrieving harvest log with ID {log_id}", 
+                   extra={"request_id": request_id, "record_id": str(log_id)})
+        
         log = await get_harvest_log_by_id_from_db(log_id, client)
         if not log:
+            logger.warning(f"API: Harvest log not found: {log_id}", 
+                          extra={"request_id": request_id, "record_id": str(log_id)})
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Harvest log with ID {log_id} not found"
             )
+        
+        logger.info(f"API: Successfully retrieved harvest log {log_id}", 
+                   extra={"request_id": request_id, "record_id": str(log_id)})
         
         return HarvestLogResponse(
             success=True,
@@ -127,6 +165,9 @@ async def get_harvest_log(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"API: Failed to retrieve harvest log {log_id}: {str(e)}", 
+                    extra={"request_id": request_id, "record_id": str(log_id)}, 
+                    exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve harvest log: {str(e)}"
@@ -142,6 +183,7 @@ async def get_harvest_log(
 async def update_harvest_log(
     log_id: UUID,
     harvest_log_update: HarvestLogUpdate,
+    request: Request,
     client = Depends(get_supabase_client)
 ) -> HarvestLogResponse:
     """
@@ -150,13 +192,23 @@ async def update_harvest_log(
     - **log_id**: Unique identifier of the harvest log to update
     - Only provided fields will be updated, others remain unchanged
     """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
     try:
+        logger.info(f"API: Updating harvest log {log_id}", 
+                   extra={"request_id": request_id, "record_id": str(log_id)})
+        
         updated_log = await update_harvest_log_in_db(log_id, harvest_log_update, client)
         if not updated_log:
+            logger.warning(f"API: Harvest log not found for update: {log_id}", 
+                          extra={"request_id": request_id, "record_id": str(log_id)})
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Harvest log with ID {log_id} not found"
             )
+        
+        logger.info(f"API: Successfully updated harvest log {log_id}", 
+                   extra={"request_id": request_id, "record_id": str(log_id)})
         
         return HarvestLogResponse(
             success=True,
@@ -166,6 +218,9 @@ async def update_harvest_log(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"API: Failed to update harvest log {log_id}: {str(e)}", 
+                    extra={"request_id": request_id, "record_id": str(log_id)}, 
+                    exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update harvest log: {str(e)}"

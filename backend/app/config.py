@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     secret_key: str = "your-secret-key-change-this-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    
+    # Logging Configuration
+    log_level: str = "INFO"
+    log_file: str = ""  # Optional log file path
+    json_logs: bool = False  # Whether to output logs in JSON format
+    slow_request_threshold: float = 1000.0  # Milliseconds
 
 
 # Create a global settings instance
