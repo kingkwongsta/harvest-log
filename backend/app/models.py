@@ -44,12 +44,7 @@ class HarvestImage(HarvestImageBase):
     harvest_log_id: UUID = Field(..., description="ID of the associated harvest log")
     created_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the image was uploaded")
     updated_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the image was last updated")
-    
-    @property
-    def public_url(self) -> str:
-        """Generate the public URL for the image in Supabase Storage"""
-        # This will be constructed using the Supabase client
-        return f"harvest-images/{self.file_path}"
+    public_url: Optional[str] = Field(default=None, description="Public URL for accessing the image")
 
 
 class HarvestLogCreate(HarvestLogBase):

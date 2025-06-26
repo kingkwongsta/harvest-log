@@ -23,9 +23,13 @@ CREATE TABLE IF NOT EXISTS harvest_images (
     width INTEGER,
     height INTEGER,
     upload_order INTEGER DEFAULT 0,
+    public_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add public_url column if it doesn't exist (for existing databases)
+ALTER TABLE harvest_images ADD COLUMN IF NOT EXISTS public_url TEXT;
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

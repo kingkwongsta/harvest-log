@@ -105,7 +105,8 @@ async def upload_harvest_image(
             "mime_type": file_info["mime_type"],
             "width": file_info["width"],
             "height": file_info["height"],
-            "upload_order": upload_order
+            "upload_order": upload_order,
+            "public_url": file_info["public_url"]
         }
         
         logger.debug("API: Saving image metadata to database", 
@@ -147,7 +148,8 @@ async def upload_harvest_image(
             height=saved_image["height"],
             upload_order=saved_image["upload_order"],
             created_at=saved_image["created_at"],
-            updated_at=saved_image["updated_at"]
+            updated_at=saved_image["updated_at"],
+            public_url=saved_image.get("public_url") or file_info["public_url"]
         )
         
         logger.info(f"API: Image upload completed successfully - ID: {saved_image['id']}", 
@@ -271,7 +273,8 @@ async def upload_multiple_harvest_images(
                     "mime_type": file_info["mime_type"],
                     "width": file_info["width"],
                     "height": file_info["height"],
-                    "upload_order": i
+                    "upload_order": i,
+                    "public_url": file_info["public_url"]
                 }
                 
                 result = supabase.table("harvest_images").insert(image_data).execute()

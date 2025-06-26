@@ -24,6 +24,16 @@ export default function HarvestsPage() {
         setLoading(true)
         const response = await harvestLogsApi.getAll()
         if (response.success && response.data) {
+          console.log('🔍 Harvest data received:', response.data)
+          // Debug image URLs
+          response.data.forEach(harvest => {
+            if (harvest.images && harvest.images.length > 0) {
+              console.log(`🖼️ Images for ${harvest.crop_name}:`, harvest.images.map(img => ({
+                filename: img.filename,
+                public_url: img.public_url
+              })))
+            }
+          })
           setHarvests(response.data)
         } else {
           setError(response.message || "Failed to load harvests")
@@ -238,6 +248,13 @@ export default function HarvestsPage() {
                                   src={image.public_url || '/placeholder.svg'}
                                   alt={`${harvest.crop_name} photo ${index + 1}`}
                                   className="w-16 h-16 object-cover rounded-lg border"
+                                  onError={(e) => {
+                                    console.log('❌ Image failed to load:', image.public_url)
+                                    e.currentTarget.src = '/placeholder.svg'
+                                  }}
+                                  onLoad={() => {
+                                    console.log('✅ Image loaded successfully:', image.public_url)
+                                  }}
                                 />
                                 {index === 3 && harvest.images && harvest.images.length > 4 && (
                                   <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
