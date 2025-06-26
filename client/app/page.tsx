@@ -11,9 +11,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SuccessDialog } from "@/components/ui/success-dialog"
 import { ErrorDialog } from "@/components/ui/error-dialog"
+import { Progress } from "@/components/ui/progress"
 import { Apple, Calendar, MapPin, Camera, List, X } from "lucide-react"
 import Link from "next/link"
 import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
+import { useImageCompression } from "@/lib/useImageCompression"
 
 interface HarvestForm {
   fruit: string
@@ -42,6 +44,12 @@ export default function HomePage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [photos, setPhotos] = useState<File[]>([])
+  const [originalPhotos, setOriginalPhotos] = useState<File[]>([])
+  const [compressionStats, setCompressionStats] = useState<Array<{
+    originalSize: number;
+    compressedSize: number;
+    compressionRatio: string;
+  }>>([])
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [showErrorDialog, setShowErrorDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
@@ -51,6 +59,15 @@ export default function HomePage() {
     this_week: 0
   })
   const [isLoadingStats, setIsLoadingStats] = useState(true)
+
+  // Image compression hook
+  const { 
+    compressMultipleImages, 
+    isCompressing, 
+    compressionError, 
+    compressionProgress,
+    getReadableFileSize 
+  } = useImageCompression()
 
   // Fetch harvest statistics on component mount
   useEffect(() => {
@@ -88,13 +105,67 @@ export default function HomePage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    setPhotos((prev) => [...prev, ...files].slice(0, 5))
+    const newFiles = files.slice(0, 5 - photos.length) // Ensure we don't exceed 5 total photos
+    
+    if (newFiles.length === 0) return
+
+    try {
+      // Store original files for reference
+      setOriginalPhotos((prev) => [...prev, ...newFiles])
+      
+      // Compress images with settings optimized for harvest photos  
+      const compressionResults = await compressMultipleImages(newFiles, {
+        maxSizeMB: 0.5, // Smaller file size for faster uploads
+        maxWidthOrHeight: 1200, // Sufficient resolution for harvest documentation
+        quality: 0.85, // Good balance of quality and size
+        convertToWebP: true, // Best compression format
+      })
+
+      // Extract compressed files and stats
+      const compressedFiles: File[] = []
+      const newCompressionStats: Array<{
+        originalSize: number;
+        compressedSize: number;
+        compressionRatio: string;
+      }> = []
+
+      compressionResults.forEach((result) => {
+        if (result.success && result.data) {
+          compressedFiles.push(result.data.compressedFile)
+          newCompressionStats.push({
+            originalSize: result.data.originalSize,
+            compressedSize: result.data.compressedSize,
+            compressionRatio: result.data.compressionRatio,
+          })
+        } else {
+          // If compression fails, use original file
+          console.warn('Compression failed for file, using original:', result.error)
+          compressedFiles.push(result.originalFile)
+          newCompressionStats.push({
+            originalSize: result.originalFile.size,
+            compressedSize: result.originalFile.size,
+            compressionRatio: '0%',
+          })
+        }
+      })
+
+      setPhotos((prev) => [...prev, ...compressedFiles])
+      setCompressionStats((prev) => [...prev, ...newCompressionStats])
+
+    } catch (error) {
+      console.error('Error processing photos:', error)
+      // Fallback to original files if compression fails completely
+      setPhotos((prev) => [...prev, ...newFiles])
+      setOriginalPhotos((prev) => [...prev, ...newFiles])
+    }
   }
 
   const removePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
+    setOriginalPhotos((prev) => prev.filter((_, i) => i !== index))
+    setCompressionStats((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,6 +228,8 @@ export default function HomePage() {
           notes: "",
         })
         setPhotos([])
+        setOriginalPhotos([])
+        setCompressionStats([])
         
         // Refetch stats to update the UI
         await refetchStats()
@@ -289,11 +362,29 @@ export default function HomePage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Photos (optional)</Label>
-                  {photos.length > 0 && (
-                    <span className="text-sm text-gray-500">{photos.length}/5 photos</span>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {compressionStats.length > 0 && (
+                      <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                        {compressionStats.reduce((total, stat) => total + (stat.originalSize - stat.compressedSize), 0) > 0 && (
+                          <>
+                            Saved {getReadableFileSize(
+                              compressionStats.reduce((total, stat) => total + (stat.originalSize - stat.compressedSize), 0)
+                            )}
+                          </>
+                        )}
+                      </span>
+                    )}
+                    {photos.length > 0 && (
+                      <span className="text-sm text-gray-500">{photos.length}/5 photos</span>
+                    )}
+                  </div>
                 </div>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
+                
+                <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                  isCompressing 
+                    ? 'border-green-400 bg-green-50' 
+                    : 'border-gray-300 hover:border-green-400'
+                }`}>
                   <input
                     type="file"
                     multiple
@@ -301,16 +392,42 @@ export default function HomePage() {
                     onChange={handlePhotoUpload}
                     className="hidden"
                     id="photo-upload"
-                    disabled={photos.length >= 5}
+                    disabled={photos.length >= 5 || isCompressing}
                   />
-                  <label htmlFor="photo-upload" className={`cursor-pointer ${photos.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <label htmlFor="photo-upload" className={`cursor-pointer ${
+                    photos.length >= 5 || isCompressing ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}>
                     <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                     <p className="text-gray-600">
-                      {photos.length >= 5 ? 'Maximum photos reached' : 'Click to add photos'}
+                      {isCompressing ? (
+                        <>
+                          Compressing images... {compressionProgress > 0 && `${compressionProgress}%`}
+                        </>
+                      ) : photos.length >= 5 ? (
+                        'Maximum photos reached'
+                      ) : (
+                        'Click to add photos'
+                      )}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">Up to 5 photos</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {isCompressing ? 'Please wait...' : 'Up to 5 photos • Auto-compressed for faster upload'}
+                    </p>
                   </label>
+                  
+                  {/* Progress bar during compression */}
+                  {isCompressing && compressionProgress > 0 && (
+                    <div className="mt-3">
+                      <Progress value={compressionProgress} className="w-full" />
+                    </div>
+                  )}
                 </div>
+                
+                {/* Compression Error */}
+                {compressionError && (
+                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                    Compression failed: {compressionError}
+                  </div>
+                )}
 
                 {photos.length > 0 && (
                   <div className="grid grid-cols-5 gap-2 mt-3">
@@ -329,8 +446,16 @@ export default function HomePage() {
                         >
                           <X className="w-3 h-3" />
                         </button>
-                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded-b">
-                          {photo.name}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-1 py-1 rounded-b">
+                          <div className="truncate">{photo.name}</div>
+                          {compressionStats[index] && (
+                            <div className="text-green-300 text-[10px]">
+                              {getReadableFileSize(compressionStats[index].compressedSize)}
+                              {compressionStats[index].compressionRatio !== '0%' && (
+                                <span className="ml-1">(-{compressionStats[index].compressionRatio})</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -352,9 +477,11 @@ export default function HomePage() {
               <Button
                 type="submit"
                 className="w-full bg-green-600 hover:bg-green-700"
-                disabled={isSubmitting || !formData.fruit || !formData.quantity}
+                disabled={isSubmitting || isCompressing || !formData.fruit || !formData.quantity}
               >
-                {isSubmitting ? (
+                {isCompressing ? (
+                  `Compressing ${photos.length + 1} image${photos.length > 0 ? 's' : ''}...`
+                ) : isSubmitting ? (
                   photos.length > 0 ? "Saving harvest and uploading photos..." : "Saving harvest..."
                 ) : (
                   `Log Harvest${photos.length > 0 ? ` & Upload ${photos.length} Photo${photos.length > 1 ? 's' : ''}` : ''}`

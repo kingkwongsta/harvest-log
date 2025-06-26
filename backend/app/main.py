@@ -112,17 +112,31 @@ app.include_router(images.router)
     summary="Health check",
     description="Basic health check endpoint to verify the API is running."
 )
-async def root():
+async def root(request: Request):
     """
     Health check endpoint.
     
     Returns basic information about the API status.
     """
-    return {
-        "message": f"{settings.app_name} is running",
-        "version": settings.app_version,
-        "status": "healthy"
-    }
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info("API: Basic health check requested", extra={"request_id": request_id})
+        
+        response = {
+            "message": f"{settings.app_name} is running",
+            "version": settings.app_version,
+            "status": "healthy"
+        }
+        
+        logger.debug("API: Health check completed successfully", extra={"request_id": request_id})
+        return response
+        
+    except Exception as e:
+        logger.error(f"API: Health check failed: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise HTTPException(status_code=500, detail="Health check failed")
 
 
 @app.get(
@@ -131,20 +145,41 @@ async def root():
     summary="Detailed health check",
     description="Detailed health check with system information."
 )
-async def health_check():
+async def health_check(request: Request):
     """
     Detailed health check endpoint.
     
     Returns comprehensive information about the API health and status.
     """
-    return {
-        "status": "healthy",
-        "app_name": settings.app_name,
-        "version": settings.app_version,
-        "debug_mode": settings.debug,
-        "message": "All systems operational",
-        "supabase_configured": bool(settings.supabase_url and settings.supabase_anon_key)
-    }
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info("API: Detailed health check requested", extra={"request_id": request_id})
+        
+        supabase_configured = bool(settings.supabase_url and settings.supabase_anon_key)
+        
+        response = {
+            "status": "healthy",
+            "app_name": settings.app_name,
+            "version": settings.app_version,
+            "debug_mode": settings.debug,
+            "message": "All systems operational",
+            "supabase_configured": supabase_configured
+        }
+        
+        logger.info("API: Detailed health check completed successfully", 
+                   extra={
+                       "request_id": request_id,
+                       "supabase_configured": supabase_configured,
+                       "debug_mode": settings.debug
+                   })
+        return response
+        
+    except Exception as e:
+        logger.error(f"API: Detailed health check failed: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise HTTPException(status_code=500, detail="Detailed health check failed")
 
 
 @app.get(
@@ -180,13 +215,36 @@ async def get_harvest_stats(
         days_since_monday = now.weekday()
         week_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_since_monday)
         
+        logger.debug("API: Querying total harvest count", 
+                    extra={
+                        "request_id": request_id,
+                        "table": "harvest_logs",
+                        "db_operation": "count"
+                    })
+        
         # Query total count
         total_response = client.table('harvest_logs').select('id', count='exact').execute()
         total_count = total_response.count or 0
         
+        logger.debug("API: Querying monthly harvest count", 
+                    extra={
+                        "request_id": request_id,
+                        "table": "harvest_logs",
+                        "db_operation": "count",
+                        "filter": f"harvest_date >= {month_start.isoformat()}"
+                    })
+        
         # Query this month count
         month_response = client.table('harvest_logs').select('id', count='exact').gte('harvest_date', month_start.isoformat()).execute()
         month_count = month_response.count or 0
+        
+        logger.debug("API: Querying weekly harvest count", 
+                    extra={
+                        "request_id": request_id,
+                        "table": "harvest_logs",
+                        "db_operation": "count",
+                        "filter": f"harvest_date >= {week_start.isoformat()}"
+                    })
         
         # Query this week count
         week_response = client.table('harvest_logs').select('id', count='exact').gte('harvest_date', week_start.isoformat()).execute()
@@ -198,8 +256,13 @@ async def get_harvest_stats(
             "this_week": week_count
         }
         
-        logger.info(f"API: Successfully retrieved harvest stats: {stats}", 
-                   extra={"request_id": request_id})
+        logger.info(f"API: Successfully retrieved harvest stats", 
+                   extra={
+                       "request_id": request_id,
+                       "total_harvests": total_count,
+                       "this_month": month_count,
+                       "this_week": week_count
+                   })
         
         return {
             "success": True,

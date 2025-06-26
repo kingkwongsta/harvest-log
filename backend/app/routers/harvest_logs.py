@@ -62,7 +62,7 @@ async def create_harvest_log(
         logger.info(f"API: Creating new harvest log for crop '{harvest_log_data.crop_name}'", 
                    extra={"request_id": request_id})
         
-        new_log = await create_harvest_log_in_db(harvest_log_data, client)
+        new_log = await create_harvest_log_in_db(harvest_log_data, client, request_id)
         
         logger.info(f"API: Successfully created harvest log with ID {new_log.id}", 
                    extra={"request_id": request_id, "record_id": str(new_log.id)})
@@ -102,7 +102,7 @@ async def get_harvest_logs(
     try:
         logger.info("API: Retrieving all harvest logs", extra={"request_id": request_id})
         
-        logs = await get_all_harvest_logs_from_db(client)
+        logs = await get_all_harvest_logs_from_db(client, request_id)
         
         logger.info(f"API: Successfully retrieved {len(logs)} harvest logs", 
                    extra={"request_id": request_id})
@@ -147,7 +147,7 @@ async def get_harvest_log(
         logger.info(f"API: Retrieving harvest log with ID {log_id}", 
                    extra={"request_id": request_id, "record_id": str(log_id)})
         
-        log = await get_harvest_log_by_id_from_db(log_id, client)
+        log = await get_harvest_log_by_id_from_db(log_id, client, request_id)
         if not log:
             logger.warning(f"API: Harvest log not found: {log_id}", 
                           extra={"request_id": request_id, "record_id": str(log_id)})
@@ -200,7 +200,7 @@ async def update_harvest_log(
         logger.info(f"API: Updating harvest log {log_id}", 
                    extra={"request_id": request_id, "record_id": str(log_id)})
         
-        updated_log = await update_harvest_log_in_db(log_id, harvest_log_update, client)
+        updated_log = await update_harvest_log_in_db(log_id, harvest_log_update, client, request_id)
         if not updated_log:
             logger.warning(f"API: Harvest log not found for update: {log_id}", 
                           extra={"request_id": request_id, "record_id": str(log_id)})
@@ -251,7 +251,7 @@ async def delete_harvest_log(
         logger.info(f"API: Deleting harvest log {log_id}", 
                    extra={"request_id": request_id, "record_id": str(log_id)})
         
-        deleted_log = await delete_harvest_log_from_db(log_id, client)
+        deleted_log = await delete_harvest_log_from_db(log_id, client, request_id)
         if not deleted_log:
             logger.warning(f"API: Harvest log not found for deletion: {log_id}", 
                           extra={"request_id": request_id, "record_id": str(log_id)})

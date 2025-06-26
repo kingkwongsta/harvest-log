@@ -23,6 +23,24 @@ class StorageService:
             settings.supabase_service_key or settings.supabase_anon_key
         )
         self.bucket_name = "harvest-images"
+        self._ensure_bucket_exists()
+    
+    def _ensure_bucket_exists(self):
+        """Ensure the storage bucket exists"""
+        try:
+            # List buckets to check if our bucket exists
+            buckets = self.supabase.storage.list_buckets()
+            bucket_exists = any(bucket.name == self.bucket_name if hasattr(bucket, 'name') else bucket.get('name') == self.bucket_name for bucket in buckets)
+            
+            if not bucket_exists:
+                print(f"Creating bucket: {self.bucket_name}")
+                result = self.supabase.storage.create_bucket(
+                    self.bucket_name, 
+                    {'public': True}
+                )
+                print(f"Bucket creation result: {result}")
+        except Exception as e:
+            print(f"Warning: Could not verify/create bucket: {e}")
     
     def _generate_filename(self, original_filename: str, harvest_log_id: str) -> str:
         """Generate a unique filename for storage"""
@@ -89,23 +107,30 @@ class StorageService:
             # Get image dimensions
             width, height = self._get_image_dimensions(file_content, mime_type)
             
-            # Upload to Supabase Storage
-            response = self.supabase.storage.from_(self.bucket_name).upload(
-                path=filename,
-                file=file_content,
-                file_options={
-                    "content-type": mime_type,
-                    "upsert": False
-                }
-            )
-            
-            # Check if upload was successful
-            if hasattr(response, 'error') and response.error:
-                return False, f"Upload failed: {response.error}", None
+            # Upload to Supabase Storage with proper content-type
+            try:
+                response = self.supabase.storage.from_(self.bucket_name).upload(
+                    path=filename,
+                    file=file_content,
+                    file_options={
+                        "content-type": mime_type,
+                        "cache-control": "3600"
+                    }
+                )
+                
+                # Check if upload was successful
+                if not response or response.status_code != 200:
+                    return False, f"Upload failed with status: {response.status_code if response else 'No response'}", None
+                    
+            except Exception as upload_error:
+                return False, f"Upload error: {str(upload_error)}", None
             
             # Get public URL
-            public_url_response = self.supabase.storage.from_(self.bucket_name).get_public_url(filename)
-            public_url = public_url_response if isinstance(public_url_response, str) else public_url_response.get('publicUrl', '')
+            try:
+                public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(filename)
+            except Exception as url_error:
+                print(f"Warning: Could not get public URL: {url_error}")
+                public_url = ""
             
             # Prepare file info
             file_info = {
@@ -129,8 +154,8 @@ class StorageService:
         try:
             response = self.supabase.storage.from_(self.bucket_name).remove([file_path])
             
-            if hasattr(response, 'error') and response.error:
-                return False, f"Delete failed: {response.error}"
+            if response and isinstance(response, dict) and 'error' in response:
+                return False, f"Delete failed: {response['error']}"
             
             return True, "File deleted successfully"
             
@@ -140,8 +165,8 @@ class StorageService:
     def get_public_url(self, file_path: str) -> str:
         """Get public URL for a file"""
         try:
-            public_url_response = self.supabase.storage.from_(self.bucket_name).get_public_url(file_path)
-            return public_url_response if isinstance(public_url_response, str) else public_url_response.get('publicUrl', '')
+            public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(file_path)
+            return public_url if isinstance(public_url, str) else ""
         except Exception as e:
             print(f"Error getting public URL: {e}")
             return ""
