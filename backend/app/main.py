@@ -1,4 +1,5 @@
 # source venv/bin/activate
+# pip install -r requirements.txt
 # uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware

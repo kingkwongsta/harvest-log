@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { harvestLogsApi, ApiError, type HarvestLogResponse } from "@/lib/api"
+import { harvestLogsApi, ApiError, type HarvestLogResponse, type HarvestImage } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -191,13 +191,19 @@ export default function HarvestsPage() {
             <Card key={harvest.id} className="hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4">
+                  <div className="flex items-start space-x-4 flex-1">
                     <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                       <Apple className="w-6 h-6 text-green-600" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold">{harvest.crop_name}</h3>
+                        {harvest.images && harvest.images.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Camera className="w-3 h-3 mr-1" />
+                            {harvest.images.length} photo{harvest.images.length > 1 ? 's' : ''}
+                          </Badge>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
@@ -217,8 +223,32 @@ export default function HarvestsPage() {
                       </div>
 
                       {harvest.notes && (
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 mb-3">
                           <span className="font-medium">Notes:</span> {harvest.notes}
+                        </div>
+                      )}
+
+                      {/* Image Gallery */}
+                      {harvest.images && harvest.images.length > 0 && (
+                        <div className="mt-4">
+                          <div className="flex gap-2 overflow-x-auto pb-2">
+                            {harvest.images.slice(0, 4).map((image, index) => (
+                              <div key={image.id} className="relative flex-shrink-0">
+                                <img
+                                  src={image.public_url || '/placeholder.svg'}
+                                  alt={`${harvest.crop_name} photo ${index + 1}`}
+                                  className="w-16 h-16 object-cover rounded-lg border"
+                                />
+                                {index === 3 && harvest.images && harvest.images.length > 4 && (
+                                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                                    <span className="text-white text-xs font-medium">
+                                      +{harvest.images.length - 4}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

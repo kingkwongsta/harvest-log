@@ -11,9 +11,7 @@ from PIL import Image
 import io
 
 from supabase import create_client, Client
-from app.config import get_settings
-
-settings = get_settings()
+from app.config import settings
 
 
 class StorageService:
@@ -22,7 +20,7 @@ class StorageService:
     def __init__(self):
         self.supabase: Client = create_client(
             settings.supabase_url,
-            settings.supabase_key
+            settings.supabase_service_key or settings.supabase_anon_key
         )
         self.bucket_name = "harvest-images"
     

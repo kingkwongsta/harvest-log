@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SuccessDialog } from "@/components/ui/success-dialog"
 import { ErrorDialog } from "@/components/ui/error-dialog"
-import { Apple, Calendar, MapPin, Camera, List } from "lucide-react"
+import { Apple, Calendar, MapPin, Camera, List, X } from "lucide-react"
 import Link from "next/link"
-import { harvestLogsApi, ApiError, HarvestStats } from "@/lib/api"
+import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
 
 interface HarvestForm {
   fruit: string
@@ -93,6 +93,10 @@ export default function HomePage() {
     setPhotos((prev) => [...prev, ...files].slice(0, 5))
   }
 
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -111,7 +115,39 @@ export default function HomePage() {
       // Send data to FastAPI backend using API helper
       const result = await harvestLogsApi.create(harvestLogData)
       
-      if (result.success) {
+      if (result.success && result.data) {
+        const newHarvestId = result.data.id
+        
+        // Upload photos if any were selected
+        let photoUploadSuccess = true
+        let photoErrors: string[] = []
+        
+        if (photos.length > 0) {
+          try {
+            // Upload multiple photos at once
+            const imageResult = await imagesApi.uploadMultiple(newHarvestId, photos)
+            
+            if (imageResult.success && imageResult.data) {
+              const { total_uploaded, total_failed, failed_uploads } = imageResult.data
+              
+              if (total_failed > 0) {
+                photoUploadSuccess = false
+                photoErrors = failed_uploads.map(f => `${f.filename}: ${f.error}`)
+                console.warn('Some photos failed to upload:', failed_uploads)
+              }
+              
+              console.log(`Successfully uploaded ${total_uploaded} photos`)
+            } else {
+              photoUploadSuccess = false
+              photoErrors.push(imageResult.message || 'Unknown photo upload error')
+            }
+          } catch (photoError) {
+            photoUploadSuccess = false
+            photoErrors.push(photoError instanceof Error ? photoError.message : 'Photo upload failed')
+            console.error('Photo upload error:', photoError)
+          }
+        }
+
         // Reset form on success
         setFormData({
           fruit: "",
@@ -125,7 +161,13 @@ export default function HomePage() {
         // Refetch stats to update the UI
         await refetchStats()
         
-        setShowSuccessDialog(true)
+        // Show success dialog with photo upload status
+        if (photoUploadSuccess || photos.length === 0) {
+          setShowSuccessDialog(true)
+        } else {
+          setErrorMessage(`Harvest logged successfully, but some photos failed to upload:\n${photoErrors.join('\n')}`)
+          setShowErrorDialog(true)
+        }
       } else {
         throw new Error(result.message || 'Failed to create harvest log')
       }
@@ -245,7 +287,12 @@ export default function HomePage() {
 
               {/* Photo Upload */}
               <div className="space-y-2">
-                <Label>Photos (optional)</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Photos (optional)</Label>
+                  {photos.length > 0 && (
+                    <span className="text-sm text-gray-500">{photos.length}/5 photos</span>
+                  )}
+                </div>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
                   <input
                     type="file"
@@ -254,10 +301,13 @@ export default function HomePage() {
                     onChange={handlePhotoUpload}
                     className="hidden"
                     id="photo-upload"
+                    disabled={photos.length >= 5}
                   />
-                  <label htmlFor="photo-upload" className="cursor-pointer">
+                  <label htmlFor="photo-upload" className={`cursor-pointer ${photos.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-gray-600">Click to add photos</p>
+                    <p className="text-gray-600">
+                      {photos.length >= 5 ? 'Maximum photos reached' : 'Click to add photos'}
+                    </p>
                     <p className="text-sm text-gray-500 mt-1">Up to 5 photos</p>
                   </label>
                 </div>
@@ -265,12 +315,23 @@ export default function HomePage() {
                 {photos.length > 0 && (
                   <div className="grid grid-cols-5 gap-2 mt-3">
                     {photos.map((photo, index) => (
-                      <div key={index} className="relative">
+                      <div key={index} className="relative group">
                         <img
                           src={URL.createObjectURL(photo) || "/placeholder.svg"}
                           alt={`Photo ${index + 1}`}
                           className="w-full h-16 object-cover rounded border"
                         />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(index)}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          title="Remove photo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded-b">
+                          {photo.name}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -293,7 +354,11 @@ export default function HomePage() {
                 className="w-full bg-green-600 hover:bg-green-700"
                 disabled={isSubmitting || !formData.fruit || !formData.quantity}
               >
-                {isSubmitting ? "Saving..." : "Log Harvest"}
+                {isSubmitting ? (
+                  photos.length > 0 ? "Saving harvest and uploading photos..." : "Saving harvest..."
+                ) : (
+                  `Log Harvest${photos.length > 0 ? ` & Upload ${photos.length} Photo${photos.length > 1 ? 's' : ''}` : ''}`
+                )}
               </Button>
             </form>
           </CardContent>
@@ -333,10 +398,9 @@ export default function HomePage() {
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
         title="Harvest Logged Successfully!"
-        description="Your harvest has been recorded and added to your log."
+        description={`Your harvest has been recorded${photos.length > 0 ? ` with ${photos.length} photo${photos.length > 1 ? 's' : ''}` : ''} and added to your log.`}
         actionLabel="Continue Logging"
         onAction={() => {
-          // Optional: Could redirect to harvest list or do other actions
           setShowSuccessDialog(false)
         }}
       />
