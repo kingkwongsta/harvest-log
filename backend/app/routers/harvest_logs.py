@@ -235,6 +235,7 @@ async def update_harvest_log(
 )
 async def delete_harvest_log(
     log_id: UUID,
+    request: Request,
     client = Depends(get_supabase_client)
 ) -> HarvestLogResponse:
     """
@@ -242,13 +243,23 @@ async def delete_harvest_log(
     
     - **log_id**: Unique identifier of the harvest log to delete
     """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
     try:
+        logger.info(f"API: Deleting harvest log {log_id}", 
+                   extra={"request_id": request_id, "record_id": str(log_id)})
+        
         deleted_log = await delete_harvest_log_from_db(log_id, client)
         if not deleted_log:
+            logger.warning(f"API: Harvest log not found for deletion: {log_id}", 
+                          extra={"request_id": request_id, "record_id": str(log_id)})
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Harvest log with ID {log_id} not found"
             )
+        
+        logger.info(f"API: Successfully deleted harvest log {log_id}", 
+                   extra={"request_id": request_id, "record_id": str(log_id)})
         
         return HarvestLogResponse(
             success=True,
@@ -258,6 +269,9 @@ async def delete_harvest_log(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"API: Failed to delete harvest log {log_id}: {str(e)}", 
+                    extra={"request_id": request_id, "record_id": str(log_id)}, 
+                    exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete harvest log: {str(e)}"

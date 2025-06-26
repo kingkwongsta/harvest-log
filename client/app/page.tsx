@@ -21,12 +21,21 @@ interface HarvestForm {
   notes: string
 }
 
+// Helper function to get current local date/time formatted for datetime-local input
+const getCurrentLocalDateTime = () => {
+  const now = new Date()
+  // Get the timezone offset and adjust for local time
+  const offset = now.getTimezoneOffset() * 60000 // offset in milliseconds
+  const localTime = new Date(now.getTime() - offset)
+  return localTime.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:MM
+}
+
 export default function HomePage() {
   const [formData, setFormData] = useState<HarvestForm>({
     fruit: "",
     quantity: "",
     weight: "",
-    date: new Date().toISOString().split("T")[0],
+    date: getCurrentLocalDateTime(), // Use user's local timezone
     notes: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -65,7 +74,7 @@ export default function HomePage() {
           fruit: "",
           quantity: "",
           weight: "",
-          date: new Date().toISOString().split("T")[0],
+          date: getCurrentLocalDateTime(), // Use user's local timezone
           notes: "",
         })
         setPhotos([])
@@ -175,7 +184,7 @@ export default function HomePage() {
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
                       id="date"
-                      type="date"
+                      type="datetime-local"
                       value={formData.date}
                       onChange={(e) => handleInputChange("date", e.target.value)}
                       className="pl-10"

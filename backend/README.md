@@ -102,14 +102,103 @@ PORT=8000
 # CORS Configuration
 CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
 
+# Supabase Configuration
+SUPABASE_URL=your_supabase_url_here
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_KEY=your_supabase_service_key_here
+
 # Database Configuration (for future use)
 DATABASE_URL="sqlite:///./harvest_log.db"
+
+# Logging Configuration
+LOG_LEVEL=INFO                 # DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_FILE=                      # Optional: path to log file (e.g., logs/app.log)
+JSON_LOGS=false               # Set to true for JSON formatted logs
+SLOW_REQUEST_THRESHOLD=1000.0  # Milliseconds - requests slower than this will be logged as warnings
 
 # Security Configuration (for future use)
 SECRET_KEY="your-secret-key-change-this-in-production"
 ALGORITHM="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
+
+## Logging Features
+
+The API includes comprehensive logging to help you monitor and debug your application:
+
+### What Gets Logged
+
+1. **Application Lifecycle**
+   - Startup and shutdown events
+   - Configuration details
+   - Database connection status
+
+2. **HTTP Requests**
+   - All incoming requests with method, URL, client info
+   - Response status codes and timing
+   - Request/response correlation with unique request IDs
+   - Slow request warnings (configurable threshold)
+
+3. **Database Operations**
+   - All CRUD operations on harvest logs
+   - Query execution details
+   - Connection status and errors
+   - Record IDs for tracking specific operations
+
+4. **API Operations**
+   - Endpoint-specific logging
+   - Success/failure status
+   - Data validation errors
+   - Business logic flow
+
+5. **Error Tracking**
+   - Detailed error messages with stack traces
+   - Context information (request ID, user, operation)
+   - Database connection failures
+   - Validation errors
+
+### Log Levels
+
+- **DEBUG**: Detailed diagnostic information (SQL queries, detailed request data)
+- **INFO**: General operational messages (successful operations, startup)
+- **WARNING**: Important events that might need attention (slow requests, missing data)
+- **ERROR**: Error conditions that don't stop the application
+- **CRITICAL**: Serious errors that might stop the application
+
+### Log Output Options
+
+**Console Logs (default):**
+- Colored output for easy reading during development
+- Human-readable timestamps
+- Clean formatting
+
+**JSON Logs:**
+- Structured logging for production environments
+- Easy parsing by log aggregation tools
+- Includes metadata fields for filtering and searching
+
+**File Logs:**
+- Rotating log files with automatic cleanup
+- Configurable with `LOG_FILE` environment variable
+- Uses JSON format for structured data
+
+### Request Tracking
+
+Every request gets a unique `request_id` that appears in:
+- All related log entries
+- HTTP response headers (`X-Request-ID`)
+- Error responses
+
+This makes it easy to trace a specific request through all layers of the application.
+
+### Monitoring Key Metrics
+
+The logging system tracks:
+- **Response times**: Average, min, max request durations
+- **Error rates**: HTTP 4xx/5xx response counts
+- **Database performance**: Query execution times
+- **Resource usage**: Request throughput and patterns
+- **Slow requests**: Requests exceeding the configured threshold
 
 ## API Documentation
 
