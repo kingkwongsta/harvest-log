@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SuccessDialog } from "@/components/ui/success-dialog"
+import { ErrorDialog } from "@/components/ui/error-dialog"
 import { Apple, Calendar, MapPin, Camera, List } from "lucide-react"
 import Link from "next/link"
 import { harvestLogsApi, ApiError } from "@/lib/api"
@@ -40,6 +42,9 @@ export default function HomePage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [photos, setPhotos] = useState<File[]>([])
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [showErrorDialog, setShowErrorDialog] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
 
   const handleInputChange = (field: keyof HarvestForm, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -79,7 +84,7 @@ export default function HomePage() {
         })
         setPhotos([])
         
-        alert("Harvest logged successfully!")
+        setShowSuccessDialog(true)
       } else {
         throw new Error(result.message || 'Failed to create harvest log')
       }
@@ -87,10 +92,11 @@ export default function HomePage() {
     } catch (error) {
       console.error('Error submitting harvest log:', error)
       if (error instanceof ApiError) {
-        alert(`Failed to log harvest: ${error.message}`)
+        setErrorMessage(`Failed to log harvest: ${error.message}`)
       } else {
-        alert(`Failed to log harvest: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        setErrorMessage(`Failed to log harvest: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
+      setShowErrorDialog(true)
     } finally {
       setIsSubmitting(false)
     }
@@ -274,6 +280,31 @@ export default function HomePage() {
           </Card>
         </div>
       </div>
+
+      {/* Success Dialog */}
+      <SuccessDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        title="Harvest Logged Successfully!"
+        description="Your harvest has been recorded and added to your log."
+        actionLabel="Continue Logging"
+        onAction={() => {
+          // Optional: Could redirect to harvest list or do other actions
+          setShowSuccessDialog(false)
+        }}
+      />
+
+      {/* Error Dialog */}
+      <ErrorDialog
+        open={showErrorDialog}
+        onOpenChange={setShowErrorDialog}
+        title="Failed to Log Harvest"
+        description={errorMessage}
+        actionLabel="Try Again"
+        onAction={() => {
+          setShowErrorDialog(false)
+        }}
+      />
     </div>
   )
 }
