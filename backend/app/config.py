@@ -1,9 +1,16 @@
 from pydantic_settings import BaseSettings
 from typing import List
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings"""
+    
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"  # Allow extra environment variables to be ignored
+    )
     
     # API Configuration
     app_name: str = "Harvest Log API"
@@ -20,17 +27,18 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     
-    # Database Configuration (for future use)
-    database_url: str = "sqlite:///./harvest_log.db"
+    # Supabase Configuration
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_key: str = ""
+    
+    # Database Configuration
+    database_url: str = ""
     
     # Security Configuration (for future use)
     secret_key: str = "your-secret-key-change-this-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 # Create a global settings instance

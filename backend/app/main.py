@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.routers import harvest_logs
+from app.database import init_supabase, create_harvest_logs_table
 
 
 @asynccontextmanager
@@ -13,6 +14,24 @@ async def lifespan(app: FastAPI):
     """Application lifespan management"""
     # Startup
     print(f"Starting {settings.app_name} v{settings.app_version}")
+    
+    # Initialize Supabase connection
+    if settings.supabase_url and settings.supabase_anon_key:
+        try:
+            supabase_client = init_supabase()
+            print("✓ Supabase connection initialized")
+            
+            # Try to create table if it doesn't exist
+            await create_harvest_logs_table()
+            print("✓ Database table checked/created")
+            
+        except Exception as e:
+            print(f"⚠ Warning: Supabase initialization failed: {e}")
+            print("Please check your SUPABASE_URL and SUPABASE_ANON_KEY environment variables")
+    else:
+        print("⚠ Warning: Supabase credentials not found in environment variables")
+        print("Please set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file")
+    
     yield
     # Shutdown
     print(f"Shutting down {settings.app_name}")
@@ -94,5 +113,6 @@ async def health_check():
         "app_name": settings.app_name,
         "version": settings.app_version,
         "debug_mode": settings.debug,
-        "message": "All systems operational"
+        "message": "All systems operational",
+        "supabase_configured": bool(settings.supabase_url and settings.supabase_anon_key)
     } 

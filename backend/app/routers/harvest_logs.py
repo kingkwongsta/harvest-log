@@ -11,7 +11,14 @@ from app.models import (
     HarvestLogListResponse,
     ErrorResponse
 )
-from app.dependencies import get_harvest_logs_db, get_harvest_log_by_id
+from app.dependencies import (
+    get_supabase_client,
+    create_harvest_log_in_db,
+    get_all_harvest_logs_from_db,
+    get_harvest_log_by_id_from_db,
+    update_harvest_log_in_db,
+    delete_harvest_log_from_db
+)
 
 router = APIRouter(
     prefix="/api/harvest-logs",
@@ -33,7 +40,7 @@ router = APIRouter(
 )
 async def create_harvest_log(
     harvest_log_data: HarvestLogCreate,
-    db: List[HarvestLog] = Depends(get_harvest_logs_db)
+    client = Depends(get_supabase_client)
 ) -> HarvestLogResponse:
     """
     Create a new harvest log entry.
@@ -46,15 +53,7 @@ async def create_harvest_log(
     - **notes**: Additional notes about the harvest (optional)
     """
     try:
-        # Create new harvest log with generated ID and timestamps
-        new_log = HarvestLog(
-            **harvest_log_data.model_dump(),
-            created_at=datetime.now(),
-            updated_at=datetime.now()
-        )
-        
-        # Add to database
-        db.append(new_log)
+        new_log = await create_harvest_log_in_db(harvest_log_data, client)
         
         return HarvestLogResponse(
             success=True,
@@ -75,19 +74,26 @@ async def create_harvest_log(
     description="Retrieve all harvest log entries."
 )
 async def get_harvest_logs(
-    db: List[HarvestLog] = Depends(get_harvest_logs_db)
+    client = Depends(get_supabase_client)
 ) -> HarvestLogListResponse:
     """
     Get all harvest logs.
     
     Returns a list of all harvest log entries in the system.
     """
-    return HarvestLogListResponse(
-        success=True,
-        message=f"Retrieved {len(db)} harvest logs",
-        data=db,
-        total=len(db)
-    )
+    try:
+        logs = await get_all_harvest_logs_from_db(client)
+        return HarvestLogListResponse(
+            success=True,
+            message=f"Retrieved {len(logs)} harvest logs",
+            data=logs,
+            total=len(logs)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve harvest logs: {str(e)}"
+        )
 
 
 @router.get(
@@ -98,25 +104,33 @@ async def get_harvest_logs(
 )
 async def get_harvest_log(
     log_id: UUID,
-    db: List[HarvestLog] = Depends(get_harvest_logs_db)
+    client = Depends(get_supabase_client)
 ) -> HarvestLogResponse:
     """
     Get a specific harvest log by ID.
     
     - **log_id**: Unique identifier of the harvest log (UUID format)
     """
-    log = get_harvest_log_by_id(log_id, db)
-    if not log:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Harvest log with ID {log_id} not found"
+    try:
+        log = await get_harvest_log_by_id_from_db(log_id, client)
+        if not log:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Harvest log with ID {log_id} not found"
+            )
+        
+        return HarvestLogResponse(
+            success=True,
+            message="Harvest log retrieved successfully",
+            data=log
         )
-    
-    return HarvestLogResponse(
-        success=True,
-        message="Harvest log retrieved successfully",
-        data=log
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve harvest log: {str(e)}"
+        )
 
 
 @router.put(
@@ -128,7 +142,7 @@ async def get_harvest_log(
 async def update_harvest_log(
     log_id: UUID,
     harvest_log_update: HarvestLogUpdate,
-    db: List[HarvestLog] = Depends(get_harvest_logs_db)
+    client = Depends(get_supabase_client)
 ) -> HarvestLogResponse:
     """
     Update an existing harvest log.
@@ -136,27 +150,21 @@ async def update_harvest_log(
     - **log_id**: Unique identifier of the harvest log to update
     - Only provided fields will be updated, others remain unchanged
     """
-    log = get_harvest_log_by_id(log_id, db)
-    if not log:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Harvest log with ID {log_id} not found"
-        )
-    
     try:
-        # Update only provided fields
-        update_data = harvest_log_update.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(log, field, value)
-        
-        # Update timestamp
-        log.updated_at = datetime.now()
+        updated_log = await update_harvest_log_in_db(log_id, harvest_log_update, client)
+        if not updated_log:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Harvest log with ID {log_id} not found"
+            )
         
         return HarvestLogResponse(
             success=True,
             message="Harvest log updated successfully",
-            data=log
+            data=updated_log
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -172,27 +180,28 @@ async def update_harvest_log(
 )
 async def delete_harvest_log(
     log_id: UUID,
-    db: List[HarvestLog] = Depends(get_harvest_logs_db)
+    client = Depends(get_supabase_client)
 ) -> HarvestLogResponse:
     """
     Delete a harvest log by ID.
     
     - **log_id**: Unique identifier of the harvest log to delete
     """
-    log = get_harvest_log_by_id(log_id, db)
-    if not log:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Harvest log with ID {log_id} not found"
-        )
-    
     try:
-        db.remove(log)
+        deleted_log = await delete_harvest_log_from_db(log_id, client)
+        if not deleted_log:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Harvest log with ID {log_id} not found"
+            )
+        
         return HarvestLogResponse(
             success=True,
             message="Harvest log deleted successfully",
-            data=log
+            data=deleted_log
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
