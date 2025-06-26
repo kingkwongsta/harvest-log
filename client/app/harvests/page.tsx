@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { harvestLogsApi, ApiError, type HarvestLogResponse } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,84 +10,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Apple, Search, Calendar, MapPin, Camera, Plus, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
-const harvests = [
-  {
-    id: 1,
-    fruit: "Tomatoes",
-    quantity: 8,
-    weight: "3.2 lbs",
-    date: "2024-06-20",
-    location: "Raised Bed #1",
-    notes: "Perfect ripeness, great for salads",
-    photos: 2,
-  },
-  {
-    id: 2,
-    fruit: "Apples",
-    quantity: 12,
-    weight: "4.5 lbs",
-    date: "2024-06-18",
-    location: "Apple Tree",
-    notes: "Sweet and crispy, stored some for winter",
-    photos: 1,
-  },
-  {
-    id: 3,
-    fruit: "Lettuce",
-    quantity: 6,
-    weight: "1.8 lbs",
-    date: "2024-06-15",
-    location: "Garden Bed",
-    notes: "Fresh and tender leaves",
-    photos: 0,
-  },
-  {
-    id: 4,
-    fruit: "Berries",
-    quantity: 24,
-    weight: "2.1 lbs",
-    date: "2024-06-12",
-    location: "Berry Patch",
-    notes: "Very sweet this year, made jam",
-    photos: 3,
-  },
-  {
-    id: 5,
-    fruit: "Herbs",
-    quantity: 1,
-    weight: "0.5 lbs",
-    date: "2024-06-10",
-    location: "Herb Garden",
-    notes: "Basil, oregano, and thyme mix",
-    photos: 1,
-  },
-  {
-    id: 6,
-    fruit: "Peppers",
-    quantity: 5,
-    weight: "1.2 lbs",
-    date: "2024-06-08",
-    location: "Greenhouse",
-    notes: "Bell peppers, nice and colorful",
-    photos: 2,
-  },
-]
-
 export default function HarvestsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterFruit, setFilterFruit] = useState("all")
   const [sortBy, setSortBy] = useState("date")
+  const [harvests, setHarvests] = useState<HarvestLogResponse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchHarvests = async () => {
+      try {
+        setLoading(true)
+        const response = await harvestLogsApi.getAll()
+        if (response.success && response.data) {
+          setHarvests(response.data)
+        } else {
+          setError(response.message || "Failed to load harvests")
+        }
+      } catch (err) {
+        if (err instanceof ApiError) {
+          setError(err.message)
+        } else {
+          setError("Failed to load harvests")
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchHarvests()
+  }, [])
 
   const filteredHarvests = harvests
     .filter(
       (harvest) =>
-        harvest.fruit.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        (filterFruit === "all" || harvest.fruit.toLowerCase().includes(filterFruit.toLowerCase())),
+        harvest.crop_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (filterFruit === "all" || harvest.crop_name.toLowerCase().includes(filterFruit.toLowerCase())),
     )
     .sort((a, b) => {
       switch (sortBy) {
         case "date":
-          return new Date(b.date).getTime() - new Date(a.date).getTime()
+          return new Date(b.harvest_date).getTime() - new Date(a.harvest_date).getTime()
         case "quantity":
           return b.quantity - a.quantity
         default:
@@ -117,7 +82,7 @@ export default function HarvestsPage() {
                 </div>
               </div>
             </div>
-            <Link href="/">
+            <Link href="/harvests/new">
               <Button className="bg-green-600 hover:bg-green-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Add New
@@ -170,9 +135,59 @@ export default function HarvestsPage() {
           </CardContent>
         </Card>
 
+        {/* Loading State */}
+        {loading && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                <p className="mt-2 text-gray-600">Loading harvests...</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                <p className="text-red-600">⚠️ {error}</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-2"
+                  onClick={() => window.location.reload()}
+                >
+                  Try again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && filteredHarvests.length === 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                <Apple className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600 mb-2">No harvests found</p>
+                <p className="text-sm text-gray-500">Start by adding your first harvest entry</p>
+                <Link href="/harvests/new">
+                  <Button className="mt-4 bg-green-600 hover:bg-green-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Harvest
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Harvest List */}
-        <div className="space-y-4">
-          {filteredHarvests.map((harvest) => (
+        {!loading && !error && (
+          <div className="space-y-4">
+            {filteredHarvests.map((harvest) => (
             <Card key={harvest.id} className="hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
@@ -182,27 +197,16 @@ export default function HarvestsPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">{harvest.fruit}</h3>
-                        {harvest.photos > 0 && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Camera className="w-3 h-3 mr-1" />
-                            {harvest.photos}
-                          </Badge>
-                        )}
+                        <h3 className="text-lg font-semibold">{harvest.crop_name}</h3>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
                         <div>
-                          <span className="font-medium">Quantity:</span> {harvest.quantity}
+                          <span className="font-medium">Quantity:</span> {harvest.quantity} {harvest.unit}
                         </div>
-                        {harvest.weight && (
-                          <div>
-                            <span className="font-medium">Weight:</span> {harvest.weight}
-                          </div>
-                        )}
                         <div className="flex items-center">
                           <Calendar className="w-3 h-3 mr-1" />
-                          {harvest.date}
+                          {new Date(harvest.harvest_date).toLocaleDateString()}
                         </div>
                         {harvest.location && (
                           <div className="flex items-center">
@@ -223,27 +227,7 @@ export default function HarvestsPage() {
               </CardContent>
             </Card>
           ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredHarvests.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <Apple className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No harvests found</h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm || filterFruit !== "all"
-                  ? "Try adjusting your search or filters"
-                  : "Start by logging your first harvest"}
-              </p>
-              <Link href="/">
-                <Button className="bg-green-600 hover:bg-green-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Log Your First Harvest
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+          </div>
         )}
       </div>
     </div>
