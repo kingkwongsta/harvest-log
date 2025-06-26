@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import { SuccessDialog } from "@/components/ui/success-dialog"
 import { ErrorDialog } from "@/components/ui/error-dialog"
 import { Apple, Calendar, MapPin, Camera, List } from "lucide-react"
 import Link from "next/link"
-import { harvestLogsApi, ApiError } from "@/lib/api"
+import { harvestLogsApi, ApiError, HarvestStats } from "@/lib/api"
 
 interface HarvestForm {
   fruit: string
@@ -45,6 +45,44 @@ export default function HomePage() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [showErrorDialog, setShowErrorDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [stats, setStats] = useState<HarvestStats>({
+    total_harvests: 0,
+    this_month: 0,
+    this_week: 0
+  })
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
+
+  // Fetch harvest statistics on component mount
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoadingStats(true)
+        const response = await harvestLogsApi.getStats()
+        if (response.success && response.data) {
+          setStats(response.data)
+        }
+      } catch (error) {
+        console.error('Error fetching harvest stats:', error)
+        // Keep default values if API fails
+      } finally {
+        setIsLoadingStats(false)
+      }
+    }
+
+    fetchStats()
+  }, [])
+
+  // Refetch stats after successful harvest creation
+  const refetchStats = async () => {
+    try {
+      const response = await harvestLogsApi.getStats()
+      if (response.success && response.data) {
+        setStats(response.data)
+      }
+    } catch (error) {
+      console.error('Error refetching harvest stats:', error)
+    }
+  }
 
   const handleInputChange = (field: keyof HarvestForm, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -83,6 +121,9 @@ export default function HomePage() {
           notes: "",
         })
         setPhotos([])
+        
+        // Refetch stats to update the UI
+        await refetchStats()
         
         setShowSuccessDialog(true)
       } else {
@@ -262,20 +303,26 @@ export default function HomePage() {
         <div className="mt-8 grid grid-cols-3 gap-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <div className="text-2xl font-bold text-green-600">47</div>
+              <div className="text-2xl font-bold text-green-600">
+                {isLoadingStats ? "..." : stats.total_harvests}
+              </div>
               <div className="text-sm text-gray-600">Total Harvests</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <div className="text-2xl font-bold text-blue-600">12</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {isLoadingStats ? "..." : stats.this_month}
+              </div>
               <div className="text-sm text-gray-600">This Month</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <div className="text-2xl font-bold text-purple-600">8</div>
-              <div className="text-sm text-gray-600">Varieties</div>
+              <div className="text-2xl font-bold text-purple-600">
+                {isLoadingStats ? "..." : stats.this_week}
+              </div>
+              <div className="text-sm text-gray-600">This Week</div>
             </CardContent>
           </Card>
         </div>

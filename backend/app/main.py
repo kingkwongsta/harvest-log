@@ -1,14 +1,16 @@
 # source venv/bin/activate
 # uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 
 from app.config import settings
 from app.routers import harvest_logs
 from app.database import init_supabase, create_harvest_logs_table
 from app.logging_config import setup_logging, get_app_logger
 from app.middleware import LoggingMiddleware, PerformanceMiddleware
+from app.dependencies import get_supabase_client
 
 # Setup logging
 setup_logging(
@@ -136,4 +138,74 @@ async def health_check():
         "debug_mode": settings.debug,
         "message": "All systems operational",
         "supabase_configured": bool(settings.supabase_url and settings.supabase_anon_key)
-    } 
+    }
+
+
+@app.get(
+    "/api/harvest-stats",
+    tags=["harvest-logs"],
+    summary="Get harvest statistics",
+    description="Get statistics about harvests including total, this month, and this week counts."
+)
+async def get_harvest_stats(
+    request: Request,
+    client = Depends(get_supabase_client)
+):
+    """
+    Get harvest statistics.
+    
+    Returns statistics including:
+    - Total harvest count
+    - This month's harvest count  
+    - This week's harvest count
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info("API: Retrieving harvest statistics", extra={"request_id": request_id})
+        
+        # Get current date info
+        now = datetime.now()
+        
+        # Start of current month
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # Start of current week (Monday)
+        days_since_monday = now.weekday()
+        week_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_since_monday)
+        
+        # Query total count
+        total_response = client.table('harvest_logs').select('id', count='exact').execute()
+        total_count = total_response.count or 0
+        
+        # Query this month count
+        month_response = client.table('harvest_logs').select('id', count='exact').gte('harvest_date', month_start.isoformat()).execute()
+        month_count = month_response.count or 0
+        
+        # Query this week count
+        week_response = client.table('harvest_logs').select('id', count='exact').gte('harvest_date', week_start.isoformat()).execute()
+        week_count = week_response.count or 0
+        
+        stats = {
+            "total_harvests": total_count,
+            "this_month": month_count,
+            "this_week": week_count
+        }
+        
+        logger.info(f"API: Successfully retrieved harvest stats: {stats}", 
+                   extra={"request_id": request_id})
+        
+        return {
+            "success": True,
+            "message": "Harvest statistics retrieved successfully",
+            "data": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"API: Failed to retrieve harvest stats: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve harvest statistics: {str(e)}"
+        ) 

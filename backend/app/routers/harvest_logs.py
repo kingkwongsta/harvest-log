@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from typing import List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.models import (
     HarvestLog,
@@ -121,6 +121,8 @@ async def get_harvest_logs(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve harvest logs: {str(e)}"
         )
+
+
 
 
 @router.get(
@@ -275,4 +277,7 @@ async def delete_harvest_log(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete harvest log: {str(e)}"
-        ) 
+        )
+
+
+ 
