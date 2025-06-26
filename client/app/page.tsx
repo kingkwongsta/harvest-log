@@ -17,7 +17,6 @@ interface HarvestForm {
   quantity: string
   weight: string
   date: string
-  location: string
   notes: string
 }
 
@@ -27,7 +26,6 @@ export default function HomePage() {
     quantity: "",
     weight: "",
     date: new Date().toISOString().split("T")[0],
-    location: "",
     notes: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -55,7 +53,6 @@ export default function HomePage() {
         quantity: "",
         weight: "",
         date: new Date().toISOString().split("T")[0],
-        location: "",
         notes: "",
       })
       setPhotos([])
@@ -161,19 +158,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="location">Where in your garden?</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    id="location"
-                    placeholder="e.g., backyard, raised bed, greenhouse"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange("location", e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+
 
               {/* Photo Upload */}
               <div className="space-y-2">
