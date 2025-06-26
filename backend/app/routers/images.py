@@ -41,7 +41,7 @@ async def upload_harvest_image(
                    extra={
                        "request_id": request_id,
                        "harvest_log_id": str(harvest_log_id),
-                       "filename": file.filename,
+                       "file_name": file.filename,
                        "content_type": file.content_type,
                        "upload_order": upload_order
                    })
@@ -64,7 +64,7 @@ async def upload_harvest_image(
                    extra={
                        "request_id": request_id,
                        "file_size": file_size,
-                       "filename": file.filename
+                       "file_name": file.filename
                    })
         
         # Upload to Supabase Storage
@@ -79,7 +79,7 @@ async def upload_harvest_image(
                         extra={
                             "request_id": request_id,
                             "harvest_log_id": str(harvest_log_id),
-                            "filename": file.filename,
+                            "file_name": file.filename,
                             "error": message
                         })
             return FileUploadResponse(
@@ -155,7 +155,7 @@ async def upload_harvest_image(
                        "request_id": request_id,
                        "record_id": saved_image["id"],
                        "harvest_log_id": str(harvest_log_id),
-                       "filename": file_info["filename"],
+                       "file_name": file_info["filename"],
                        "file_size": file_info["file_size"]
                    })
         
@@ -172,7 +172,7 @@ async def upload_harvest_image(
                     extra={
                         "request_id": request_id,
                         "harvest_log_id": str(harvest_log_id),
-                        "filename": file.filename if file else "unknown"
+                        "file_name": file.filename if file else "unknown"
                     }, 
                     exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error during image upload")
@@ -224,13 +224,18 @@ async def upload_multiple_harvest_images(
                            extra={
                                "request_id": request_id,
                                "file_index": i,
-                               "filename": file.filename,
+                               "file_name": file.filename,
                                "content_type": file.content_type
                            })
                 
                 # Read file content
                 file_content = await file.read()
                 file_size = len(file_content)
+                
+                print(f"🔄 Processing file {i+1}/{len(files)}: {file.filename}")
+                print(f"   Content type: {file.content_type}")
+                print(f"   Size: {file_size} bytes")
+                print(f"   First 16 bytes: {file_content[:16].hex() if len(file_content) >= 16 else 'N/A'}")
                 
                 # Upload to Supabase Storage
                 success, message, file_info = await storage_service.upload_image(
@@ -243,10 +248,16 @@ async def upload_multiple_harvest_images(
                     logger.warning(f"API: Failed to upload file {file.filename}: {message}", 
                                  extra={
                                      "request_id": request_id,
-                                     "filename": file.filename,
+                                     "file_name": file.filename,
                                      "error": message,
                                      "file_index": i
                                  })
+                    # Add detailed logging for debugging
+                    print(f"🚨 UPLOAD FAILURE DEBUG:")
+                    print(f"   File: {file.filename}")
+                    print(f"   Content Type: {file.content_type}")
+                    print(f"   Size: {len(file_content)} bytes")
+                    print(f"   Error: {message}")
                     failed_uploads.append({"filename": file.filename, "error": message})
                     continue
                 
@@ -271,7 +282,7 @@ async def upload_multiple_harvest_images(
                                extra={
                                    "request_id": request_id,
                                    "record_id": result.data[0]["id"],
-                                   "filename": file.filename,
+                                   "file_name": file.filename,
                                    "file_size": file_size
                                })
                 else:
@@ -281,7 +292,7 @@ async def upload_multiple_harvest_images(
                     logger.error(f"API: Failed to save metadata for {file.filename}", 
                                extra={
                                    "request_id": request_id,
-                                   "filename": file.filename,
+                                   "file_name": file.filename,
                                    "table": "harvest_images",
                                    "db_operation": "insert"
                                })
@@ -290,7 +301,7 @@ async def upload_multiple_harvest_images(
                 logger.error(f"API: Error processing file {file.filename}: {str(e)}", 
                            extra={
                                "request_id": request_id,
-                               "filename": file.filename,
+                               "file_name": file.filename,
                                "file_index": i
                            }, 
                            exc_info=True)

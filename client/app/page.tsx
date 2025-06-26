@@ -195,27 +195,69 @@ export default function HomePage() {
         
         if (photos.length > 0) {
           try {
+            console.log('🖼️ Starting photo upload process:', {
+              harvestId: newHarvestId,
+              photoCount: photos.length,
+              photos: photos.map(p => ({
+                name: p.name,
+                size: p.size,
+                type: p.type,
+                lastModified: p.lastModified
+              }))
+            });
+
             // Upload multiple photos at once
             const imageResult = await imagesApi.uploadMultiple(newHarvestId, photos)
+            
+            console.log('📸 Image upload result received:', {
+              success: imageResult.success,
+              message: imageResult.message,
+              data: imageResult.data
+            });
             
             if (imageResult.success && imageResult.data) {
               const { total_uploaded, total_failed, failed_uploads } = imageResult.data
               
+              console.log('📊 Upload statistics:', {
+                total_uploaded,
+                total_failed,
+                failed_uploads
+              });
+              
               if (total_failed > 0) {
                 photoUploadSuccess = false
                 photoErrors = failed_uploads.map(f => `${f.filename}: ${f.error}`)
-                console.warn('Some photos failed to upload:', failed_uploads)
+                console.warn('⚠️ Some photos failed to upload:', failed_uploads)
               }
               
-              console.log(`Successfully uploaded ${total_uploaded} photos`)
+              console.log(`✅ Successfully uploaded ${total_uploaded} photos`)
             } else {
               photoUploadSuccess = false
-              photoErrors.push(imageResult.message || 'Unknown photo upload error')
+              const errorMsg = imageResult.message || 'Unknown photo upload error'
+              photoErrors.push(errorMsg)
+              console.error('❌ Photo upload failed:', {
+                success: imageResult.success,
+                message: imageResult.message,
+                data: imageResult.data
+              });
+              
+              // Log detailed failure information
+              if (imageResult.data && imageResult.data.failed_uploads) {
+                console.error('🔍 Failed upload details:', imageResult.data.failed_uploads);
+                imageResult.data.failed_uploads.forEach((failedUpload, index) => {
+                  console.error(`📄 File ${index + 1} (${failedUpload.filename}):`, failedUpload.error);
+                });
+              }
             }
           } catch (photoError) {
             photoUploadSuccess = false
-            photoErrors.push(photoError instanceof Error ? photoError.message : 'Photo upload failed')
-            console.error('Photo upload error:', photoError)
+            const errorMsg = photoError instanceof Error ? photoError.message : 'Photo upload failed'
+            photoErrors.push(errorMsg)
+            console.error('💥 Photo upload exception:', {
+              error: photoError,
+              message: errorMsg,
+              stack: photoError instanceof Error ? photoError.stack : undefined
+            });
           }
         }
 

@@ -22,7 +22,7 @@ async def test_storage_service_with_real_image():
     print("🧪 Testing Supabase Storage with let.jpg...")
     
     # Path to the image file
-    image_path = Path("../let.jpg")
+    image_path = Path("../../let.jpg")
     
     if not image_path.exists():
         print(f"❌ Image file not found: {image_path}")
@@ -71,7 +71,7 @@ def test_api_endpoint_with_real_image():
     print("\n🌐 Testing API endpoint with let.jpg...")
     
     # Path to the image file
-    image_path = Path("../let.jpg")
+    image_path = Path("../../let.jpg")
     
     if not image_path.exists():
         print(f"❌ Image file not found: {image_path}")

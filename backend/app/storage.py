@@ -53,6 +53,23 @@ class StorageService:
         
         return f"{harvest_log_id}/{timestamp}_{unique_id}{ext}"
     
+    def _detect_mime_from_content(self, file_content: bytes) -> Optional[str]:
+        """Detect MIME type from file content using magic bytes"""
+        if len(file_content) < 12:
+            return None
+            
+        # Check for common image formats by magic bytes
+        if file_content.startswith(b'\xff\xd8\xff'):
+            return 'image/jpeg'
+        elif file_content.startswith(b'\x89PNG\r\n\x1a\n'):
+            return 'image/png'
+        elif file_content.startswith(b'GIF87a') or file_content.startswith(b'GIF89a'):
+            return 'image/gif'
+        elif file_content.startswith(b'RIFF') and file_content[8:12] == b'WEBP':
+            return 'image/webp'
+        
+        return None
+
     def _get_image_dimensions(self, file_content: bytes, mime_type: str) -> Tuple[Optional[int], Optional[int]]:
         """Get image dimensions from file content"""
         try:
@@ -66,21 +83,39 @@ class StorageService:
     
     def _validate_file(self, file_content: bytes, filename: str) -> Tuple[bool, str, str]:
         """Validate uploaded file"""
+        print(f"🔍 Validating file: {filename} ({len(file_content)} bytes)")
+        
         # Check file size (10MB limit)
         max_size = 10 * 1024 * 1024  # 10MB
         if len(file_content) > max_size:
-            return False, "File size exceeds 10MB limit", ""
+            error_msg = "File size exceeds 10MB limit"
+            print(f"❌ File validation failed: {error_msg}")
+            return False, error_msg, ""
         
-        # Get MIME type
+        # Get MIME type from filename
         mime_type, _ = mimetypes.guess_type(filename)
-        if not mime_type:
+        print(f"🔍 MIME type from filename: {mime_type}")
+        
+        # Also check actual file signature for better detection
+        actual_mime_type = self._detect_mime_from_content(file_content)
+        print(f"🔍 MIME type from content: {actual_mime_type}")
+        
+        # Use content-based detection if available, otherwise fall back to filename
+        if actual_mime_type:
+            mime_type = actual_mime_type
+            print(f"✅ Using content-based MIME type: {mime_type}")
+        elif not mime_type:
             mime_type = "application/octet-stream"
+            print(f"⚠️ No MIME type detected, using: {mime_type}")
         
         # Check if it's an allowed image type
         allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
         if mime_type not in allowed_types:
-            return False, f"File type {mime_type} not allowed. Allowed types: {', '.join(allowed_types)}", ""
+            error_msg = f"File type {mime_type} not allowed. Allowed types: {', '.join(allowed_types)}"
+            print(f"❌ File validation failed: {error_msg}")
+            return False, error_msg, ""
         
+        print(f"✅ File validation passed: {filename} ({mime_type})")
         return True, "Valid file", mime_type
     
     async def upload_image(
@@ -96,9 +131,12 @@ class StorageService:
             Tuple[bool, str, Optional[dict]]: (success, message, file_info)
         """
         try:
+            print(f"🔄 Starting upload process for: {original_filename}")
+            
             # Validate file
             is_valid, message, mime_type = self._validate_file(file_content, original_filename)
             if not is_valid:
+                print(f"❌ Upload failed at validation: {message}")
                 return False, message, None
             
             # Generate unique filename
