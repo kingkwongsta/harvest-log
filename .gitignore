@@ -31,6 +31,7 @@ backend/venv/
 backend/env/
 backend/.venv/
 backend/.env/
+backend/.env
 .Python
 build/
 develop-eggs/
@@ -87,6 +88,7 @@ tmp/
 # IDE and Editor files
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
@@ -240,3 +242,6 @@ dmypy.json
 # Local configuration files
 config.local.json
 settings.local.json 
+
+
+dev.sh

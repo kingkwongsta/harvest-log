@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { harvestLogsApi, ApiError, type HarvestLogData } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,7 @@ interface HarvestForm {
   variety: string
   quantity: string
   weight: string
+  unit: string
   date: string
   location: string
   weather: string
@@ -27,12 +29,14 @@ interface HarvestForm {
 export default function NewHarvestPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [photos, setPhotos] = useState<File[]>([])
   const [formData, setFormData] = useState<HarvestForm>({
     fruit: "",
     variety: "",
     quantity: "",
     weight: "",
+    unit: "pieces",
     date: new Date().toISOString().split("T")[0],
     location: "",
     weather: "",
@@ -59,12 +63,36 @@ export default function NewHarvestPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Prepare data for API call
+      const harvestData: HarvestLogData = {
+        crop_name: formData.fruit,
+        quantity: parseFloat(formData.quantity),
+        unit: formData.unit,
+        harvest_date: new Date(formData.date).toISOString(),
+        location: formData.location || undefined,
+        notes: formData.notes || undefined,
+      }
+
+      // Call the API
+      const response = await harvestLogsApi.create(harvestData)
+      
+      if (response.success) {
+        router.push("/harvests")
+      } else {
+        setError(response.message || "Failed to save harvest log")
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message)
+      } else {
+        setError("An unexpected error occurred. Please try again.")
+      }
+    } finally {
       setIsLoading(false)
-      router.push("/harvests")
-    }, 1500)
+    }
   }
 
   const getCurrentWeather = () => {
@@ -98,6 +126,18 @@ export default function NewHarvestPage() {
 
       <div className="p-6 max-w-4xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Error Display */}
+          {error && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <div className="flex items-center text-red-800">
+                  <div className="w-4 h-4 mr-2">⚠️</div>
+                  <p>{error}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Basic Information */}
           <Card>
             <CardHeader>
@@ -139,13 +179,14 @@ export default function NewHarvestPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="quantity">Quantity *</Label>
                   <Input
                     id="quantity"
                     type="number"
-                    placeholder="Number of items"
+                    step="0.1"
+                    placeholder="Amount harvested"
                     value={formData.quantity}
                     onChange={(e) => handleInputChange("quantity", e.target.value)}
                     required
@@ -153,12 +194,33 @@ export default function NewHarvestPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (lbs)</Label>
+                  <Label htmlFor="unit">Unit *</Label>
+                  <Select value={formData.unit} onValueChange={(value) => handleInputChange("unit", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pieces">Pieces</SelectItem>
+                      <SelectItem value="pounds">Pounds</SelectItem>
+                      <SelectItem value="kilograms">Kilograms</SelectItem>
+                      <SelectItem value="ounces">Ounces</SelectItem>
+                      <SelectItem value="grams">Grams</SelectItem>
+                      <SelectItem value="bushels">Bushels</SelectItem>
+                      <SelectItem value="baskets">Baskets</SelectItem>
+                      <SelectItem value="cups">Cups</SelectItem>
+                      <SelectItem value="pints">Pints</SelectItem>
+                      <SelectItem value="quarts">Quarts</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="weight">Est. Weight (lbs)</Label>
                   <Input
                     id="weight"
                     type="number"
                     step="0.1"
-                    placeholder="Total weight"
+                    placeholder="Optional"
                     value={formData.weight}
                     onChange={(e) => handleInputChange("weight", e.target.value)}
                   />
@@ -326,7 +388,7 @@ export default function NewHarvestPage() {
             <Button
               type="submit"
               className="bg-green-600 hover:bg-green-700"
-              disabled={isLoading || !formData.fruit || !formData.quantity}
+              disabled={isLoading || !formData.fruit || !formData.quantity || !formData.unit}
             >
               {isLoading ? "Saving..." : "Save Harvest"}
             </Button>

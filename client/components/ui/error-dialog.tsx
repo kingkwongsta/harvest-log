@@ -1,0 +1,60 @@
+"use client"
+
+import { AlertCircle } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./dialog"
+import { Button } from "./button"
+
+interface ErrorDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title?: string
+  description: string
+  actionLabel?: string
+  onAction?: () => void
+}
+
+export function ErrorDialog({
+  open,
+  onOpenChange,
+  title = "Error",
+  description,
+  actionLabel = "Try Again",
+  onAction
+}: ErrorDialogProps) {
+  const handleAction = () => {
+    onAction?.()
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md text-center">
+        <DialogHeader className="!text-center space-y-4 items-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+            <AlertCircle className="h-6 w-6 text-red-600" />
+          </div>
+          <DialogTitle className="text-lg font-semibold !text-center">{title}</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground !text-center">
+            {description}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="!justify-center !flex-row pt-4">
+          <Button 
+            onClick={handleAction} 
+            variant="destructive"
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {actionLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+} 
