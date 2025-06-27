@@ -117,12 +117,12 @@ export default function HomePage() {
       // Store original files for reference
       setOriginalPhotos((prev) => [...prev, ...newFiles])
       
-      // Compress images with settings optimized for harvest photos  
+      // Compress images with settings optimized for high-quality harvest photos  
       const compressionResults = await compressMultipleImages(newFiles, {
-        maxSizeMB: 0.5, // Smaller file size for faster uploads
-        maxWidthOrHeight: 1200, // Sufficient resolution for harvest documentation
-        quality: 0.85, // Good balance of quality and size
-        convertToWebP: true, // Best compression format
+        maxSizeMB: 2.0, // Larger file size for better quality
+        maxWidthOrHeight: 1800, // Higher resolution for detailed harvest documentation
+        quality: 0.95, // High quality setting for detailed photos
+        convertToWebP: false, // Preserve original format for maximum quality
       })
 
       // Extract compressed files and stats
@@ -177,12 +177,12 @@ export default function HomePage() {
       // Store original file for reference
       setOriginalPhotos((prev) => [...prev, file])
       
-      // Compress captured image with settings optimized for harvest photos  
+      // Compress captured image with settings optimized for high-quality harvest photos  
       const compressionResults = await compressMultipleImages([file], {
-        maxSizeMB: 0.5, // Smaller file size for faster uploads
-        maxWidthOrHeight: 1200, // Sufficient resolution for harvest documentation
-        quality: 0.85, // Good balance of quality and size
-        convertToWebP: true, // Best compression format
+        maxSizeMB: 2.0, // Larger file size for better quality
+        maxWidthOrHeight: 1800, // Higher resolution for detailed harvest documentation
+        quality: 0.95, // High quality setting for detailed photos
+        convertToWebP: false, // Preserve original format for maximum quality
       })
 
       // Extract compressed file and stats

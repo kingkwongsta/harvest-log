@@ -10,7 +10,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Create .env file if it doesn't exist
-if [ ! -f backend/.env ]; then
+if [ ! -f ../backend/.env ]; then
     echo "⚠️  No backend/.env file found. Please create one with your Supabase credentials."
     echo "Example:"
     echo "SUPABASE_URL=your_supabase_url"
@@ -20,6 +20,7 @@ fi
 
 # Build and start the services
 echo "🏗️  Building and starting services..."
+cd ..
 docker-compose down --remove-orphans
 docker-compose up --build -d
 

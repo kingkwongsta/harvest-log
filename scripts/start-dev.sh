@@ -4,7 +4,7 @@
 echo "🌱 Starting Harvest Log App in Development Mode..."
 
 # Check if .env exists
-if [ ! -f backend/.env ]; then
+if [ ! -f ../backend/.env ]; then
     echo "⚠️  No backend/.env file found. Please create one with your Supabase credentials."
     exit 1
 fi
@@ -20,7 +20,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo "🏗️  Starting backend server..."
-cd backend
+cd ../backend
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 cd ..

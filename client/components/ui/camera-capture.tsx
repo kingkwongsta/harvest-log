@@ -49,8 +49,8 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: facingMode,
-          width: { ideal: 1920, max: 1920 },
-          height: { ideal: 1080, max: 1080 }
+          width: { ideal: 2560, max: 2560 },
+          height: { ideal: 1440, max: 1440 }
         },
         audio: false
       }
@@ -127,7 +127,7 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
           } else {
             reject(new Error('Failed to create image blob'))
           }
-        }, 'image/jpeg', 0.9)
+        }, 'image/jpeg', 0.98)
       })
 
       // Create file from blob
