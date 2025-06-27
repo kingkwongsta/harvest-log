@@ -140,13 +140,41 @@ async def get_all_harvest_logs_from_db(client: Client, request_id: str = "unknow
         
         if result.data:
             logs = []
+            harvest_log_ids = [log_data["id"] for log_data in result.data]
+            
+            # Fetch all images for all harvest logs in a single query
+            logger.debug(f"DB: Fetching images for {len(harvest_log_ids)} harvest logs", 
+                        extra={
+                            "request_id": request_id,
+                            "table": "harvest_images",
+                            "db_operation": "select",
+                            "batch_size": len(harvest_log_ids)
+                        })
+            
+            images_result = client.table("harvest_images").select("*").in_("harvest_log_id", harvest_log_ids).order("harvest_log_id, upload_order").execute()
+            
+            # Group images by harvest_log_id for efficient lookup
+            images_by_log_id = {}
+            for image_data in images_result.data:
+                # Add public URL to each image
+                image_data["public_url"] = storage_service.get_public_url(image_data["file_path"])
+                harvest_log_id = image_data["harvest_log_id"]
+                if harvest_log_id not in images_by_log_id:
+                    images_by_log_id[harvest_log_id] = []
+                images_by_log_id[harvest_log_id].append(HarvestImage(**image_data))
+            
+            logger.debug(f"DB: Successfully fetched {len(images_result.data)} images for batch", 
+                        extra={
+                            "request_id": request_id,
+                            "table": "harvest_images",
+                            "total_images": len(images_result.data)
+                        })
+            
+            # Create HarvestLog models and assign images
             for log_data in result.data:
-                # Create HarvestLog model
                 harvest_log = HarvestLog(**log_data)
-                
-                # Fetch associated images
-                harvest_log.images = await _fetch_harvest_images(str(harvest_log.id), client, request_id)
-                
+                # Convert UUID to string for lookup since images_by_log_id uses string keys
+                harvest_log.images = images_by_log_id.get(str(harvest_log.id), [])
                 logs.append(harvest_log)
             
             logger.info(f"DB: ✓ Successfully retrieved {len(logs)} harvest logs with images", 

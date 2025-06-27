@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { HarvestDetailDialog } from "@/components/ui/harvest-detail-dialog"
 import { Apple, Search, Calendar, MapPin, Camera, Plus, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -17,6 +18,8 @@ export default function HarvestsPage() {
   const [harvests, setHarvests] = useState<HarvestLogResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedHarvest, setSelectedHarvest] = useState<HarvestLogResponse | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   useEffect(() => {
     const fetchHarvests = async () => {
@@ -68,6 +71,16 @@ export default function HarvestsPage() {
           return 0
       }
     })
+
+  const handleHarvestClick = (harvest: HarvestLogResponse) => {
+    setSelectedHarvest(harvest)
+    setIsDialogOpen(true)
+  }
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false)
+    setSelectedHarvest(null)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -198,84 +211,105 @@ export default function HarvestsPage() {
         {!loading && !error && (
           <div className="space-y-4">
             {filteredHarvests.map((harvest) => (
-            <Card key={harvest.id} className="hover:shadow-md transition-shadow">
+            <Card 
+              key={harvest.id} 
+              className="hover:shadow-lg hover:border-green-200 transition-all duration-200 cursor-pointer group"
+              onClick={() => handleHarvestClick(harvest)}
+            >
               <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4 flex-1">
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                      <Apple className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">{harvest.crop_name}</h3>
-                        {harvest.images && harvest.images.length > 0 && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Camera className="w-3 h-3 mr-1" />
-                            {harvest.images.length} photo{harvest.images.length > 1 ? 's' : ''}
-                          </Badge>
-                        )}
+                <div className="flex items-start gap-6">
+                  {/* Left Section - All Text Data Stacked Vertically */}
+                  <div className="w-1/3 min-w-0">
+                    {/* Header with Icon and Title */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Apple className="w-5 h-5 text-green-600" />
                       </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
-                        <div>
-                          <span className="font-medium">Quantity:</span> {harvest.quantity} {harvest.unit}
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          {new Date(harvest.harvest_date).toLocaleDateString()}
-                        </div>
-                        {harvest.location && (
-                          <div className="flex items-center">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            {harvest.location}
-                          </div>
-                        )}
-                      </div>
-
-                      {harvest.notes && (
-                        <div className="text-sm text-gray-600 mb-3">
-                          <span className="font-medium">Notes:</span> {harvest.notes}
-                        </div>
-                      )}
-
-                      {/* Image Gallery */}
+                      <h3 className="text-lg font-semibold group-hover:text-green-600 transition-colors">
+                        {harvest.crop_name}
+                      </h3>
                       {harvest.images && harvest.images.length > 0 && (
-                        <div className="mt-4">
-                          <div className="flex gap-2 overflow-x-auto pb-2">
-                            {harvest.images.slice(0, 4).map((image, index) => (
-                              <div key={image.id} className="relative flex-shrink-0">
-                                <img
-                                  src={image.public_url || '/placeholder.svg'}
-                                  alt={`${harvest.crop_name} photo ${index + 1}`}
-                                  className="w-16 h-16 object-cover rounded-lg border"
-                                  onError={(e) => {
-                                    console.log('❌ Image failed to load:', image.public_url)
-                                    e.currentTarget.src = '/placeholder.svg'
-                                  }}
-                                  onLoad={() => {
-                                    console.log('✅ Image loaded successfully:', image.public_url)
-                                  }}
-                                />
-                                {index === 3 && harvest.images && harvest.images.length > 4 && (
-                                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
-                                    <span className="text-white text-xs font-medium">
-                                      +{harvest.images.length - 4}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          <Camera className="w-3 h-3 mr-1" />
+                          {harvest.images.length} photo{harvest.images.length > 1 ? 's' : ''}
+                        </Badge>
                       )}
+                      <Badge variant="outline" className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                        Click to view details
+                      </Badge>
                     </div>
+
+                    {/* Quantity */}
+                    <div className="text-sm text-gray-600 mb-2">
+                      <span className="font-medium">Quantity:</span> {harvest.quantity} {harvest.unit}
+                    </div>
+
+                    {/* Date */}
+                    <div className="flex items-center text-sm text-gray-600 mb-2">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      {new Date(harvest.harvest_date).toLocaleDateString()}
+                    </div>
+
+                    {/* Location */}
+                    {harvest.location && (
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {harvest.location}
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {harvest.notes && (
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">Notes:</span> 
+                        <span className="ml-1 line-clamp-2">{harvest.notes}</span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Right Section - Images Horizontally */}
+                  {harvest.images && harvest.images.length > 0 && (
+                    <div className="w-2/3">
+                      <div className="flex gap-2">
+                        {harvest.images.slice(0, 4).map((image, index) => (
+                          <div key={image.id} className="relative">
+                            <img
+                              src={image.public_url || '/placeholder.svg'}
+                              alt={`${harvest.crop_name} photo ${index + 1}`}
+                              className="w-[100px] h-[100px] object-cover rounded-lg border"
+                              onError={(e) => {
+                                console.log('❌ Image failed to load:', image.public_url)
+                                e.currentTarget.src = '/placeholder.svg'
+                              }}
+                              onLoad={() => {
+                                console.log('✅ Image loaded successfully:', image.public_url)
+                              }}
+                            />
+                            {index === 3 && harvest.images && harvest.images.length > 4 && (
+                              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                                <span className="text-white text-xs font-medium">
+                                  {harvest.images.length} photos
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))}
           </div>
         )}
+
+        {/* Harvest Detail Dialog */}
+        <HarvestDetailDialog
+          harvest={selectedHarvest}
+          isOpen={isDialogOpen}
+          onClose={handleCloseDialog}
+        />
       </div>
     </div>
   )
