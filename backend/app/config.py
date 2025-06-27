@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import List
-from pydantic import ConfigDict
+from pydantic import ConfigDict, field_validator
 
 
 class Settings(BaseSettings):
@@ -17,8 +17,13 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     debug: bool = False
     
-    # CORS Configuration
-    cors_origins: List[str] = ["http://localhost:3000"]
+    # CORS Configuration - can be overridden via CORS_ORIGINS env var (comma-separated)
+    cors_origins: List[str] = [
+        "http://localhost:3000",  # Local development
+        "https://harvest-log-git-main-bkwongs-projects.vercel.app",  # Vercel deployment
+        "https://harvest-log-bkwongs-projects.vercel.app",  # Vercel production
+        "https://harvest-log.vercel.app",  # If you have a custom domain
+    ]
     cors_credentials: bool = True
     cors_methods: List[str] = ["*"]
     cors_headers: List[str] = ["*"]
@@ -45,6 +50,14 @@ class Settings(BaseSettings):
     log_file: str = ""  # Optional log file path
     json_logs: bool = False  # Whether to output logs in JSON format
     slow_request_threshold: float = 1000.0  # Milliseconds
+
+    @field_validator('cors_origins', mode='before')
+    @classmethod
+    def validate_cors_origins(cls, v):
+        """Allow CORS origins to be set via comma-separated string from env var"""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
 
 
 # Create a global settings instance
