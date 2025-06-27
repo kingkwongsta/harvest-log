@@ -49,18 +49,58 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: facingMode,
-          width: { ideal: 2560, max: 2560 },
-          height: { ideal: 1440, max: 1440 }
+          // Request maximum available resolution for better quality
+          width: { ideal: 4096, max: 4096 },
+          height: { ideal: 3072, max: 3072 },
+          // Additional quality settings for mobile devices
+          frameRate: { ideal: 30, max: 60 },
+          aspectRatio: { ideal: 4/3 }
         },
         audio: false
       }
 
+      console.log('📱 Requesting camera with constraints:', constraints)
+
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
+
+      // Log the actual capabilities we got
+      const videoTrack = stream.getVideoTracks()[0]
+      if (videoTrack) {
+        const settings = videoTrack.getSettings()
+        const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : null
+        
+        console.log('📹 Camera settings received:', {
+          width: settings.width,
+          height: settings.height,
+          frameRate: settings.frameRate,
+          facingMode: settings.facingMode,
+          aspectRatio: settings.aspectRatio
+        })
+        
+        if (capabilities) {
+          console.log('📹 Camera capabilities:', {
+            width: capabilities.width,
+            height: capabilities.height,
+            frameRate: capabilities.frameRate,
+            facingMode: capabilities.facingMode
+          })
+        }
+      }
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
+        
+        // Log video element properties once it's loaded
+        videoRef.current.addEventListener('loadedmetadata', () => {
+          console.log('🎥 Video element properties:', {
+            videoWidth: videoRef.current?.videoWidth,
+            videoHeight: videoRef.current?.videoHeight,
+            clientWidth: videoRef.current?.clientWidth,
+            clientHeight: videoRef.current?.clientHeight
+          })
+        })
       }
 
       await checkForMultipleCameras()
@@ -112,14 +152,27 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
         throw new Error('Could not get canvas context')
       }
 
-      // Set canvas dimensions to match video
+      // Set canvas dimensions to match video - using actual video resolution
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
 
-      // Draw video frame to canvas
+      // Log the actual resolution being captured for debugging
+      console.log('📸 Camera capture info:', {
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+        aspectRatio: (video.videoWidth / video.videoHeight).toFixed(2)
+      })
+
+      // Configure canvas for high quality rendering
+      context.imageSmoothingEnabled = true
+      context.imageSmoothingQuality = 'high'
+
+      // Draw video frame to canvas at full resolution
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-      // Convert canvas to blob
+      // Convert canvas to blob with maximum quality
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((blob) => {
           if (blob) {
@@ -127,7 +180,14 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
           } else {
             reject(new Error('Failed to create image blob'))
           }
-        }, 'image/jpeg', 0.98)
+        }, 'image/jpeg', 1.0) // Maximum JPEG quality
+      })
+
+      // Log the resulting file size for debugging
+      console.log('📸 Captured photo info:', {
+        size: blob.size,
+        sizeKB: Math.round(blob.size / 1024),
+        sizeMB: (blob.size / (1024 * 1024)).toFixed(2)
       })
 
       // Create file from blob

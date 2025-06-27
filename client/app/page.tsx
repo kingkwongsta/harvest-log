@@ -121,9 +121,9 @@ export default function HomePage() {
       
       // Compress images with settings optimized for high-quality harvest photos  
       const compressionResults = await compressMultipleImages(newFiles, {
-        maxSizeMB: 2.0, // Larger file size for better quality
-        maxWidthOrHeight: 1800, // Higher resolution for detailed harvest documentation
-        quality: 0.95, // High quality setting for detailed photos
+        maxSizeMB: 3.0, // Larger file size for better quality to accommodate higher resolution images
+        maxWidthOrHeight: 2400, // Higher resolution for detailed harvest documentation (increased from 1800)
+        quality: 0.98, // High quality setting for detailed photos (increased from 0.95)
         convertToWebP: false, // Preserve original format for maximum quality
       })
 
@@ -181,9 +181,9 @@ export default function HomePage() {
       
       // Compress captured image with settings optimized for high-quality harvest photos  
       const compressionResults = await compressMultipleImages([file], {
-        maxSizeMB: 2.0, // Larger file size for better quality
-        maxWidthOrHeight: 1800, // Higher resolution for detailed harvest documentation
-        quality: 0.95, // High quality setting for detailed photos
+        maxSizeMB: 3.0, // Larger file size for better quality to accommodate higher resolution camera captures
+        maxWidthOrHeight: 2400, // Higher resolution for detailed harvest documentation (increased from 1800)
+        quality: 0.98, // High quality setting for detailed photos (increased from 0.95)
         convertToWebP: false, // Preserve original format for maximum quality
       })
 
