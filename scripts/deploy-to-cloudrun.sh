@@ -62,8 +62,10 @@ if docker buildx version >/dev/null 2>&1 && docker buildx ls >/dev/null 2>&1; th
     echo "✓ Docker Buildx is available"
     USE_BUILDX=true
     
-    # Create a new buildx builder instance if it doesn't exist
-    if ! docker buildx ls | grep -q "harvest-builder"; then
+    # Check if we should use colima builder or create harvest-builder
+    if docker buildx ls | grep -q "colima.*running"; then
+        echo "✓ Using existing colima buildx builder"
+    elif ! docker buildx ls | grep -q "harvest-builder"; then
         echo "📦 Creating new buildx builder instance..."
         if docker buildx create --name harvest-builder --driver docker-container --bootstrap >/dev/null 2>&1; then
             echo "✓ Buildx builder created successfully"
@@ -74,9 +76,14 @@ if docker buildx version >/dev/null 2>&1 && docker buildx ls >/dev/null 2>&1; th
     fi
     
     if [ "$USE_BUILDX" = true ]; then
-        # Use the buildx builder
-        echo "🔄 Using buildx builder..."
-        docker buildx use harvest-builder
+        # Use the buildx builder - prefer colima for Colima users, otherwise create harvest-builder
+        if docker buildx ls | grep -q "colima.*running"; then
+            echo "🔄 Using colima buildx builder..."
+            docker buildx use colima
+        else
+            echo "🔄 Using harvest-builder buildx builder..."
+            docker buildx use harvest-builder
+        fi
     fi
 else
     echo "⚠️ Docker Buildx not available, using regular docker build + push"
