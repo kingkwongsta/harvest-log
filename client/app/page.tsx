@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SuccessDialog } from "@/components/ui/success-dialog"
 import { ErrorDialog } from "@/components/ui/error-dialog"
 import { Progress } from "@/components/ui/progress"
-import { Apple, Calendar, MapPin, Camera, List, X } from "lucide-react"
+import { CameraCapture } from "@/components/ui/camera-capture"
+import { Apple, Calendar, MapPin, Camera, List, X, Upload } from "lucide-react"
 import Link from "next/link"
 import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
 import { useImageCompression } from "@/lib/useImageCompression"
@@ -53,6 +54,7 @@ export default function HomePage() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [showErrorDialog, setShowErrorDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [showCamera, setShowCamera] = useState(false)
   const [stats, setStats] = useState<HarvestStats>({
     total_harvests: 0,
     this_month: 0,
@@ -166,6 +168,49 @@ export default function HomePage() {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
     setOriginalPhotos((prev) => prev.filter((_, i) => i !== index))
     setCompressionStats((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleCameraCapture = async (file: File) => {
+    if (photos.length >= 5) return
+
+    try {
+      // Store original file for reference
+      setOriginalPhotos((prev) => [...prev, file])
+      
+      // Compress captured image with settings optimized for harvest photos  
+      const compressionResults = await compressMultipleImages([file], {
+        maxSizeMB: 0.5, // Smaller file size for faster uploads
+        maxWidthOrHeight: 1200, // Sufficient resolution for harvest documentation
+        quality: 0.85, // Good balance of quality and size
+        convertToWebP: true, // Best compression format
+      })
+
+      // Extract compressed file and stats
+      const result = compressionResults[0]
+      if (result.success && result.data !== null) {
+        const compressedData = result.data
+        setPhotos((prev) => [...prev, compressedData.compressedFile])
+        setCompressionStats((prev) => [...prev, {
+          originalSize: compressedData.originalSize,
+          compressedSize: compressedData.compressedSize,
+          compressionRatio: compressedData.compressionRatio,
+        }])
+      } else {
+        // If compression fails, use original file
+        console.warn('Compression failed for camera capture, using original:', result.error)
+        setPhotos((prev) => [...prev, file])
+        setCompressionStats((prev) => [...prev, {
+          originalSize: file.size,
+          compressedSize: file.size,
+          compressionRatio: '0%',
+        }])
+      }
+    } catch (error) {
+      console.error('Error processing camera capture:', error)
+      // Fallback to original file if compression fails completely
+      setPhotos((prev) => [...prev, file])
+      setOriginalPhotos((prev) => [...prev, file])
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -427,39 +472,69 @@ export default function HomePage() {
                     ? 'border-green-400 bg-green-50' 
                     : 'border-gray-300 hover:border-green-400'
                 }`}>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                    id="photo-upload"
-                    disabled={photos.length >= 5 || isCompressing}
-                  />
-                  <label htmlFor="photo-upload" className={`cursor-pointer ${
-                    photos.length >= 5 || isCompressing ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}>
-                    <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-gray-600">
-                      {isCompressing ? (
-                        <>
-                          Compressing images... {compressionProgress > 0 && `${compressionProgress}%`}
-                        </>
-                      ) : photos.length >= 5 ? (
-                        'Maximum photos reached'
-                      ) : (
-                        'Click to add photos'
+                  {isCompressing ? (
+                    <div>
+                      <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-gray-600">
+                        Compressing images... {compressionProgress > 0 && `${compressionProgress}%`}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">Please wait...</p>
+                      
+                      {/* Progress bar during compression */}
+                      {compressionProgress > 0 && (
+                        <div className="mt-3">
+                          <Progress value={compressionProgress} className="w-full" />
+                        </div>
                       )}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {isCompressing ? 'Please wait...' : 'Up to 5 photos • Auto-compressed for faster upload'}
-                    </p>
-                  </label>
-                  
-                  {/* Progress bar during compression */}
-                  {isCompressing && compressionProgress > 0 && (
-                    <div className="mt-3">
-                      <Progress value={compressionProgress} className="w-full" />
+                    </div>
+                  ) : photos.length >= 5 ? (
+                    <div>
+                      <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-gray-600">Maximum photos reached</p>
+                      <p className="text-sm text-gray-500 mt-1">Remove a photo to add more</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-gray-600 mb-4">Add photos of your harvest</p>
+                      
+                      {/* Mobile-first buttons */}
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Button
+                          type="button"
+                          onClick={() => setShowCamera(true)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={photos.length >= 5}
+                        >
+                          <Camera className="w-4 h-4 mr-2" />
+                          Take Photo
+                        </Button>
+                        
+                        <div className="relative">
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                            id="photo-upload"
+                            disabled={photos.length >= 5}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById('photo-upload')?.click()}
+                            disabled={photos.length >= 5}
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Choose Files
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-gray-500 mt-3">
+                        Up to 5 photos • Auto-compressed for faster upload
+                      </p>
                     </div>
                   )}
                 </div>
@@ -584,6 +659,13 @@ export default function HomePage() {
         onAction={() => {
           setShowErrorDialog(false)
         }}
+      />
+
+      {/* Camera Capture */}
+      <CameraCapture
+        isOpen={showCamera}
+        onCapture={handleCameraCapture}
+        onClose={() => setShowCamera(false)}
       />
     </div>
   )

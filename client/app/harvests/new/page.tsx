@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, MapPin, Upload, X } from "lucide-react"
+import { CameraCapture } from "@/components/ui/camera-capture"
+import { Calendar, MapPin, Upload, X, Camera } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface HarvestForm {
@@ -31,6 +32,7 @@ export default function NewHarvestPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [photos, setPhotos] = useState<File[]>([])
+  const [showCamera, setShowCamera] = useState(false)
   const [formData, setFormData] = useState<HarvestForm>({
     fruit: "",
     variety: "",
@@ -58,6 +60,11 @@ export default function NewHarvestPage() {
 
   const removePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleCameraCapture = (file: File) => {
+    if (photos.length >= 10) return
+    setPhotos((prev) => [...prev, file])
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -323,19 +330,55 @@ export default function NewHarvestPage() {
             <CardContent className="space-y-4">
               {/* Photo Upload Area */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  id="photo-upload"
-                />
-                <label htmlFor="photo-upload" className="cursor-pointer">
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-gray-600">Click to upload photos or drag and drop</p>
-                  <p className="text-sm text-gray-500 mt-1">PNG, JPG up to 10MB each</p>
-                </label>
+                {photos.length >= 10 ? (
+                  <div>
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-gray-600">Maximum photos reached</p>
+                    <p className="text-sm text-gray-500 mt-1">Remove a photo to add more</p>
+                  </div>
+                ) : (
+                  <div>
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-gray-600 mb-4">Add photos of your harvest</p>
+                    
+                    {/* Mobile-first buttons */}
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button
+                        type="button"
+                        onClick={() => setShowCamera(true)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        disabled={photos.length >= 10}
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        Take Photo
+                      </Button>
+                      
+                      <div className="relative">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                          id="photo-upload"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById('photo-upload')?.click()}
+                          disabled={photos.length >= 10}
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Choose Files
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-gray-500 mt-3">
+                      Up to 10 photos • PNG, JPG up to 10MB each
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Photo Preview */}
@@ -395,6 +438,13 @@ export default function NewHarvestPage() {
           </div>
         </form>
       </div>
+
+      {/* Camera Capture */}
+      <CameraCapture
+        isOpen={showCamera}
+        onCapture={handleCameraCapture}
+        onClose={() => setShowCamera(false)}
+      />
     </div>
   )
 }
