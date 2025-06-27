@@ -20,6 +20,7 @@ import { useImageCompression } from "@/lib/useImageCompression"
 
 interface HarvestForm {
   fruit: string
+  customFruit: string
   quantity: string
   weight: string
   date: string
@@ -38,6 +39,7 @@ const getCurrentLocalDateTime = () => {
 export default function HomePage() {
   const [formData, setFormData] = useState<HarvestForm>({
     fruit: "",
+    customFruit: "",
     quantity: "",
     weight: "",
     date: getCurrentLocalDateTime(), // Use user's local timezone
@@ -119,9 +121,9 @@ export default function HomePage() {
       
       // Compress images with settings optimized for high-quality harvest photos  
       const compressionResults = await compressMultipleImages(newFiles, {
-        maxSizeMB: 2.0, // Larger file size for better quality
-        maxWidthOrHeight: 1800, // Higher resolution for detailed harvest documentation
-        quality: 0.95, // High quality setting for detailed photos
+        maxSizeMB: 3.0, // Larger file size for better quality to accommodate higher resolution images
+        maxWidthOrHeight: 2400, // Higher resolution for detailed harvest documentation (increased from 1800)
+        quality: 0.98, // High quality setting for detailed photos (increased from 0.95)
         convertToWebP: false, // Preserve original format for maximum quality
       })
 
@@ -179,9 +181,9 @@ export default function HomePage() {
       
       // Compress captured image with settings optimized for high-quality harvest photos  
       const compressionResults = await compressMultipleImages([file], {
-        maxSizeMB: 2.0, // Larger file size for better quality
-        maxWidthOrHeight: 1800, // Higher resolution for detailed harvest documentation
-        quality: 0.95, // High quality setting for detailed photos
+        maxSizeMB: 3.0, // Larger file size for better quality to accommodate higher resolution camera captures
+        maxWidthOrHeight: 2400, // Higher resolution for detailed harvest documentation (increased from 1800)
+        quality: 0.98, // High quality setting for detailed photos (increased from 0.95)
         convertToWebP: false, // Preserve original format for maximum quality
       })
 
@@ -219,8 +221,13 @@ export default function HomePage() {
 
     try {
       // Map frontend form data to backend API format
+      // Use custom fruit name if "other" is selected and customFruit is provided
+      const cropName = formData.fruit === "other" && formData.customFruit.trim() 
+        ? formData.customFruit.trim() 
+        : formData.fruit
+        
       const harvestLogData = {
-        crop_name: formData.fruit,
+        crop_name: cropName,
         quantity: parseFloat(formData.quantity),
         unit: formData.weight ? formData.weight : "pieces", // Use weight as unit if provided, otherwise default to "pieces"
         harvest_date: new Date(formData.date).toISOString(),
@@ -309,6 +316,7 @@ export default function HomePage() {
         // Reset form on success
         setFormData({
           fruit: "",
+          customFruit: "",
           quantity: "",
           weight: "",
           date: getCurrentLocalDateTime(), // Use user's local timezone
@@ -390,17 +398,30 @@ export default function HomePage() {
                       <SelectValue placeholder="Select fruit/vegetable" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="apples">Apples</SelectItem>
+                      <SelectItem value="avocado">Avocado</SelectItem>
+                      <SelectItem value="basil">Basil</SelectItem>
+                      <SelectItem value="dragonfruit">Dragonfruit</SelectItem>
+                      <SelectItem value="mint">Mint</SelectItem>
+                      <SelectItem value="orange">Orange</SelectItem>
+                      <SelectItem value="passion-fruit">Passion Fruit</SelectItem>
+                      <SelectItem value="pepper">Pepper</SelectItem>
                       <SelectItem value="tomatoes">Tomatoes</SelectItem>
-                      <SelectItem value="berries">Berries</SelectItem>
-                      <SelectItem value="oranges">Oranges</SelectItem>
-                      <SelectItem value="peppers">Peppers</SelectItem>
-                      <SelectItem value="lettuce">Lettuce</SelectItem>
-                      <SelectItem value="carrots">Carrots</SelectItem>
-                      <SelectItem value="herbs">Herbs</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {/* Custom fruit input when "Other" is selected */}
+                  {formData.fruit === "other" && (
+                    <div className="mt-2">
+                      <Input
+                        id="customFruit"
+                        placeholder="Enter fruit/vegetable name"
+                        value={formData.customFruit}
+                        onChange={(e) => handleInputChange("customFruit", e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -442,8 +463,6 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-
-
 
               {/* Photo Upload */}
               <div className="space-y-2">
@@ -594,7 +613,13 @@ export default function HomePage() {
               <Button
                 type="submit"
                 className="w-full bg-green-600 hover:bg-green-700"
-                disabled={isSubmitting || isCompressing || !formData.fruit || !formData.quantity}
+                disabled={
+                  isSubmitting || 
+                  isCompressing || 
+                  !formData.fruit || 
+                  !formData.quantity ||
+                  (formData.fruit === "other" && !formData.customFruit.trim())
+                }
               >
                 {isCompressing ? (
                   `Compressing ${photos.length + 1} image${photos.length > 0 ? 's' : ''}...`
