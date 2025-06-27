@@ -45,9 +45,9 @@ print_step() {
 show_menu() {
     echo "🚀 Choose your deployment option:"
     echo ""
-    echo "1) 📡 Deploy Backend only (Google Cloud Run)"
-    echo "2) 🌐 Deploy Frontend only (Vercel)"
-    echo "3) 🌍 Deploy Both (Backend + Frontend)"
+    echo "1) 🌐 Deploy Frontend only (Vercel)"
+    echo "2) 📡 Deploy Backend only (Google Cloud Run)"
+    echo "3) 🌍 Deploy Both (Frontend + Backend)"
     echo "4) ❌ Cancel"
     echo ""
 }
@@ -55,24 +55,24 @@ show_menu() {
 # Get user choice
 get_user_choice() {
     while true; do
-        show_menu
+        show_menu >&2  # Send menu to stderr so it displays properly
         read -p "Enter your choice (1-4): " choice
-        echo ""
+        echo "" >&2
         
         case $choice in
             1)
-                echo "📡 Selected: Backend deployment only" >&2
-                echo "1"
+                echo "🌐 Selected: Frontend deployment only" >&2
+                echo "1"  # This goes to stdout for capture
                 return 0
                 ;;
             2)
-                echo "🌐 Selected: Frontend deployment only" >&2
-                echo "2"
+                echo "📡 Selected: Backend deployment only" >&2
+                echo "2"  # This goes to stdout for capture
                 return 0
                 ;;
             3)
-                echo "🌍 Selected: Both Backend and Frontend deployment" >&2
-                echo "3"
+                echo "🌍 Selected: Both Frontend and Backend deployment" >&2
+                echo "3"  # This goes to stdout for capture
                 return 0
                 ;;
             4)
@@ -80,8 +80,8 @@ get_user_choice() {
                 exit 0
                 ;;
             *)
-                print_error "Invalid choice. Please select 1-4."
-                echo ""
+                print_error "Invalid choice. Please select 1-4." >&2
+                echo "" >&2
                 ;;
         esac
     done
@@ -92,8 +92,27 @@ check_prerequisites() {
     local deploy_choice=$1
     print_step "Checking prerequisites for deployment option $deploy_choice..."
     
-    # Check backend prerequisites
+    # Check frontend prerequisites
     if [[ $deploy_choice -eq 1 || $deploy_choice -eq 3 ]]; then
+        print_status "Checking frontend deployment prerequisites..."
+        
+        # Check if vercel is installed
+        if ! command -v vercel >/dev/null 2>&1; then
+            print_error "Vercel CLI not found. Please install it first."
+            exit 1
+        fi
+        print_status "✓ Vercel CLI found"
+        
+        # Check if package.json exists
+        if [ ! -f "${FRONTEND_DIR}/package.json" ]; then
+            print_error "Frontend package.json not found at ${FRONTEND_DIR}/package.json"
+            exit 1
+        fi
+        print_status "✓ Frontend package.json found"
+    fi
+    
+    # Check backend prerequisites
+    if [[ $deploy_choice -eq 2 || $deploy_choice -eq 3 ]]; then
         print_status "Checking backend deployment prerequisites..."
         
         # Check if gcloud is installed
@@ -116,25 +135,6 @@ check_prerequisites() {
         else
             print_status "✓ Google Cloud authentication active"
         fi
-    fi
-    
-    # Check frontend prerequisites
-    if [[ $deploy_choice -eq 2 || $deploy_choice -eq 3 ]]; then
-        print_status "Checking frontend deployment prerequisites..."
-        
-        # Check if vercel is installed
-        if ! command -v vercel >/dev/null 2>&1; then
-            print_error "Vercel CLI not found. Please install it first."
-            exit 1
-        fi
-        print_status "✓ Vercel CLI found"
-        
-        # Check if package.json exists
-        if [ ! -f "${FRONTEND_DIR}/package.json" ]; then
-            print_error "Frontend package.json not found at ${FRONTEND_DIR}/package.json"
-            exit 1
-        fi
-        print_status "✓ Frontend package.json found"
     fi
     
     print_success "All prerequisites check passed!"
@@ -285,32 +285,32 @@ main() {
     # Execute deployment based on choice
     case $choice in
         1)
-            print_step "Executing Backend-only deployment..."
-            deploy_backend
-            echo ""
-            print_success "🎉 Backend deployment complete!"
-            echo "📡 Your backend API is live at: https://harvest-log-backend-512013902761.us-west2.run.app"
-            ;;
-        2)
             print_step "Executing Frontend-only deployment..."
             deploy_frontend
             echo ""
             print_success "🎉 Frontend deployment complete!"
             echo "🌐 Check the Vercel output above for your app URL"
             ;;
-        3)
-            print_step "Executing Full deployment (Backend + Frontend)..."
-            echo ""
+        2)
+            print_step "Executing Backend-only deployment..."
             deploy_backend
+            echo ""
+            print_success "🎉 Backend deployment complete!"
+            echo "📡 Your backend API is live at: https://harvest-log-backend-512013902761.us-west2.run.app"
+            ;;
+        3)
+            print_step "Executing Full deployment (Frontend + Backend)..."
+            echo ""
             deploy_frontend
+            deploy_backend
             echo ""
             echo "🎉 FULL DEPLOYMENT COMPLETE! 🎉"
             echo "==============================="
             echo ""
             print_success "Your complete Harvest Log App is now live in the cloud!"
             echo ""
-            echo "📡 Backend API: https://harvest-log-backend-512013902761.us-west2.run.app"
             echo "🌐 Frontend App: Check the Vercel output above for your app URL"
+            echo "📡 Backend API: https://harvest-log-backend-512013902761.us-west2.run.app"
             ;;
     esac
     
@@ -320,10 +320,10 @@ main() {
     echo ""
     echo "📊 Monitor your deployments:"
     if [[ $choice -eq 1 || $choice -eq 3 ]]; then
-        echo "  Backend: https://console.cloud.google.com/run"
+        echo "  Frontend: https://vercel.com/dashboard"
     fi
     if [[ $choice -eq 2 || $choice -eq 3 ]]; then
-        echo "  Frontend: https://vercel.com/dashboard"
+        echo "  Backend: https://console.cloud.google.com/run"
     fi
     
     echo ""

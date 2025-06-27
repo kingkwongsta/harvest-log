@@ -34,15 +34,44 @@ fi
 echo "🔐 Configuring Docker authentication..."
 gcloud auth configure-docker ${REGION}-docker.pkg.dev
 
-# Step 2: Build the Docker image for the correct platform (linux/amd64)
-echo "🏗️ Building Docker image for Cloud Run (linux/amd64)..."
-docker build --platform linux/amd64 -t ${IMAGE_PATH}:latest .
+# Step 2: Ensure Docker Buildx is available and set up
+echo "🔧 Setting up Docker Buildx..."
+# Check if buildx is available
+if ! docker buildx version >/dev/null 2>&1; then
+    echo "❌ Docker Buildx not found. Please install Docker Buildx."
+    echo "Run: brew install docker-buildx"
+    exit 1
+fi
 
-# Step 3: Push the image to Artifact Registry
-echo "📤 Pushing image to Artifact Registry..."
-docker push ${IMAGE_PATH}:latest
+# Create a new buildx builder instance if it doesn't exist
+if ! docker buildx ls | grep -q "harvest-builder"; then
+    echo "📦 Creating new buildx builder instance..."
+    docker buildx create --name harvest-builder --driver docker-container --bootstrap
+fi
 
-# Step 4: Deploy to Cloud Run
+# Use the buildx builder
+echo "🔄 Using buildx builder..."
+docker buildx use harvest-builder
+
+# Step 3: Build and push the Docker image using Buildx (replaces both build and push)
+echo "🏗️ Building and pushing Docker image for Cloud Run (linux/amd64) using Buildx..."
+docker buildx build \
+  --platform linux/amd64 \
+  --tag ${IMAGE_PATH}:latest \
+  --push \
+  --progress=plain \
+  .
+
+# Step 4: Verify image was pushed successfully
+echo "✅ Verifying image push..."
+if docker buildx imagetools inspect ${IMAGE_PATH}:latest >/dev/null 2>&1; then
+    echo "✓ Image successfully pushed to Artifact Registry"
+else
+    echo "❌ Failed to verify image in registry"
+    exit 1
+fi
+
+# Step 5: Deploy to Cloud Run
 echo "☁️ Deploying to Cloud Run..."
 gcloud run deploy ${SERVICE_NAME} \
   --image ${IMAGE_PATH}:latest \
