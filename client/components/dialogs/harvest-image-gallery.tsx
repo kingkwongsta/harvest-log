@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, Camera } from "lucide-react"
 import { type HarvestImage } from "@/lib/api"
+import Image from "next/image"
 
 interface HarvestImageGalleryProps {
   images: HarvestImage[]
@@ -36,11 +37,12 @@ export const HarvestImageGallery = React.memo(function HarvestImageGallery({ ima
 
   return (
     <div className="relative">
-      <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-        <img
+      <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
+        <Image
           src={currentImage.public_url || "/placeholder.svg"}
           alt={`Harvest photo ${currentImageIndex + 1}`}
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
         />
       </div>
 

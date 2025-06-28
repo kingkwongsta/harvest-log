@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CameraCapture } from "@/components/camera/camera-capture"
 import { Calendar, MapPin, Upload, X, Camera } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 interface HarvestForm {
   fruit: string
@@ -386,10 +387,13 @@ export default function NewHarvestPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {photos.map((photo, index) => (
                     <div key={index} className="relative group">
-                      <img
+                      <Image
                         src={URL.createObjectURL(photo) || "/placeholder.svg"}
                         alt={`Harvest photo ${index + 1}`}
+                        width={200}
+                        height={96}
                         className="w-full h-24 object-cover rounded-lg"
+                        unoptimized
                       />
                       <Button
                         type="button"

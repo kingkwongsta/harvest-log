@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { HarvestDetailDialog } from "@/components/dialogs/harvest-detail-dialog"
 import { Sprout, Search, Calendar, MapPin, Camera, Plus, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function HarvestsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -273,9 +274,11 @@ export default function HarvestsPage() {
                       <div className="flex gap-2">
                         {harvest.images.slice(0, 4).map((image, index) => (
                           <div key={image.id} className="relative">
-                            <img
+                            <Image
                               src={image.public_url || '/placeholder.svg'}
                               alt={`${harvest.crop_name} photo ${index + 1}`}
+                              width={100}
+                              height={100}
                               className="w-[100px] h-[100px] object-cover rounded-lg border"
                               onError={(e) => {
                                 console.log('❌ Image failed to load:', image.public_url)

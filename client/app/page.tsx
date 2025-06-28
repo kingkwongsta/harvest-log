@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import { CameraCapture } from "@/components/camera/camera-capture"
 import { Calendar, Camera, List, X, Upload, Sprout, TrendingUp, Clock } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
 import { useImageCompression } from "@/lib/useImageCompression"
 
@@ -572,10 +573,13 @@ export default function HomePage() {
                   <div className="grid grid-cols-5 gap-2 mt-3">
                     {photos.map((photo, index) => (
                       <div key={index} className="relative group">
-                        <img
+                        <Image
                           src={URL.createObjectURL(photo) || "/placeholder.svg"}
                           alt={`Photo ${index + 1}`}
+                          width={80}
+                          height={64}
                           className="w-full h-16 object-cover rounded border"
+                          unoptimized
                         />
                         <button
                           type="button"

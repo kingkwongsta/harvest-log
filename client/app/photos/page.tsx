@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Camera, Search, Grid, List, Calendar, MapPin, Download, Trash2, Upload, ArrowLeft, Eye } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 interface PhotoWithHarvest extends HarvestImage {
   harvest?: HarvestLogResponse;
@@ -247,10 +248,11 @@ export default function PhotosPage() {
                 {filteredPhotos.map((photo) => (
                   <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-square relative group cursor-pointer">
-                      <img
+                      <Image
                         src={photo.public_url || "/placeholder.svg"}
                         alt={`${photo.harvest?.crop_name} harvest`}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
                         onClick={() => setSelectedPhoto(photo)}
                       />
                       <div className="absolute top-2 right-2">
@@ -297,9 +299,11 @@ export default function PhotosPage() {
                   <Card key={photo.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="pt-6">
                       <div className="flex items-center space-x-4">
-                        <img
+                        <Image
                           src={photo.public_url || "/placeholder.svg"}
                           alt={`${photo.harvest?.crop_name} harvest`}
+                          width={80}
+                          height={80}
                           className="w-20 h-20 object-cover rounded-lg cursor-pointer"
                           onClick={() => setSelectedPhoto(photo)}
                         />
@@ -359,9 +363,11 @@ export default function PhotosPage() {
           {selectedPhoto && (
             <div className="space-y-4">
               <div className="relative">
-                <img
+                <Image
                   src={selectedPhoto.public_url || "/placeholder.svg"}
                   alt={`${selectedPhoto.harvest?.crop_name} harvest`}
+                  width={800}
+                  height={600}
                   className="w-full max-h-96 object-contain rounded-lg"
                 />
               </div>
