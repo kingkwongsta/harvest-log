@@ -1,0 +1,61 @@
+/* Vercel-Style Ultra Minimal Theme */
+/* To use this theme, replace the :root variables in globals.css with these */
+
+:root {
+  /* Vercel Ultra Minimal - High Contrast */
+  --background: 0 0% 100%;          /* Pure white */
+  --foreground: 0 0% 9%;            /* Almost black */
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 9%;
+  --primary: 0 0% 9%;               /* Black primary */
+  --primary-foreground: 0 0% 98%;
+  --secondary: 0 0% 96%;            /* Light gray */
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 45%;     /* Medium gray */
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 90%;               /* Light gray borders */
+  --input: 0 0% 100%;               /* White inputs with border */
+  --ring: 0 0% 9%;
+  --radius: 0.375rem;               /* Minimal rounded corners */
+}
+
+.dark {
+  --background: 0 0% 3%;            /* Deep black */
+  --foreground: 0 0% 98%;           /* Almost white */
+  --card: 0 0% 4%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 3%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;              /* White primary in dark mode */
+  --primary-foreground: 0 0% 9%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 0 0% 10%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 15%;
+  --input: 0 0% 10%;
+  --ring: 0 0% 98%;
+}
+
+/* Vercel-style utilities */
+.vercel-button {
+  @apply bg-foreground text-background hover:bg-foreground/90 transition-colors duration-150 text-sm font-medium;
+}
+
+.vercel-card {
+  @apply border border-border/50 hover:border-border transition-colors duration-200;
+}
+
+.vercel-input {
+  @apply border-border/50 focus:border-foreground transition-colors duration-150;
+} 

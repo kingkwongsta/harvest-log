@@ -16,7 +16,7 @@ npm start        # Start production server
 ### Backend (FastAPI Python)
 ```bash
 cd backend
-python -m uvicorn app.main:app --reload  # Start development server on localhost:8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8080  # Start development server on localhost:8080
 python -m pytest tests/                  # Run all tests
 python -m pytest tests/unit/             # Run unit tests only
 python -m pytest tests/integration/      # Run integration tests only
@@ -30,8 +30,8 @@ python -m pytest tests/integration/      # Run integration tests only
 
 ### Common URLs
 - Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/docs
+- Backend API: http://localhost:8080
+- API Documentation: http://localhost:8080/docs
 
 ## Architecture Overview
 

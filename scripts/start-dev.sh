@@ -21,7 +21,7 @@ trap cleanup SIGINT SIGTERM
 
 echo "🏗️  Starting backend server..."
 cd ../backend
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8080 &
 BACKEND_PID=$!
 cd ..
 
@@ -41,13 +41,13 @@ echo "✅ Services are running!"
 echo ""
 echo "🎉 Harvest Log App is now available at:"
 echo "   Frontend: http://localhost:3000"
-echo "   Backend API: http://localhost:8000"
-echo "   API Docs: http://localhost:8000/docs"
+echo "   Backend API: http://localhost:8080"
+echo "   API Docs: http://localhost:8080/docs"
 echo ""
 echo "📱 On your home network, other devices can access it at:"
 LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || hostname -I | cut -d' ' -f1)
 echo "   Frontend: http://$LOCAL_IP:3000"
-echo "   Backend: http://$LOCAL_IP:8000"
+echo "   Backend: http://$LOCAL_IP:8080"
 echo ""
 echo "Press Ctrl+C to stop both servers"
 
