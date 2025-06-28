@@ -380,45 +380,6 @@ export default function HomePage() {
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto p-6">
-        {/* Harvest Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="w-12 h-12 harvest-gradient rounded-full flex items-center justify-center mx-auto mb-3">
-                <Sprout className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-2xl font-bold text-foreground">
-                {isLoadingStats ? "..." : stats.total_harvests}
-              </div>
-              <p className="text-sm text-organic">Total Harvests</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center mx-auto mb-3">
-                <TrendingUp className="w-6 h-6 text-accent-foreground" />
-              </div>
-              <div className="text-2xl font-bold text-foreground">
-                {isLoadingStats ? "..." : stats.this_month}
-              </div>
-              <p className="text-sm text-organic">This Month</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-3">
-                <Clock className="w-6 h-6 text-secondary-foreground" />
-              </div>
-              <div className="text-2xl font-bold text-foreground">
-                {isLoadingStats ? "..." : stats.this_week}
-              </div>
-              <p className="text-sm text-organic">This Week</p>
-            </CardContent>
-          </Card>
-        </div>
-
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-3">Log Your Harvest</h2>
           <p className="text-organic max-w-md mx-auto">Record the fruits of your labor and track your garden's productivity over time</p>
@@ -677,6 +638,44 @@ export default function HomePage() {
           </CardContent>
         </Card>
 
+        {/* Harvest Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <div className="w-12 h-12 harvest-gradient rounded-full flex items-center justify-center mx-auto mb-3">
+                <Sprout className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-2xl font-bold text-foreground">
+                {isLoadingStats ? "..." : stats.total_harvests}
+              </div>
+              <p className="text-sm text-organic">Total Harvests</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center mx-auto mb-3">
+                <TrendingUp className="w-6 h-6 text-accent-foreground" />
+              </div>
+              <div className="text-2xl font-bold text-foreground">
+                {isLoadingStats ? "..." : stats.this_month}
+              </div>
+              <p className="text-sm text-organic">This Month</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-3">
+                <Clock className="w-6 h-6 text-secondary-foreground" />
+              </div>
+              <div className="text-2xl font-bold text-foreground">
+                {isLoadingStats ? "..." : stats.this_week}
+              </div>
+              <p className="text-sm text-organic">This Week</p>
+            </CardContent>
+          </Card>
+        </div>
 
       </div>
 
