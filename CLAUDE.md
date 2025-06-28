@@ -46,6 +46,9 @@ This is a modern full-stack harvest logging application with separated frontend 
 **Backend**: FastAPI with Python, Supabase PostgreSQL, and Supabase Storage
 - Located in `backend/` directory  
 - Uses Pydantic v2 for data validation
+- JWT-based authentication with role-based access control
+- In-memory caching layer for performance optimization
+- Background task management for image processing and cleanup
 - Comprehensive logging with unique request IDs
 - Image processing with Pillow
 
@@ -63,6 +66,16 @@ This is a modern full-stack harvest logging application with separated frontend 
 - `backend/app/routers/harvest_logs.py` - CRUD operations for harvest data
 - `backend/app/routers/images.py` - Image upload and management endpoints
 - `backend/app/config.py` - Environment-based configuration
+- `backend/app/auth.py` - JWT authentication and authorization utilities
+- `backend/app/cache.py` - In-memory caching system with LRU eviction
+- `backend/app/background_tasks.py` - Background task management and scheduling
+- `backend/app/middleware.py` - Custom middleware for logging and authentication
+- `backend/app/dependencies.py` - FastAPI dependency injection utilities
+- `backend/app/validators.py` - Custom validation logic and decorators
+- `backend/app/pagination.py` - API pagination utilities
+- `backend/app/error_handlers.py` - Global error handling and custom exceptions
+- `backend/app/health.py` - Health check endpoints and system monitoring
+- `backend/app/versioning.py` - API versioning utilities
 
 ### Frontend
 - `client/app/layout.tsx` - Root layout component
@@ -74,6 +87,72 @@ This is a modern full-stack harvest logging application with separated frontend 
 - `backend/.env` - Backend environment variables (Supabase credentials)
 - `client/.env.local` - Frontend environment variables (API base URL)
 - `docker-compose.yml` - Multi-service containerization setup
+
+## Authentication System
+
+The application uses JWT-based authentication with role-based access control:
+
+**Authentication Features**:
+- JWT token-based authentication with Bearer token format
+- Role-based access control (admin, user roles)
+- Token validation middleware for protected endpoints
+- Configurable token expiration (default: 24 hours)
+
+**Key Components**:
+- `backend/app/auth.py` - JWT authentication manager and middleware
+- `backend/app/dependencies.py` - Authentication dependency injection
+- `backend/app/middleware.py` - Request authentication middleware
+
+**Usage**:
+- Protected endpoints require `Authorization: Bearer <token>` header
+- Use `get_current_user()` dependency for optional authentication
+- Use `require_auth()` dependency for required authentication
+- Use `require_role("admin")` for role-specific access
+
+## Caching Layer
+
+In-memory caching system for improved performance:
+
+**Cache Features**:
+- LRU (Least Recently Used) eviction policy
+- Configurable TTL (Time-To-Live) for cache entries
+- Thread-safe async operations
+- Automatic cleanup of expired entries
+- Cache statistics and monitoring
+
+**Key Components**:
+- `backend/app/cache.py` - Core caching implementation
+- Global cache instance with 1000 entry limit
+- Cache manager for harvest-specific data
+- Background task for periodic cleanup
+
+**Usage**:
+- `@cached(ttl=300)` decorator for function caching
+- Manual cache operations via `get_cache()`
+- Harvest-specific caching via `cache_manager`
+
+## Background Tasks
+
+Background task management for long-running operations:
+
+**Task Features**:
+- Periodic task scheduling
+- Image processing workflows
+- Automatic cleanup operations
+- Task monitoring and health checks
+- Graceful startup/shutdown
+
+**Key Components**:
+- `backend/app/background_tasks.py` - Task manager and utilities
+- Periodic cache cleanup (every 5 minutes)
+- Image metadata processing
+- Temporary file cleanup
+
+**Task Types**:
+- Image processing and metadata extraction
+- Daily harvest summary generation
+- Temporary file cleanup
+- Cache maintenance
 
 ## Data Models
 
@@ -100,8 +179,14 @@ This is a modern full-stack harvest logging application with separated frontend 
 ## Development Notes
 
 - The application uses comprehensive request logging with unique IDs for debugging
+- JWT authentication is implemented with Bearer tokens and role-based access control
+- In-memory caching provides performance optimization with automatic cleanup
+- Background tasks handle image processing and maintenance operations
 - Image uploads support drag-and-drop with progress indicators
 - Mobile-friendly responsive design optimized for phones and tablets
 - CORS is properly configured for frontend-backend communication
 - All API inputs are validated using Pydantic models
 - RLS policies protect user data at the database level
+- Middleware provides request authentication and logging
+- API pagination is available for large datasets
+- Health check endpoints monitor system status and background tasks
