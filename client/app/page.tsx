@@ -372,7 +372,7 @@ export default function HomePage() {
             <Link href="/harvests">
               <Button variant="outline" size="sm" className="hover:border-primary/30">
                 <List className="w-4 h-4 mr-2" />
-All
+Logs
               </Button>
             </Link>
           </div>
