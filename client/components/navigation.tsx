@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Home, List, Camera, Plus } from "lucide-react"
+import { Home, List } from "lucide-react"
 
 interface NavigationProps {
   className?: string
@@ -20,23 +20,10 @@ export function Navigation({ className = "" }: NavigationProps) {
       active: pathname === "/"
     },
     {
-      href: "/harvests",
-      label: "Harvests",
+      href: "/",
+      label: "Harvest Log",
       icon: List,
-      active: pathname === "/harvests"
-    },
-    {
-      href: "/photos",
-      label: "Photos",
-      icon: Camera,
-      active: pathname === "/photos"
-    },
-    {
-      href: "/harvests/new",
-      label: "Add New",
-      icon: Plus,
-      active: pathname === "/harvests/new",
-      variant: "harvest" as const
+      active: pathname === "/"
     }
   ]
 

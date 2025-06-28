@@ -37,11 +37,14 @@ This approach keeps the database schema simple and prioritizes the core feature�
 
 > Router `events.py` contains CRUD operations; `event_type` drives validation logic (Pydantic dynamic model selection).
 
-### 3. Front-End Logging Flows (Next.js)
+### 3. Front-End Logging Flow (Next.js)
 
-1. **Quick Harvest Form** (existing) → extends to accept produce & quantity.  
-2. **Bloom Capture Modal** – select plant ➜ pick date ➜ optional photo ➜ save.  
-3. **Snapshot Button** on Plant Biography Page – one-tap capture current state; auto-opens camera / file picker.
+A single, unified entry point on the main dashboard for all logging activities.
+
+1.  **Initiate Log**: The user clicks a prominent "Log New Event" button.
+2.  **Select Event Type**: A modal opens, prompting the user to select: "Harvest", "Bloom", or "Plant Snapshot".
+3.  **Dynamic Form**: The modal then displays a form with fields relevant only to the chosen event type.
+4.  **Submit Event**: The form submits to the single `POST /api/events` endpoint, simplifying both user experience and development.
 
 ### 4. Storage & Media Handling
 
