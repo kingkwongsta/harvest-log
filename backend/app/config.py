@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Union
 from pydantic import ConfigDict, field_validator
 
 
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # CORS Configuration - can be overridden via CORS_ORIGINS env var (comma-separated)
-    cors_origins: List[str] = [
+    cors_origins: Union[str, List[str]] = [
         "http://localhost:3000",  # Local development
         "https://harvest-log-git-main-bkwongs-projects.vercel.app",  # Vercel deployment
         "https://harvest-log-bkwongs-projects.vercel.app",  # Vercel production
@@ -53,11 +53,15 @@ class Settings(BaseSettings):
 
     @field_validator('cors_origins', mode='before')
     @classmethod
-    def validate_cors_origins(cls, v):
+    def validate_cors_origins(cls, v) -> List[str]:
         """Allow CORS origins to be set via comma-separated string from env var"""
+        if v is None or v == "":
+            return []
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(',') if origin.strip()]
-        return v
+        if isinstance(v, list):
+            return v
+        return []
 
 
 # Create a global settings instance
