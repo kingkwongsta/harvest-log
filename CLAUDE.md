@@ -80,8 +80,11 @@ This is a modern full-stack harvest logging application with separated frontend 
 ### Frontend
 - `client/app/layout.tsx` - Root layout component
 - `client/app/page.tsx` - Homepage with quick harvest entry form
+- `client/app/gallery/page.tsx` - Gallery page with 4 viewing modes
+- `client/app/photos/page.tsx` - Dedicated photo management page
 - `client/lib/api.ts` - Centralized API client for backend communication
 - `client/components/camera-capture.tsx` - Custom camera integration component
+- `client/components/gallery/` - Gallery view components (timeline, crop-garden, photo-wall, data-insights)
 
 ### Configuration
 - `backend/.env` - Backend environment variables (Supabase credentials)
@@ -167,6 +170,51 @@ Background task management for long-running operations:
 - Supabase Storage with CDN delivery
 - Metadata tracking (file size, dimensions, compression ratios)
 
+## Gallery Feature
+
+The application includes a comprehensive gallery system for viewing and managing harvest photos across multiple viewing modes:
+
+**Main Gallery Page** (`client/app/gallery/page.tsx`):
+- Four distinct viewing modes with seamless switching
+- Real-time search across crop names and notes
+- Crop-specific filtering and sorting options
+- Mobile-responsive design with touch-friendly interactions
+
+**Gallery Viewing Modes**:
+
+1. **Timeline Journey** (`client/components/gallery/timeline-view.tsx`)
+   - Chronological harvest story with seasonal theming
+   - Visual timeline with month-based organization
+   - Seasonal color schemes and decorative elements
+
+2. **Crop Garden** (`client/components/gallery/crop-garden-view.tsx`)
+   - Organized by crop type with productivity analytics
+   - Crop-specific statistics and yield tracking
+   - Visual harvest summaries per crop category
+
+3. **Photo Wall** (`client/components/gallery/photo-wall-view.tsx`)
+   - Image-focused masonry layout display
+   - Pinterest-style responsive grid
+   - Optimized for photo browsing and exploration
+
+4. **Data Insights** (`client/components/gallery/data-insights-view.tsx`)
+   - Charts and analytics dashboard using Recharts
+   - Harvest trends and productivity analysis
+   - Interactive data visualization components
+
+**Additional Photo Management**:
+- **Photos Page** (`client/app/photos/page.tsx`) - Dedicated photo management interface
+- **Image Lightbox** - Full-screen viewing with keyboard navigation
+- **Favorite System** - Mark and filter favorite harvest photos
+- **Metadata Display** - Image details, harvest context, and technical info
+- **Bulk Operations** - Delete, download, and organize multiple photos
+
+**Gallery Integration**:
+- Seamless integration with harvest logs system
+- Consistent theming and styling across all views
+- Search and filter functionality across all modes
+- Navigation accessible from harvests page header
+
 ## Testing Strategy
 
 **Backend Tests** (in `backend/tests/`):
@@ -184,6 +232,7 @@ Background task management for long-running operations:
 - Background tasks handle image processing and maintenance operations
 - Image uploads support drag-and-drop with progress indicators
 - Mobile-friendly responsive design optimized for phones and tablets
+- Gallery feature provides multiple viewing modes with advanced photo management
 - CORS is properly configured for frontend-backend communication
 - All API inputs are validated using Pydantic models
 - RLS policies protect user data at the database level
