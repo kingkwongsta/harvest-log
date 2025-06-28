@@ -1,100 +1,207 @@
 from supabase import create_client, Client
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Float, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-import uuid
-from typing import Optional
+from typing import Optional, Dict, Any
+import asyncio
+from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.logging_config import get_database_logger
+from app.exceptions import DatabaseError, ConfigurationError
 
 logger = get_database_logger()
 
-# Supabase client
-supabase: Optional[Client] = None
+# Supabase client singleton
+_supabase_client: Optional[Client] = None
+_client_lock = asyncio.Lock()
 
-# SQLAlchemy setup for direct database access if needed
-Base = declarative_base()
 
-class HarvestLogTable(Base):
-    __tablename__ = "harvest_logs"
+async def init_supabase() -> Client:
+    """Initialize Supabase client with proper error handling and validation"""
+    global _supabase_client
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    crop_name = Column(String(100), nullable=False)
-    quantity = Column(Float, nullable=False)
-    unit = Column(String(50), nullable=False)
-    harvest_date = Column(DateTime, nullable=False)
-    location = Column(String(200), nullable=True)
-    notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
-def init_supabase() -> Client:
-    """Initialize Supabase client"""
-    global supabase
-    if not supabase and settings.supabase_url and settings.supabase_service_key:
+    async with _client_lock:
+        if _supabase_client is not None:
+            return _supabase_client
+            
+        # Validate configuration
+        if not settings.supabase_url:
+            raise ConfigurationError("SUPABASE_URL is not configured")
+        if not settings.supabase_service_key:
+            raise ConfigurationError("SUPABASE_SERVICE_KEY is not configured")
+        
         logger.info("Initializing Supabase client")
         try:
-            supabase = create_client(settings.supabase_url, settings.supabase_service_key)
-            logger.info("✓ Supabase client created successfully")
+            _supabase_client = create_client(
+                settings.supabase_url, 
+                settings.supabase_service_key
+            )
+            
+            # Test connection with a simple query
+            await _test_connection(_supabase_client)
+            
+            logger.info("✓ Supabase client created and tested successfully")
+            return _supabase_client
+            
         except Exception as e:
-            logger.error(f"Failed to create Supabase client: {e}", exc_info=True)
-            raise
-    return supabase
+            logger.error(f"Failed to initialize Supabase client: {e}", exc_info=True)
+            _supabase_client = None
+            raise DatabaseError(f"Failed to initialize database connection: {str(e)}")
+
+
+async def _test_connection(client: Client) -> None:
+    """Test the Supabase connection with a simple query"""
+    try:
+        # Try a simple query to test the connection
+        result = client.table("harvest_logs").select("id").limit(1).execute()
+        logger.debug("Database connection test successful")
+    except Exception as e:
+        logger.error(f"Database connection test failed: {e}")
+        raise DatabaseError(f"Database connection test failed: {str(e)}")
 
 
 def get_supabase() -> Client:
-    """Get Supabase client instance"""
-    if not supabase:
-        logger.debug("Supabase client not initialized, initializing now")
-        init_supabase()
-    return supabase
+    """Get Supabase client instance (synchronous)"""
+    global _supabase_client
+    if _supabase_client is None:
+        raise DatabaseError("Supabase client not initialized. Call init_supabase() first.")
+    return _supabase_client
+
+
+async def get_supabase_async() -> Client:
+    """Get Supabase client instance (asynchronous)"""
+    global _supabase_client
+    if _supabase_client is None:
+        return await init_supabase()
+    return _supabase_client
+
+
+@asynccontextmanager
+async def get_db_session():
+    """Context manager for database sessions with proper error handling"""
+    try:
+        client = await get_supabase_async()
+        yield client
+    except Exception as e:
+        logger.error(f"Database session error: {e}", exc_info=True)
+        raise DatabaseError(f"Database session error: {str(e)}")
+
+
+async def close_supabase():
+    """Close Supabase client connection"""
+    global _supabase_client
+    async with _client_lock:
+        if _supabase_client is not None:
+            logger.info("Closing Supabase client connection")
+            # Supabase client doesn't have an explicit close method
+            # but we can clean up our reference
+            _supabase_client = None
+            logger.info("✓ Supabase client connection closed")
 
 
 async def create_harvest_logs_table():
-    """Create the harvest_logs table if it doesn't exist"""
-    logger.info("Checking harvest_logs table existence")
-    client = get_supabase()
+    """Check if harvest_logs table exists and is accessible"""
+    logger.info("Verifying harvest_logs table accessibility")
     
-    # Check if table exists and create if it doesn't
     try:
-        # Try to fetch from table to see if it exists
+        client = await get_supabase_async()
+        
+        # Try to fetch from table to see if it exists and is accessible
         logger.debug("Testing harvest_logs table access")
-        result = client.table("harvest_logs").select("*").limit(1).execute()
+        result = client.table("harvest_logs").select("id").limit(1).execute()
         logger.info("✓ harvest_logs table exists and is accessible")
+        
     except Exception as e:
-        # Table doesn't exist, let's create it using SQL
-        # Note: In a real application, you would typically use Supabase's SQL editor
-        # or migrations to create tables
         logger.warning(f"harvest_logs table may not exist or is inaccessible: {e}")
-        logger.info("Please create the harvest_logs table in Supabase SQL editor using the following SQL:")
+        logger.info("Please ensure the harvest_logs table exists in your Supabase database")
+        
+        # Log the SQL script for reference but don't fail startup
         sql_script = """
-        CREATE TABLE IF NOT EXISTS harvest_logs (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            crop_name VARCHAR(100) NOT NULL,
-            quantity FLOAT NOT NULL CHECK (quantity > 0),
-            unit VARCHAR(50) NOT NULL,
-            harvest_date TIMESTAMP WITH TIME ZONE NOT NULL,
-            location VARCHAR(200),
-            notes TEXT,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-        
-        -- Create updated_at trigger
-        CREATE OR REPLACE FUNCTION update_updated_at_column()
-        RETURNS TRIGGER AS $$
-        BEGIN
-            NEW.updated_at = NOW();
-            RETURN NEW;
-        END;
-        $$ language 'plpgsql';
-        
-        CREATE TRIGGER update_harvest_logs_updated_at 
-            BEFORE UPDATE ON harvest_logs 
-            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Create harvest_logs table with proper structure
+CREATE TABLE IF NOT EXISTS harvest_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    crop_name VARCHAR(100) NOT NULL,
+    quantity FLOAT NOT NULL CHECK (quantity > 0),
+    unit VARCHAR(50) NOT NULL,
+    harvest_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    location VARCHAR(200),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create harvest_images table for image metadata
+CREATE TABLE IF NOT EXISTS harvest_images (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    harvest_log_id UUID NOT NULL REFERENCES harvest_logs(id) ON DELETE CASCADE,
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INTEGER NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    upload_order INTEGER DEFAULT 0,
+    public_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create updated_at trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create triggers for updated_at
+CREATE TRIGGER update_harvest_logs_updated_at 
+    BEFORE UPDATE ON harvest_logs 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_harvest_images_updated_at 
+    BEFORE UPDATE ON harvest_images 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_harvest_logs_crop_name ON harvest_logs(crop_name);
+CREATE INDEX IF NOT EXISTS idx_harvest_logs_harvest_date ON harvest_logs(harvest_date);
+CREATE INDEX IF NOT EXISTS idx_harvest_images_harvest_log_id ON harvest_images(harvest_log_id);
+CREATE INDEX IF NOT EXISTS idx_harvest_images_upload_order ON harvest_images(harvest_log_id, upload_order);
         """
-        logger.info(sql_script) 
+        logger.debug(f"SQL schema reference:\n{sql_script}")
+
+
+# Database utility functions
+async def execute_query(query: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Execute a raw SQL query with proper error handling"""
+    try:
+        client = await get_supabase_async()
+        result = client.rpc(query, params or {}).execute()
+        return result.data
+    except Exception as e:
+        logger.error(f"Query execution failed: {e}", exc_info=True)
+        raise DatabaseError(f"Query execution failed: {str(e)}")
+
+
+async def health_check() -> Dict[str, Any]:
+    """Perform a database health check"""
+    try:
+        client = await get_supabase_async()
+        
+        # Simple query to test connectivity
+        result = client.table("harvest_logs").select("id").limit(1).execute()
+        
+        return {
+            "status": "healthy",
+            "message": "Database connection successful",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}", exc_info=True)
+        return {
+            "status": "unhealthy",
+            "message": f"Database connection failed: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat()
+        } 

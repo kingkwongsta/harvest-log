@@ -2,7 +2,7 @@
 Image upload and management API endpoints
 """
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request
+from fastapi import APIRouter, UploadFile, File, Form, Depends, Request
 from typing import List, Optional
 from uuid import UUID
 
@@ -16,6 +16,8 @@ from app.storage import storage_service
 from app.database import get_supabase
 from app.dependencies import get_db
 from app.logging_config import get_api_logger
+from app.exceptions import NotFoundError, StorageError, ValidationException, DatabaseError
+from app.validators import DataSanitizer
 
 # Set up proper structured logging
 logger = get_api_logger()
@@ -54,11 +56,23 @@ async def upload_harvest_image(
         if not harvest_check.data:
             logger.warning(f"API: Harvest log not found: {harvest_log_id}", 
                           extra={"request_id": request_id, "record_id": str(harvest_log_id)})
-            raise HTTPException(status_code=404, detail="Harvest log not found")
+            raise NotFoundError("Harvest log", str(harvest_log_id))
         
-        # Read file content
+        # Read and validate file content
         file_content = await file.read()
         file_size = len(file_content)
+        
+        # Validate file upload using our sanitizer
+        try:
+            validated_data = DataSanitizer.sanitize_image_data(
+                filename=file.filename or "unknown",
+                file_content=file_content
+            )
+        except ValidationException:
+            raise  # Re-raise validation exceptions
+        except Exception as e:
+            logger.error(f"File validation failed: {e}", extra={"request_id": request_id})
+            raise ValidationException(f"File validation failed: {str(e)}")
         
         logger.info(f"API: Uploading file to storage - size: {file_size} bytes", 
                    extra={
@@ -67,10 +81,10 @@ async def upload_harvest_image(
                        "file_name": file.filename
                    })
         
-        # Upload to Supabase Storage
+        # Upload to Supabase Storage using validated data
         success, message, file_info = await storage_service.upload_image(
-            file_content=file_content,
-            original_filename=file.filename or "unknown",
+            file_content=validated_data['file_content'],
+            original_filename=validated_data['filename'],
             harvest_log_id=str(harvest_log_id)
         )
         
@@ -167,7 +181,7 @@ async def upload_harvest_image(
             data=harvest_image
         )
         
-    except HTTPException:
+    except (NotFoundError, StorageError):
         raise
     except Exception as e:
         logger.error(f"API: Failed to upload image: {str(e)}", 
@@ -177,7 +191,7 @@ async def upload_harvest_image(
                         "file_name": file.filename if file else "unknown"
                     }, 
                     exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error during image upload")
+        raise StorageError(f"Failed to upload image: {str(e)}")
 
 
 @router.post("/upload-multiple/{harvest_log_id}")
@@ -205,7 +219,7 @@ async def upload_multiple_harvest_images(
         if not harvest_check.data:
             logger.warning(f"API: Harvest log not found for multiple upload: {harvest_log_id}", 
                           extra={"request_id": request_id, "record_id": str(harvest_log_id)})
-            raise HTTPException(status_code=404, detail="Harvest log not found")
+            raise NotFoundError("Harvest log", str(harvest_log_id))
         
         # Limit to 5 files
         if len(files) > 5:
@@ -215,7 +229,7 @@ async def upload_multiple_harvest_images(
                               "file_count": len(files),
                               "max_allowed": 5
                           })
-            raise HTTPException(status_code=400, detail="Maximum 5 images allowed per upload")
+            raise ValidationException("Maximum 5 images allowed per upload")
         
         uploaded_images = []
         failed_uploads = []
@@ -230,19 +244,36 @@ async def upload_multiple_harvest_images(
                                "content_type": file.content_type
                            })
                 
-                # Read file content
+                # Read and validate file content
                 file_content = await file.read()
                 file_size = len(file_content)
+                
+                # Validate file upload
+                try:
+                    validated_data = DataSanitizer.sanitize_image_data(
+                        filename=file.filename or f"unknown_{i}",
+                        file_content=file_content
+                    )
+                except ValidationException as e:
+                    logger.warning(f"File validation failed for {file.filename}: {e}", 
+                                 extra={"request_id": request_id})
+                    failed_uploads.append({"filename": file.filename, "error": str(e)})
+                    continue
+                except Exception as e:
+                    logger.error(f"Unexpected validation error for {file.filename}: {e}", 
+                               extra={"request_id": request_id})
+                    failed_uploads.append({"filename": file.filename, "error": f"Validation error: {str(e)}"})
+                    continue
                 
                 print(f"🔄 Processing file {i+1}/{len(files)}: {file.filename}")
                 print(f"   Content type: {file.content_type}")
                 print(f"   Size: {file_size} bytes")
                 print(f"   First 16 bytes: {file_content[:16].hex() if len(file_content) >= 16 else 'N/A'}")
                 
-                # Upload to Supabase Storage
+                # Upload to Supabase Storage using validated data
                 success, message, file_info = await storage_service.upload_image(
-                    file_content=file_content,
-                    original_filename=file.filename or f"unknown_{i}",
+                    file_content=validated_data['file_content'],
+                    original_filename=validated_data['filename'],
                     harvest_log_id=str(harvest_log_id)
                 )
                 
@@ -329,7 +360,7 @@ async def upload_multiple_harvest_images(
             }
         }
         
-    except HTTPException:
+    except (NotFoundError, ValidationException):
         raise
     except Exception as e:
         logger.error(f"API: Failed multiple image upload: {str(e)}", 
@@ -338,7 +369,7 @@ async def upload_multiple_harvest_images(
                         "harvest_log_id": str(harvest_log_id)
                     }, 
                     exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error during multiple image upload")
+        raise StorageError(f"Failed multiple image upload: {str(e)}")
 
 
 @router.get("/harvest/{harvest_log_id}")
@@ -385,7 +416,7 @@ async def get_harvest_images(
                         "harvest_log_id": str(harvest_log_id)
                     }, 
                     exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error while retrieving images")
+        raise DatabaseError(f"Failed to retrieve images: {str(e)}")
 
 
 @router.delete("/{image_id}")
@@ -414,7 +445,7 @@ async def delete_harvest_image(
         if not image_result.data:
             logger.warning(f"API: Image not found for deletion: {image_id}", 
                           extra={"request_id": request_id, "record_id": str(image_id)})
-            raise HTTPException(status_code=404, detail="Image not found")
+            raise NotFoundError("Image", str(image_id))
         
         image_data = image_result.data[0]
         file_path = image_data.get("file_path")
@@ -438,7 +469,7 @@ async def delete_harvest_image(
                             "record_id": str(image_id),
                             "table": "harvest_images"
                         })
-            raise HTTPException(status_code=500, detail="Failed to delete image from database")
+            raise DatabaseError("Failed to delete image from database")
         
         logger.info(f"API: Successfully deleted harvest image {image_id}", 
                    extra={
@@ -453,7 +484,7 @@ async def delete_harvest_image(
             "data": {"deleted_image_id": str(image_id)}
         }
         
-    except HTTPException:
+    except (NotFoundError, DatabaseError):
         raise
     except Exception as e:
         logger.error(f"API: Failed to delete harvest image {image_id}: {str(e)}", 
@@ -462,4 +493,4 @@ async def delete_harvest_image(
                         "record_id": str(image_id)
                     }, 
                     exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error while deleting image") 
+        raise StorageError(f"Failed to delete image: {str(e)}") 

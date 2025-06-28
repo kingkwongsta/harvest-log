@@ -50,6 +50,49 @@ class Settings(BaseSettings):
     log_file: str = ""  # Optional log file path
     json_logs: bool = False  # Whether to output logs in JSON format
     slow_request_threshold: float = 1000.0  # Milliseconds
+    
+    # Cache Configuration
+    cache_max_size: int = 1000
+    cache_default_ttl: int = 300  # 5 minutes
+    cache_stats_ttl: int = 180  # 3 minutes
+    
+    # Rate Limiting Configuration
+    rate_limit_requests_per_minute: int = 60
+    rate_limit_burst_limit: int = 10
+    rate_limit_enabled: bool = True
+    
+    # File Upload Configuration
+    max_file_size: int = 10 * 1024 * 1024  # 10MB
+    allowed_image_types: List[str] = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/bmp", "image/tiff"]
+    max_filename_length: int = 255
+    
+    # Pagination Configuration
+    default_page_size: int = 20
+    max_page_size: int = 100
+    
+    # Background Tasks Configuration
+    cache_cleanup_interval: int = 300  # 5 minutes
+    temp_file_cleanup_interval: int = 86400  # 24 hours
+    temp_file_max_age: int = 86400  # 24 hours
+    
+    # Health Check Configuration
+    health_check_timeout: float = 5.0  # seconds
+    health_check_interval: int = 60  # seconds
+    
+    # API Configuration
+    api_title: str = "Harvest Log API"
+    api_description: str = "A comprehensive API for managing harvest logs and garden data"
+    api_contact_name: str = "Harvest Log API"
+    api_contact_email: str = "support@harvestlog.com"
+    api_license_name: str = "MIT"
+    api_license_url: str = "https://opensource.org/licenses/MIT"
+    
+    # Feature Flags
+    enable_rate_limiting: bool = True
+    enable_caching: bool = True
+    enable_background_tasks: bool = True
+    enable_detailed_logging: bool = True
+    enable_performance_monitoring: bool = True
 
     @field_validator('cors_origins', mode='before')
     @classmethod

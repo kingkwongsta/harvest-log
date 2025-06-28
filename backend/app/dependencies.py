@@ -2,21 +2,36 @@ from typing import List, Optional
 from uuid import UUID
 from supabase import Client
 from app.models import HarvestLog, HarvestLogCreate, HarvestLogUpdate, HarvestImage
-from app.database import get_supabase
+from app.database import get_supabase, get_supabase_async, get_db_session
 from app.logging_config import get_database_logger
 from app.storage import storage_service
+from app.exceptions import DatabaseError
+from app.cache import cache_manager, cached
 
 logger = get_database_logger()
 
 
 def get_supabase_client() -> Client:
-    """Dependency to get Supabase client"""
-    return get_supabase()
+    """Dependency to get Supabase client (synchronous)"""
+    try:
+        return get_supabase()
+    except Exception as e:
+        logger.error(f"Failed to get Supabase client: {e}", exc_info=True)
+        raise DatabaseError(f"Database connection unavailable: {str(e)}")
 
 
 def get_db() -> Client:
     """Alternative dependency name for Supabase client"""
-    return get_supabase()
+    return get_supabase_client()
+
+
+async def get_async_db():
+    """Dependency to get Supabase client (asynchronous)"""
+    try:
+        return await get_supabase_async()
+    except Exception as e:
+        logger.error(f"Failed to get async Supabase client: {e}", exc_info=True)
+        raise DatabaseError(f"Database connection unavailable: {str(e)}")
 
 
 async def _fetch_harvest_images(harvest_log_id: str, client: Client, request_id: str = "unknown") -> List[HarvestImage]:
@@ -98,6 +113,11 @@ async def create_harvest_log_in_db(harvest_log_data: HarvestLogCreate, client: C
                            "table": "harvest_logs",
                            "crop_name": new_log.crop_name
                        })
+            
+            # Invalidate relevant caches
+            await cache_manager.invalidate_harvest_logs_lists()
+            await cache_manager.invalidate_harvest_stats()
+            
             return new_log
         else:
             logger.error("DB: Failed to create harvest log - no data returned", 
@@ -120,6 +140,7 @@ async def create_harvest_log_in_db(harvest_log_data: HarvestLogCreate, client: C
         raise
 
 
+@cached(ttl=300, key_prefix="harvest_logs")
 async def get_all_harvest_logs_from_db(client: Client, request_id: str = "unknown") -> List[HarvestLog]:
     """Get all harvest logs from Supabase with their associated images"""
     logger.info("DB: Retrieving all harvest logs", 
@@ -204,6 +225,7 @@ async def get_all_harvest_logs_from_db(client: Client, request_id: str = "unknow
         raise
 
 
+@cached(ttl=600, key_prefix="harvest_log")
 async def get_harvest_log_by_id_from_db(log_id: UUID, client: Client, request_id: str = "unknown") -> Optional[HarvestLog]:
     """Get a harvest log by ID from Supabase with its associated images"""
     logger.info(f"DB: Retrieving harvest log by ID: {log_id}", 
@@ -320,6 +342,11 @@ async def update_harvest_log_in_db(log_id: UUID, harvest_log_update: HarvestLogU
                            "fields_updated": list(update_data.keys()),
                            "crop_name": updated_log.crop_name
                        })
+            
+            # Invalidate relevant caches
+            await cache_manager.invalidate_harvest_log(str(log_id))
+            await cache_manager.invalidate_harvest_stats()
+            
             return updated_log
         else:
             logger.warning(f"DB: Harvest log not found for update: {log_id}", 
@@ -400,6 +427,11 @@ async def delete_harvest_log_from_db(log_id: UUID, client: Client, request_id: s
                        "deleted_images": len(log.images),
                        "crop_name": log.crop_name
                    })
+        
+        # Invalidate relevant caches
+        await cache_manager.invalidate_harvest_log(str(log_id))
+        await cache_manager.invalidate_harvest_stats()
+        
         # Return the deleted log
         return log
             

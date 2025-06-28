@@ -3,15 +3,26 @@
 # uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from app.config import settings
 from app.routers import harvest_logs, images
-from app.database import init_supabase, create_harvest_logs_table
+from app.database import init_supabase, create_harvest_logs_table, close_supabase, health_check as db_health_check
 from app.logging_config import setup_logging, get_app_logger
 from app.middleware import LoggingMiddleware, PerformanceMiddleware
 from app.dependencies import get_supabase_client
+from app.cache import cache_manager
+from app.exceptions import BaseAPIException, DatabaseError
+from app.error_handlers import (
+    base_api_exception_handler,
+    http_exception_handler,
+    validation_exception_handler,
+    pydantic_validation_exception_handler,
+    general_exception_handler
+)
 
 # Setup logging
 setup_logging(
@@ -32,21 +43,21 @@ async def lifespan(app: FastAPI):
     logger.info(f"Log level: {settings.log_level}")
     
     # Initialize Supabase connection
-    if settings.supabase_url and settings.supabase_anon_key:
+    if settings.supabase_url and settings.supabase_service_key:
         try:
-            supabase_client = init_supabase()
+            supabase_client = await init_supabase()
             logger.info("✓ Supabase connection initialized")
             
-            # Try to create table if it doesn't exist
+            # Verify database table accessibility
             await create_harvest_logs_table()
-            logger.info("✓ Database table checked/created")
+            logger.info("✓ Database tables verified")
             
         except Exception as e:
             logger.error(f"⚠ Supabase initialization failed: {e}", exc_info=True)
-            logger.error("Please check your SUPABASE_URL and SUPABASE_ANON_KEY environment variables")
+            logger.error("Please check your SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables")
     else:
         logger.warning("⚠ Supabase credentials not found in environment variables")
-        logger.warning("Please set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file")
+        logger.warning("Please set SUPABASE_URL and SUPABASE_SERVICE_KEY in your .env file")
     
     logger.info("✓ Application startup completed")
     
@@ -54,6 +65,14 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info(f"Shutting down {settings.app_name}")
+    
+    # Close database connections
+    try:
+        await close_supabase()
+        logger.info("✓ Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database connections: {e}")
+    
     logger.info("✓ Application shutdown completed")
 
 
@@ -101,6 +120,13 @@ app.add_middleware(
     allow_headers=settings.cors_headers,
 )
 
+# Add exception handlers
+app.add_exception_handler(BaseAPIException, base_api_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(ValidationError, pydantic_validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+
 # Include routers
 app.include_router(harvest_logs.router)
 app.include_router(images.router)
@@ -136,7 +162,7 @@ async def root(request: Request):
         logger.error(f"API: Health check failed: {str(e)}", 
                     extra={"request_id": request_id}, 
                     exc_info=True)
-        raise HTTPException(status_code=500, detail="Health check failed")
+        raise DatabaseError("Health check failed")
 
 
 @app.get(
@@ -156,15 +182,21 @@ async def health_check(request: Request):
     try:
         logger.info("API: Detailed health check requested", extra={"request_id": request_id})
         
-        supabase_configured = bool(settings.supabase_url and settings.supabase_anon_key)
+        supabase_configured = bool(settings.supabase_url and settings.supabase_service_key)
+        
+        # Perform database health check
+        db_status = await db_health_check()
+        
+        overall_status = "healthy" if db_status["status"] == "healthy" else "degraded"
         
         response = {
-            "status": "healthy",
+            "status": overall_status,
             "app_name": settings.app_name,
             "version": settings.app_version,
             "debug_mode": settings.debug,
-            "message": "All systems operational",
-            "supabase_configured": supabase_configured
+            "message": "All systems operational" if overall_status == "healthy" else "Some services degraded",
+            "supabase_configured": supabase_configured,
+            "database": db_status
         }
         
         logger.info("API: Detailed health check completed successfully", 
@@ -179,7 +211,7 @@ async def health_check(request: Request):
         logger.error(f"API: Detailed health check failed: {str(e)}", 
                     extra={"request_id": request_id}, 
                     exc_info=True)
-        raise HTTPException(status_code=500, detail="Detailed health check failed")
+        raise DatabaseError("Detailed health check failed")
 
 
 @app.get(
@@ -204,6 +236,16 @@ async def get_harvest_stats(
     
     try:
         logger.info("API: Retrieving harvest statistics", extra={"request_id": request_id})
+        
+        # Try to get from cache first
+        cached_stats = await cache_manager.get_harvest_stats()
+        if cached_stats:
+            logger.debug("API: Returning cached harvest statistics", extra={"request_id": request_id})
+            return {
+                "success": True,
+                "message": "Harvest statistics retrieved successfully (cached)",
+                "data": cached_stats
+            }
         
         # Get current date info
         now = datetime.now()
@@ -264,6 +306,9 @@ async def get_harvest_stats(
                        "this_week": week_count
                    })
         
+        # Cache the stats for 3 minutes
+        await cache_manager.set_harvest_stats(stats, ttl=180)
+        
         return {
             "success": True,
             "message": "Harvest statistics retrieved successfully",
@@ -274,7 +319,4 @@ async def get_harvest_stats(
         logger.error(f"API: Failed to retrieve harvest stats: {str(e)}", 
                     extra={"request_id": request_id}, 
                     exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve harvest statistics: {str(e)}"
-        ) 
+        raise DatabaseError(f"Failed to retrieve harvest statistics: {str(e)}") 
