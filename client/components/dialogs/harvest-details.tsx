@@ -34,7 +34,7 @@ export const HarvestDetails = React.memo(function HarvestDetails({ harvest }: Ha
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex items-center gap-2 text-sm">
           <Scale className="w-4 h-4 text-muted-foreground" />
-          <span className="font-medium">Quantity:</span>
+          <span className="font-medium">Amount:</span>
           <span>{harvest.quantity} {harvest.unit}</span>
         </div>
 

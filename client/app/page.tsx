@@ -365,14 +365,14 @@ export default function HomePage() {
                 <Sprout className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Harvest Log</h1>
-                <p className="text-sm text-organic">Track your garden&apos;s bounty</p>
+                <h1 className="text-2xl font-bold text-foreground">My Harvest Log</h1>
+                <p className="text-sm text-organic">Track what you grow</p>
               </div>
             </div>
             <Link href="/harvests">
               <Button variant="outline" size="sm" className="hover:border-primary/30">
                 <List className="w-4 h-4 mr-2" />
-                View All
+All
               </Button>
             </Link>
           </div>
@@ -381,25 +381,19 @@ export default function HomePage() {
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto p-6">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-foreground mb-3">Log Your Harvest</h2>
-          <p className="text-organic max-w-md mx-auto">Record the fruits of your labor and track your garden&apos;s productivity over time</p>
-        </div>
-
         <Card>
           <CardHeader>
-            <CardTitle>New Harvest Entry</CardTitle>
-            <CardDescription>Record the details of your latest harvest</CardDescription>
+            <CardTitle>New Entry</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fruit">What did you harvest? *</Label>
+                  <Label htmlFor="fruit">What?</Label>
                   <Select value={formData.fruit} onValueChange={(value) => handleInputChange("fruit", value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select fruit/vegetable" />
+                      <SelectValue placeholder="Choose" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="avocado">Avocado</SelectItem>
@@ -419,7 +413,7 @@ export default function HomePage() {
                     <div className="mt-2">
                       <Input
                         id="customFruit"
-                        placeholder="Enter fruit/vegetable name"
+                        placeholder="Type here"
                         value={formData.customFruit}
                         onChange={(e) => handleInputChange("customFruit", e.target.value)}
                         required
@@ -429,11 +423,11 @@ export default function HomePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">How many? *</Label>
+                  <Label htmlFor="quantity">Amount</Label>
                   <Input
                     id="quantity"
                     type="number"
-                    placeholder="e.g., 12"
+                    placeholder="12"
                     value={formData.quantity}
                     onChange={(e) => handleInputChange("quantity", e.target.value)}
                     required
@@ -443,17 +437,17 @@ export default function HomePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Unit/Weight (optional)</Label>
+                  <Label htmlFor="weight">Unit</Label>
                   <Input
                     id="weight"
-                    placeholder="e.g., lbs, kg, pieces"
+                    placeholder="lbs, kg, pieces"
                     value={formData.weight}
                     onChange={(e) => handleInputChange("weight", e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="date">When? *</Label>
+                  <Label htmlFor="date">When?</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
@@ -471,7 +465,7 @@ export default function HomePage() {
               {/* Photo Upload */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Photos (optional)</Label>
+                  <Label>Photos</Label>
                   <div className="flex items-center space-x-2">
                     {compressionStats.length > 0 && (
                       <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
@@ -519,7 +513,7 @@ export default function HomePage() {
                   ) : (
                     <div>
                       <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-foreground mb-4">Add photos of your harvest</p>
+                      <p className="text-foreground mb-4">Add photos</p>
                       
                       {/* Mobile-first buttons */}
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -556,7 +550,7 @@ export default function HomePage() {
                       </div>
                       
                       <p className="text-sm text-organic mt-3">
-                        Up to 5 photos • Auto-compressed for faster upload
+                        Up to 5 photos
                       </p>
                     </div>
                   )}
@@ -610,7 +604,7 @@ export default function HomePage() {
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
-                  placeholder="Any notes about this harvest? (taste, quality, growing conditions, etc.)"
+                  placeholder="Notes about taste, quality, conditions..."
                   value={formData.notes}
                   onChange={(e) => handleInputChange("notes", e.target.value)}
                   rows={3}
@@ -635,7 +629,7 @@ export default function HomePage() {
                 ) : isSubmitting ? (
                   photos.length > 0 ? "Saving harvest and uploading photos..." : "Saving harvest..."
                 ) : (
-                  `Log Harvest${photos.length > 0 ? ` & Upload ${photos.length} Photo${photos.length > 1 ? 's' : ''}` : ''}`
+                  'Save'
                 )}
               </Button>
             </form>
@@ -687,9 +681,9 @@ export default function HomePage() {
       <SuccessDialog
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
-        title="Harvest Logged Successfully!"
-        description={`Your harvest has been recorded${photos.length > 0 ? ` with ${photos.length} photo${photos.length > 1 ? 's' : ''}` : ''} and added to your log.`}
-        actionLabel="Continue Logging"
+        title="Saved!"
+        description="Your harvest has been saved."
+        actionLabel="Continue"
         onAction={() => {
           setShowSuccessDialog(false)
         }}
@@ -699,7 +693,7 @@ export default function HomePage() {
       <ErrorDialog
         open={showErrorDialog}
         onOpenChange={setShowErrorDialog}
-        title="Failed to Log Harvest"
+        title="Error"
         description={errorMessage}
         actionLabel="Try Again"
         onAction={() => {

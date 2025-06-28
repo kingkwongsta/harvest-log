@@ -62,7 +62,7 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
           {/* Info */}
           <div className="p-4 bg-gray-900 text-white text-center">
             <p className="text-sm text-gray-300">
-              Point your camera at the harvest and tap the capture button
+              Point camera and tap to capture
             </p>
           </div>
         </CardContent>

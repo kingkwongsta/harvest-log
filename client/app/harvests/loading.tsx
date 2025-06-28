@@ -5,8 +5,8 @@ export default function Loading() {
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-6">
         <LoadingCard 
-          title="Loading Harvests..." 
-          description="Fetching your harvest log data"
+          title="Loading..." 
+          description="Getting your data"
         />
       </div>
     </div>

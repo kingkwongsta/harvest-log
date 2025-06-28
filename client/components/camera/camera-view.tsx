@@ -32,7 +32,7 @@ export const CameraView = React.memo(function CameraView({ videoRef, canvasRef, 
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="text-white text-center">
             <RotateCw className="w-8 h-8 animate-spin mx-auto mb-2" />
-            <p>Initializing camera...</p>
+            <p>Starting camera...</p>
           </div>
         </div>
       )}

@@ -29,7 +29,7 @@ export const CameraControls = React.memo(function CameraControls({
     <>
       {/* Header Controls */}
       <div className="flex items-center justify-between p-4 bg-gray-900 text-white">
-        <h3 className="text-lg font-semibold">Take Photo</h3>
+        <h3 className="text-lg font-semibold">Camera</h3>
         <div className="flex items-center gap-2">
           {hasMultipleCameras && (
             <Button
@@ -73,7 +73,7 @@ export const CameraControls = React.memo(function CameraControls({
           
           <div className="text-center mt-2">
             <p className="text-white text-sm">
-              {isCapturing ? 'Capturing...' : 'Tap to capture'}
+              {isCapturing ? 'Taking...' : 'Tap to take'}
             </p>
           </div>
         </div>
@@ -83,7 +83,7 @@ export const CameraControls = React.memo(function CameraControls({
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center">
           <Camera className="w-16 h-16 mb-4 text-gray-500" />
-          <p className="text-lg mb-2">Camera Error</p>
+          <p className="text-lg mb-2">Error</p>
           <p className="text-sm text-gray-300 mb-4">{error}</p>
           <Button onClick={onRetry} disabled={isInitializing}>
             {isInitializing ? 'Retrying...' : 'Try Again'}

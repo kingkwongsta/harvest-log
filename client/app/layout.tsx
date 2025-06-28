@@ -7,8 +7,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Harvest Log - Track Your Garden",
-  description: "Simple personal harvest logging for your garden",
+  title: "My Harvest Log",
+  description: "Personal garden harvest tracker",
 }
 
 export default function RootLayout({

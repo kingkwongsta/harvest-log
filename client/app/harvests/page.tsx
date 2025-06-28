@@ -101,15 +101,15 @@ export default function HarvestsPage() {
                   <Sprout className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-foreground">All Harvests</h1>
-                  <p className="text-sm text-organic">{harvests.length} total entries</p>
+                  <h1 className="text-2xl font-bold text-foreground">My Harvests</h1>
+                  <p className="text-sm text-organic">{harvests.length} entries</p>
                 </div>
               </div>
             </div>
             <Link href="/harvests/new">
               <Button variant="harvest" size="sm">
                 <Plus className="w-4 h-4 mr-2" />
-                Add New
+Add
               </Button>
             </Link>
           </div>
@@ -125,7 +125,7 @@ export default function HarvestsPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
-                    placeholder="Search harvests..."
+                    placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -134,7 +134,7 @@ export default function HarvestsPage() {
               </div>
               <Select value={filterFruit} onValueChange={setFilterFruit}>
                 <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="All fruits" />
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
@@ -165,7 +165,7 @@ export default function HarvestsPage() {
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <p className="mt-2 text-organic">Loading harvests...</p>
+                <p className="mt-2 text-organic">Loading...</p>
               </div>
             </CardContent>
           </Card>
@@ -195,12 +195,12 @@ export default function HarvestsPage() {
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <Sprout className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-foreground mb-2">No harvests found</p>
-                <p className="text-sm text-organic">Start by adding your first harvest entry</p>
+                <p className="text-foreground mb-2">No harvests yet</p>
+                <p className="text-sm text-organic">Add your first harvest</p>
                 <Link href="/harvests/new">
                   <Button variant="harvest" className="mt-4">
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Harvest
+Add First
                   </Button>
                 </Link>
               </div>
@@ -236,13 +236,13 @@ export default function HarvestsPage() {
                         </Badge>
                       )}
                       <Badge variant="outline" className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                        Click to view details
+View details
                       </Badge>
                     </div>
 
                     {/* Quantity */}
                     <div className="text-sm text-organic mb-2">
-                      <span className="font-medium text-foreground">Quantity:</span> {harvest.quantity} {harvest.unit}
+                      <span className="font-medium text-foreground">Amount:</span> {harvest.quantity} {harvest.unit}
                     </div>
 
                     {/* Date */}

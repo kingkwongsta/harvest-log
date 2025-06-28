@@ -18,7 +18,7 @@ export const HarvestImageGallery = React.memo(function HarvestImageGallery({ ima
       <div className="aspect-video bg-muted rounded-lg flex items-center justify-center text-muted-foreground">
         <div className="text-center">
           <Camera className="w-8 h-8 mx-auto mb-2" />
-          <p className="text-sm">No photos available</p>
+          <p className="text-sm">No photos</p>
         </div>
       </div>
     )
