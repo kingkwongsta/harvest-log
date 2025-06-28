@@ -4,8 +4,8 @@ import React, { RefObject } from "react"
 import { RotateCw } from "lucide-react"
 
 interface CameraViewProps {
-  videoRef: RefObject<HTMLVideoElement>
-  canvasRef: RefObject<HTMLCanvasElement>
+  videoRef: RefObject<HTMLVideoElement | null>
+  canvasRef: RefObject<HTMLCanvasElement | null>
   isInitializing: boolean
   error: string | null
 }

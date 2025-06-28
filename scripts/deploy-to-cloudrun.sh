@@ -22,9 +22,12 @@ echo "Service: ${SERVICE_NAME}"
 echo "Image: ${IMAGE_PATH}"
 echo ""
 
-# Check if we're in the backend directory
-if [ ! -f "Dockerfile" ]; then
-    echo "❌ Dockerfile not found. Make sure you're running this script from the backend directory."
+# Navigate to backend directory if running from scripts
+if [ ! -f "Dockerfile" ] && [ -f "../backend/Dockerfile" ]; then
+    echo "📁 Switching to backend directory..."
+    cd ../backend
+elif [ ! -f "Dockerfile" ]; then
+    echo "❌ Dockerfile not found. Make sure you're running this script from the backend directory or scripts directory."
     exit 1
 fi
 
@@ -139,7 +142,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --cpu 1 \
   --max-instances 10 \
   --timeout 300 \
-  --set-env-vars="PYTHONUNBUFFERED=1,SUPABASE_URL=${SUPABASE_URL},SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY},SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}" \
+  --set-env-vars="^|^PYTHONUNBUFFERED=1|SUPABASE_URL=${SUPABASE_URL}|SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}|SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}|CORS_ORIGINS=http://localhost:3000,https://harvest-log.vercel.app,https://harvest-log-git-main-bkwongs-projects.vercel.app,https://harvest-log-bkwongs-projects.vercel.app" \
   --project ${PROJECT_ID}
 
 echo ""

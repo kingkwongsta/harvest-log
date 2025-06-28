@@ -20,9 +20,10 @@ class Settings(BaseSettings):
     # CORS Configuration - can be overridden via CORS_ORIGINS env var (comma-separated)
     cors_origins: Union[str, List[str]] = [
         "http://localhost:3000",  # Local development
-        "https://harvest-log-git-main-bkwongs-projects.vercel.app",  # Vercel deployment
-        "https://harvest-log-bkwongs-projects.vercel.app",  # Vercel production
-        "https://harvest-log.vercel.app",  # If you have a custom domain
+        "https://harvest-log.vercel.app",  # Production Vercel deployment
+        "https://harvest-log-git-main-bkwongs-projects.vercel.app",  # Vercel deployment branch
+        "https://harvest-log-bkwongs-projects.vercel.app",  # Vercel alternate
+        "https://*.vercel.app",  # All Vercel preview deployments
     ]
     cors_credentials: bool = True
     cors_methods: List[str] = ["*"]
