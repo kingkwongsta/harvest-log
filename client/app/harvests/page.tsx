@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { harvestLogsApi, ApiError, type HarvestLogResponse, type HarvestImage } from "@/lib/api"
+import { harvestLogsApi, ApiError, type HarvestLogResponse } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { HarvestDetailDialog } from "@/components/ui/harvest-detail-dialog"
+import { HarvestDetailDialog } from "@/components/dialogs/harvest-detail-dialog"
 import { Apple, Search, Calendar, MapPin, Camera, Plus, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 

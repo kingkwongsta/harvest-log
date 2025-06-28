@@ -1,17 +1,6 @@
-"use client"
+import { useState, useRef, useCallback, useEffect } from 'react'
 
-import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Camera, X, RotateCw, ImageIcon, SwitchCamera } from 'lucide-react'
-
-interface CameraCaptureProps {
-  onCapture: (file: File) => void
-  onClose: () => void
-  isOpen: boolean
-}
-
-export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps) {
+export function useCamera(isOpen: boolean, facingMode: 'user' | 'environment') {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -19,7 +8,6 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
   const [isInitializing, setIsInitializing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCapturing, setIsCapturing] = useState(false)
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment') // Start with back camera for harvest photos
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false)
 
   // Check if device has multiple cameras
@@ -132,13 +120,8 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
     }
   }, [])
 
-  // Switch between front and back camera
-  const switchCamera = useCallback(() => {
-    setFacingMode(current => current === 'user' ? 'environment' : 'user')
-  }, [])
-
   // Capture photo
-  const capturePhoto = useCallback(async () => {
+  const capturePhoto = useCallback(async (onCapture: (file: File) => void, onClose: () => void) => {
     if (!videoRef.current || !canvasRef.current || isCapturing) return
 
     setIsCapturing(true)
@@ -204,7 +187,7 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
     } finally {
       setIsCapturing(false)
     }
-  }, [isCapturing, onCapture, onClose])
+  }, [isCapturing])
 
   // Initialize camera when component opens
   useEffect(() => {
@@ -224,106 +207,14 @@ export function CameraCapture({ onCapture, onClose, isOpen }: CameraCaptureProps
     }
   }, [facingMode, isOpen, initializeCamera])
 
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg bg-black border-gray-700">
-        <CardContent className="p-0">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 bg-gray-900 text-white">
-            <h3 className="text-lg font-semibold">Take Photo</h3>
-            <div className="flex items-center gap-2">
-              {hasMultipleCameras && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={switchCamera}
-                  disabled={isInitializing}
-                  className="text-white hover:bg-gray-700"
-                >
-                  <SwitchCamera className="w-5 h-5" />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="text-white hover:bg-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Camera View */}
-          <div className="relative aspect-[4/3] bg-gray-900 overflow-hidden">
-            {error ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center">
-                <Camera className="w-16 h-16 mb-4 text-gray-500" />
-                <p className="text-lg mb-2">Camera Error</p>
-                <p className="text-sm text-gray-300 mb-4">{error}</p>
-                <Button onClick={initializeCamera} disabled={isInitializing}>
-                  {isInitializing ? 'Retrying...' : 'Try Again'}
-                </Button>
-              </div>
-            ) : (
-              <>
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  playsInline
-                  muted
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="hidden"
-                />
-                
-                {isInitializing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="text-white text-center">
-                      <RotateCw className="w-8 h-8 animate-spin mx-auto mb-2" />
-                      <p>Initializing camera...</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Capture overlay */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black to-transparent p-4">
-                  <div className="flex items-center justify-center">
-                    <Button
-                      size="lg"
-                      onClick={capturePhoto}
-                      disabled={isInitializing || isCapturing || !!error}
-                      className="w-16 h-16 rounded-full bg-white hover:bg-gray-200 text-black border-4 border-gray-300"
-                    >
-                      {isCapturing ? (
-                        <RotateCw className="w-6 h-6 animate-spin" />
-                      ) : (
-                        <Camera className="w-6 h-6" />
-                      )}
-                    </Button>
-                  </div>
-                  
-                  <div className="text-center mt-2">
-                    <p className="text-white text-sm">
-                      {isCapturing ? 'Capturing...' : 'Tap to capture'}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="p-4 bg-gray-900 text-white text-center">
-            <p className="text-sm text-gray-300">
-              Point your camera at the harvest and tap the capture button
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-} 
+  return {
+    videoRef,
+    canvasRef,
+    isInitializing,
+    error,
+    isCapturing,
+    hasMultipleCameras,
+    initializeCamera,
+    capturePhoto
+  }
+}

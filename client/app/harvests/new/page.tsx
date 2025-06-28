@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CameraCapture } from "@/components/ui/camera-capture"
+import { CameraCapture } from "@/components/camera/camera-capture"
 import { Calendar, MapPin, Upload, X, Camera } from "lucide-react"
 import { useRouter } from "next/navigation"
 

@@ -9,11 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SuccessDialog } from "@/components/ui/success-dialog"
-import { ErrorDialog } from "@/components/ui/error-dialog"
+import { SuccessDialog } from "@/components/dialogs/success-dialog"
+import { ErrorDialog } from "@/components/dialogs/error-dialog"
 import { Progress } from "@/components/ui/progress"
-import { CameraCapture } from "@/components/ui/camera-capture"
-import { Apple, Calendar, MapPin, Camera, List, X, Upload, Sprout, TrendingUp, Clock } from "lucide-react"
+import { CameraCapture } from "@/components/camera/camera-capture"
+import { Calendar, Camera, List, X, Upload, Sprout, TrendingUp, Clock } from "lucide-react"
 import Link from "next/link"
 import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
 import { useImageCompression } from "@/lib/useImageCompression"
@@ -47,7 +47,7 @@ export default function HomePage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [photos, setPhotos] = useState<File[]>([])
-  const [originalPhotos, setOriginalPhotos] = useState<File[]>([])
+  const [, setOriginalPhotos] = useState<File[]>([])
   const [compressionStats, setCompressionStats] = useState<Array<{
     originalSize: number;
     compressedSize: number;
@@ -365,7 +365,7 @@ export default function HomePage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Harvest Log</h1>
-                <p className="text-sm text-organic">Track your garden's bounty</p>
+                <p className="text-sm text-organic">Track your garden&apos;s bounty</p>
               </div>
             </div>
             <Link href="/harvests">
@@ -382,7 +382,7 @@ export default function HomePage() {
       <div className="max-w-2xl mx-auto p-6">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-3">Log Your Harvest</h2>
-          <p className="text-organic max-w-md mx-auto">Record the fruits of your labor and track your garden's productivity over time</p>
+          <p className="text-organic max-w-md mx-auto">Record the fruits of your labor and track your garden&apos;s productivity over time</p>
         </div>
 
         <Card>

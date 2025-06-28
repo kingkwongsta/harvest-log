@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Camera, Search, Grid, List, Calendar, MapPin, Download, Share, Trash2, Upload, ArrowLeft, Eye } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Camera, Search, Grid, List, Calendar, MapPin, Download, Trash2, Upload, ArrowLeft, Eye } from "lucide-react"
 import Link from "next/link"
 
 interface PhotoWithHarvest extends HarvestImage {
