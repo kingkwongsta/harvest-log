@@ -5,8 +5,45 @@
 
 set -e  # Exit on any error
 
+# Find and change to project root directory
+find_project_root() {
+    local current_dir="$(pwd)"
+    local search_dir="$current_dir"
+    
+    # Look for project markers (package.json in client dir, CLAUDE.md, etc.)
+    while [ "$search_dir" != "/" ]; do
+        if [ -f "$search_dir/CLAUDE.md" ] && [ -d "$search_dir/client" ] && [ -d "$search_dir/backend" ]; then
+            echo "$search_dir"
+            return 0
+        fi
+        search_dir="$(dirname "$search_dir")"
+    done
+    
+    # If not found, check if we're already in project root
+    if [ -f "CLAUDE.md" ] && [ -d "client" ] && [ -d "backend" ]; then
+        echo "$(pwd)"
+        return 0
+    fi
+    
+    return 1
+}
+
+# Detect and change to project root
+PROJECT_ROOT=$(find_project_root)
+if [ $? -ne 0 ]; then
+    echo "❌ Error: Could not find project root directory."
+    echo "Please run this script from within the harvest-log project directory."
+    exit 1
+fi
+
+if [ "$(pwd)" != "$PROJECT_ROOT" ]; then
+    echo "📁 Changing to project root: $PROJECT_ROOT"
+    cd "$PROJECT_ROOT"
+fi
+
 echo "🌱 Harvest Log App - Cloud Deployment"
 echo "====================================="
+echo "📁 Project root: $(pwd)"
 echo ""
 
 # Configuration
@@ -106,6 +143,8 @@ check_prerequisites() {
         # Check if package.json exists
         if [ ! -f "${FRONTEND_DIR}/package.json" ]; then
             print_error "Frontend package.json not found at ${FRONTEND_DIR}/package.json"
+            print_error "Current directory: $(pwd)"
+            print_error "Looking for: $(pwd)/${FRONTEND_DIR}/package.json"
             exit 1
         fi
         print_status "✓ Frontend package.json found"
@@ -125,6 +164,8 @@ check_prerequisites() {
         # Check if backend .env exists
         if [ ! -f "${BACKEND_DIR}/.env" ]; then
             print_error "Backend .env file not found at ${BACKEND_DIR}/.env"
+            print_error "Current directory: $(pwd)"
+            print_error "Looking for: $(pwd)/${BACKEND_DIR}/.env"
             exit 1
         fi
         print_status "✓ Backend .env file found"
@@ -150,11 +191,11 @@ deploy_backend() {
     cd "${BACKEND_DIR}"
     
     print_status "Making deployment script executable..."
-    chmod +x ../scripts/deploy-to-cloudrun.sh
+    chmod +x "${PROJECT_ROOT}/scripts/deploy-to-cloudrun.sh"
     
     print_status "Executing Google Cloud Run deployment..."
     echo "--------------------------------------------"
-    bash ../scripts/deploy-to-cloudrun.sh
+    bash "${PROJECT_ROOT}/scripts/deploy-to-cloudrun.sh"
     local backend_exit_code=$?
     echo "--------------------------------------------"
     
@@ -167,7 +208,7 @@ deploy_backend() {
     fi
     
     print_status "Returning to project root..."
-    cd ..
+    cd "${PROJECT_ROOT}"
     echo ""
 }
 
@@ -256,7 +297,7 @@ deploy_frontend() {
     fi
     
     print_status "Returning to project root..."
-    cd ..
+    cd "${PROJECT_ROOT}"
     echo ""
 }
 
