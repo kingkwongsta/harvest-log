@@ -8,8 +8,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./dialog"
-import { Button } from "./button"
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 interface SuccessDialogProps {
   open: boolean
