@@ -5,40 +5,76 @@ import { harvestLogsApi, ApiError, type HarvestLogResponse } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { HarvestDetailDialog } from "@/components/dialogs/harvest-detail-dialog"
-import { Sprout, Search, Calendar, MapPin, Camera, Plus, ArrowLeft, Images } from "lucide-react"
+import { 
+  Clock, 
+  TreePine, 
+  Images, 
+  BarChart3, 
+  Search, 
+  Sprout,
+  Zap
+} from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
+
+// Import view components
+import { TimelineView } from "@/components/gallery/timeline-view"
+import { CropGardenView } from "@/components/gallery/crop-garden-view"
+import { PhotoMosaicView } from "@/components/gallery/photo-mosaic-view"
+import { DashboardView } from "@/components/gallery/dashboard-view"
+
+type ViewMode = 'timeline' | 'garden' | 'mosaic' | 'dashboard'
+
+const VIEW_MODES = [
+  {
+    id: 'timeline' as ViewMode,
+    name: 'Timeline Journey',
+    description: 'Chronological harvest story',
+    icon: Clock,
+    color: 'bg-blue-500'
+  },
+  {
+    id: 'garden' as ViewMode,
+    name: 'Crop Garden',
+    description: 'Organized by crop type',
+    icon: TreePine,
+    color: 'bg-green-500'
+  },
+  {
+    id: 'mosaic' as ViewMode,
+    name: 'Photo Wall',
+    description: 'Image-focused display',
+    icon: Images,
+    color: 'bg-purple-500'
+  },
+  {
+    id: 'dashboard' as ViewMode,
+    name: 'Data Insights',
+    description: 'Charts and analytics',
+    icon: BarChart3,
+    color: 'bg-orange-500'
+  }
+]
 
 export default function HarvestsPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterFruit, setFilterFruit] = useState("all")
-  const [sortBy, setSortBy] = useState("date")
+  const [currentView, setCurrentView] = useState<ViewMode>('timeline')
   const [harvests, setHarvests] = useState<HarvestLogResponse[]>([])
+  const [filteredHarvests, setFilteredHarvests] = useState<HarvestLogResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedHarvest, setSelectedHarvest] = useState<HarvestLogResponse | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterCrop, setFilterCrop] = useState("all")
+  const [sortBy, setSortBy] = useState("date")
 
+  // Fetch harvest data
   useEffect(() => {
     const fetchHarvests = async () => {
       try {
         setLoading(true)
         const response = await harvestLogsApi.getAll()
         if (response.success && response.data) {
-          console.log('🔍 Harvest data received:', response.data)
-          // Debug image URLs
-          response.data.forEach(harvest => {
-            if (harvest.images && harvest.images.length > 0) {
-              console.log(`🖼️ Images for ${harvest.crop_name}:`, harvest.images.map(img => ({
-                filename: img.filename,
-                public_url: img.public_url
-              })))
-            }
-          })
           setHarvests(response.data)
+          setFilteredHarvests(response.data)
         } else {
           setError(response.message || "Failed to load harvests")
         }
@@ -56,272 +92,199 @@ export default function HarvestsPage() {
     fetchHarvests()
   }, [])
 
-  const filteredHarvests = harvests
-    .filter(
-      (harvest) =>
-        harvest.crop_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        (filterFruit === "all" || harvest.crop_name.toLowerCase().includes(filterFruit.toLowerCase())),
-    )
-    .sort((a, b) => {
+  // Filter and search logic
+  useEffect(() => {
+    let filtered = [...harvests]
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(harvest =>
+        harvest.crop_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        harvest.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Crop filter
+    if (filterCrop !== "all") {
+      filtered = filtered.filter(harvest => 
+        harvest.crop_name.toLowerCase() === filterCrop.toLowerCase()
+      )
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
       switch (sortBy) {
-        case "date":
+        case 'date':
           return new Date(b.harvest_date).getTime() - new Date(a.harvest_date).getTime()
-        case "quantity":
+        case 'crop':
+          return a.crop_name.localeCompare(b.crop_name)
+        case 'quantity':
           return b.quantity - a.quantity
         default:
           return 0
       }
     })
 
-  const handleHarvestClick = (harvest: HarvestLogResponse) => {
-    setSelectedHarvest(harvest)
-    setIsDialogOpen(true)
+    setFilteredHarvests(filtered)
+  }, [harvests, searchTerm, filterCrop, sortBy])
+
+  // Get unique crop types for filter
+  const uniqueCrops = Array.from(new Set(harvests.map(h => h.crop_name))).sort()
+
+  const renderCurrentView = () => {
+    const commonProps = {
+      harvests: filteredHarvests,
+      loading,
+      error
+    }
+
+    switch (currentView) {
+      case 'timeline':
+        return <TimelineView {...commonProps} />
+      case 'garden':
+        return <CropGardenView {...commonProps} />
+      case 'mosaic':
+        return <PhotoMosaicView {...commonProps} />
+      case 'dashboard':
+        return <DashboardView {...commonProps} />
+      default:
+        return <TimelineView {...commonProps} />
+    }
   }
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false)
-    setSelectedHarvest(null)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 harvest-gradient rounded-full flex items-center justify-center mx-auto mb-4">
+            <Sprout className="w-6 h-6 text-white animate-pulse" />
+          </div>
+          <p className="text-organic">Loading your harvest gallery...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Unable to load gallery</h3>
+            <p className="text-organic mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Nature-themed Header */}
-      <header className="bg-card border-b border-border/50">
-        <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
-                </Button>
-              </Link>
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 harvest-gradient rounded-xl flex items-center justify-center shadow-md">
-                  <Sprout className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground">My Harvests</h1>
-                  <p className="text-sm text-organic">{harvests.length} entries</p>
-                </div>
-              </div>
+      {/* Page Controls */}
+      <div className="bg-card border-b border-border/50 sticky top-16 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          {/* Page Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">My Harvests</h1>
+              <p className="text-sm text-organic">
+                {filteredHarvests.length} harvest{filteredHarvests.length !== 1 ? 's' : ''} • 
+                {filteredHarvests.reduce((total, h) => total + (h.images?.length ?? 0), 0)} photos
+              </p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Link href="/gallery">
-                <Button variant="outline" size="sm" className="hover:border-primary/30">
-                  <Images className="w-4 h-4 mr-2" />
-                  Gallery
+          </div>
+
+          {/* View Mode Selector */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            {VIEW_MODES.map((mode) => {
+              const Icon = mode.icon
+              return (
+                <Button
+                  key={mode.id}
+                  variant={currentView === mode.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentView(mode.id)}
+                  className={currentView === mode.id ? "border-primary/30" : ""}
+                >
+                  <Icon className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">{mode.name}</span>
+                  <span className="sm:hidden">{mode.name.split(' ')[0]}</span>
                 </Button>
-              </Link>
-              <Link href="/harvests/new">
-                <Button variant="harvest" size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add
-                </Button>
-              </Link>
+              )
+            })}
+          </div>
+
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search harvests, notes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
+            <Select value={filterCrop} onValueChange={setFilterCrop}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="All crops" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All crops</SelectItem>
+                {uniqueCrops.map((crop) => (
+                  <SelectItem key={crop} value={crop}>
+                    {crop}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Date</SelectItem>
+                <SelectItem value="crop">Crop</SelectItem>
+                <SelectItem value="quantity">Quantity</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <Select value={filterFruit} onValueChange={setFilterFruit}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="tomatoes">Tomatoes</SelectItem>
-                  <SelectItem value="apples">Apples</SelectItem>
-                  <SelectItem value="berries">Berries</SelectItem>
-                  <SelectItem value="lettuce">Lettuce</SelectItem>
-                  <SelectItem value="herbs">Herbs</SelectItem>
-                  <SelectItem value="peppers">Peppers</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date">Date (Newest)</SelectItem>
-                  <SelectItem value="quantity">Quantity</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Loading State */}
-        {loading && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <p className="mt-2 text-organic">Loading...</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <Card className="border-destructive/20 bg-destructive/5">
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <p className="text-destructive">⚠️ {error}</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-2"
-                  onClick={() => window.location.reload()}
-                >
-                  Try again
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && filteredHarvests.length === 0 && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <Sprout className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-foreground mb-2">No harvests yet</p>
-                <p className="text-sm text-organic">Add your first harvest</p>
-                <Link href="/harvests/new">
-                  <Button variant="harvest" className="mt-4">
-                    <Plus className="w-4 h-4 mr-2" />
-Add First
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Harvest List */}
-        {!loading && !error && (
-          <div className="space-y-4">
-            {filteredHarvests.map((harvest) => (
-            <Card 
-              key={harvest.id} 
-              className="hover:shadow-lg hover:border-primary/30 transition-all duration-200 cursor-pointer group card-hover"
-              onClick={() => handleHarvestClick(harvest)}
-            >
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-6">
-                  {/* Left Section - All Text Data Stacked Vertically */}
-                  <div className="w-1/3 min-w-0">
-                    {/* Header with Icon and Title */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 harvest-gradient rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <Sprout className="w-5 h-5 text-white" />
-                      </div>
-                      <h3 className="text-lg font-semibold group-hover:text-primary transition-colors text-foreground">
-                        {harvest.crop_name}
-                      </h3>
-                      {harvest.images && harvest.images.length > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Camera className="w-3 h-3 mr-1" />
-                          {harvest.images.length} photo{harvest.images.length > 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-View details
-                      </Badge>
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="text-sm text-organic mb-2">
-                      <span className="font-medium text-foreground">Amount:</span> {harvest.quantity} {harvest.unit}
-                    </div>
-
-                    {/* Date */}
-                    <div className="flex items-center text-sm text-organic mb-2">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {new Date(harvest.harvest_date).toLocaleDateString()}
-                    </div>
-
-                    {/* Location */}
-                    {harvest.location && (
-                      <div className="flex items-center text-sm text-organic mb-2">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        {harvest.location}
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {harvest.notes && (
-                      <div className="text-sm text-organic">
-                        <span className="font-medium text-foreground">Notes:</span> 
-                        <span className="ml-1 line-clamp-2">{harvest.notes}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right Section - Images Horizontally */}
-                  {harvest.images && harvest.images.length > 0 && (
-                    <div className="w-2/3">
-                      <div className="flex gap-2">
-                        {harvest.images.slice(0, 4).map((image, index) => (
-                          <div key={image.id} className="relative">
-                            <Image
-                              src={image.public_url || '/placeholder.svg'}
-                              alt={`${harvest.crop_name} photo ${index + 1}`}
-                              width={100}
-                              height={100}
-                              className="w-[100px] h-[100px] object-cover rounded-lg border"
-                              onError={(e) => {
-                                console.log('❌ Image failed to load:', image.public_url)
-                                e.currentTarget.src = '/placeholder.svg'
-                              }}
-                              onLoad={() => {
-                                console.log('✅ Image loaded successfully:', image.public_url)
-                              }}
-                            />
-                            {index === 3 && harvest.images && harvest.images.length > 4 && (
-                              <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
-                                <span className="text-white text-xs font-medium">
-                                  {harvest.images.length} photos
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          </div>
-        )}
-
-        {/* Harvest Detail Dialog */}
-        <HarvestDetailDialog
-          harvest={selectedHarvest}
-          isOpen={isDialogOpen}
-          onClose={handleCloseDialog}
-        />
       </div>
+
+      {/* Current View */}
+      <main className="max-w-7xl mx-auto px-6 py-6">
+        {filteredHarvests.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No harvests found</h3>
+            <p className="text-organic mb-4">
+              {searchTerm || filterCrop !== "all" 
+                ? "Try adjusting your search or filters"
+                : "Start by logging your first harvest"
+              }
+            </p>
+            {!searchTerm && filterCrop === "all" && (
+              <Link href="/">
+                <Button variant="harvest">
+                  <Sprout className="w-4 h-4 mr-2" />
+                  Add First Harvest
+                </Button>
+              </Link>
+            )}
+          </div>
+        ) : (
+          renderCurrentView()
+        )}
+      </main>
     </div>
   )
 }

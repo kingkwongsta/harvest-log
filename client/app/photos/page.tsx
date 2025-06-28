@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Camera, Search, Grid, List, Calendar, MapPin, Download, Trash2, Upload, ArrowLeft, Eye } from "lucide-react"
+import { Camera, Search, Grid, List, Calendar, MapPin, Download, Trash2, Upload, Eye } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -111,34 +111,18 @@ export default function PhotosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
+    <div className="min-h-screen bg-background">
+      {/* Page Header */}
+      <div className="bg-card border-b border-border/50">
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Photos</h1>
-                <p className="text-gray-600">
-                  {loading ? "Loading..." : `${photos.length} photos`}
-                </p>
-              </div>
-            </div>
-            <Link href="/">
-              <Button className="bg-green-600 hover:bg-green-700">
-                <Upload className="w-4 h-4 mr-2" />
-Add
-              </Button>
-            </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Photos</h1>
+            <p className="text-sm text-organic">
+              {loading ? "Loading..." : `${photos.length} photos from your harvests`}
+            </p>
           </div>
         </div>
-      </header>
+      </div>
 
       <div className="p-6">
         {/* Filters and Controls */}

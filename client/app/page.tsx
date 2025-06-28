@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,8 +13,7 @@ import { SuccessDialog } from "@/components/dialogs/success-dialog"
 import { ErrorDialog } from "@/components/dialogs/error-dialog"
 import { Progress } from "@/components/ui/progress"
 import { CameraCapture } from "@/components/camera/camera-capture"
-import { Calendar, Camera, List, X, Upload, Sprout, TrendingUp, Clock, Images } from "lucide-react"
-import Link from "next/link"
+import { Calendar, Camera, X, Upload, Sprout, TrendingUp, Clock } from "lucide-react"
 import Image from "next/image"
 import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
 import { useImageCompression } from "@/lib/useImageCompression"
@@ -357,35 +356,15 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Nature-themed Header */}
-      <header className="bg-card border-b border-border/50">
+      {/* Page Header */}
+      <div className="bg-card border-b border-border/50">
         <div className="max-w-4xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 harvest-gradient rounded-xl flex items-center justify-center shadow-md">
-                <Sprout className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">My Harvest Log</h1>
-                <p className="text-sm text-organic">Track what you grow</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Link href="/harvests">
-                <Button variant="outline" size="sm" className="hover:border-primary/30">
-                  <List className="w-4 h-4 mr-2" />
-                  Logs
-                </Button>
-              </Link>
-              <Link href="/gallery">
-                <Button variant="outline" size="sm" className="hover:border-primary/30">
-                  <Images className="w-4 h-4 mr-2" />
-                  Gallery
-                </Button>
-              </Link>
-            </div>
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Your Harvest Log</h1>
+            <p className="text-organic">Track what you grow and celebrate your garden&apos;s success</p>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto p-6">
