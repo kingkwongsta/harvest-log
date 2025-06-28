@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { HarvestDetailDialog } from "@/components/dialogs/harvest-detail-dialog"
-import { Sprout, Search, Calendar, MapPin, Camera, Plus, ArrowLeft } from "lucide-react"
+import { Sprout, Search, Calendar, MapPin, Camera, Plus, ArrowLeft, Images } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -106,12 +106,20 @@ export default function HarvestsPage() {
                 </div>
               </div>
             </div>
-            <Link href="/harvests/new">
-              <Button variant="harvest" size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-Add
-              </Button>
-            </Link>
+            <div className="flex items-center space-x-2">
+              <Link href="/gallery">
+                <Button variant="outline" size="sm" className="hover:border-primary/30">
+                  <Images className="w-4 h-4 mr-2" />
+                  Gallery
+                </Button>
+              </Link>
+              <Link href="/harvests/new">
+                <Button variant="harvest" size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>

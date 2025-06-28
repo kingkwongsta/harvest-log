@@ -13,7 +13,7 @@ import { SuccessDialog } from "@/components/dialogs/success-dialog"
 import { ErrorDialog } from "@/components/dialogs/error-dialog"
 import { Progress } from "@/components/ui/progress"
 import { CameraCapture } from "@/components/camera/camera-capture"
-import { Calendar, Camera, List, X, Upload, Sprout, TrendingUp, Clock } from "lucide-react"
+import { Calendar, Camera, List, X, Upload, Sprout, TrendingUp, Clock, Images } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
@@ -120,12 +120,12 @@ export default function HomePage() {
       // Store original files for reference
       setOriginalPhotos((prev) => [...prev, ...newFiles])
       
-      // Compress images with settings optimized for high-quality harvest photos  
+      // Compress images with settings optimized for smaller file sizes (30% more compression + WebP)
       const compressionResults = await compressMultipleImages(newFiles, {
-        maxSizeMB: 3.0, // Larger file size for better quality to accommodate higher resolution images
-        maxWidthOrHeight: 2400, // Higher resolution for detailed harvest documentation (increased from 1800)
-        quality: 0.98, // High quality setting for detailed photos (increased from 0.95)
-        convertToWebP: false, // Preserve original format for maximum quality
+        maxSizeMB: 2.0, // Reduced file size for better compression (reduced from 3.0)
+        maxWidthOrHeight: 1800, // Optimized resolution for web delivery (reduced from 2400)
+        quality: 0.7, // Increased compression for smaller file sizes (reduced from 0.98)
+        convertToWebP: true, // Use WebP format for superior web compression and performance
       })
 
       // Extract compressed files and stats
@@ -180,12 +180,12 @@ export default function HomePage() {
       // Store original file for reference
       setOriginalPhotos((prev) => [...prev, file])
       
-      // Compress captured image with settings optimized for high-quality harvest photos  
+      // Compress captured image with settings optimized for smaller file sizes (30% more compression + WebP)
       const compressionResults = await compressMultipleImages([file], {
-        maxSizeMB: 3.0, // Larger file size for better quality to accommodate higher resolution camera captures
-        maxWidthOrHeight: 2400, // Higher resolution for detailed harvest documentation (increased from 1800)
-        quality: 0.98, // High quality setting for detailed photos (increased from 0.95)
-        convertToWebP: false, // Preserve original format for maximum quality
+        maxSizeMB: 2.0, // Reduced file size for better compression (reduced from 3.0)
+        maxWidthOrHeight: 1800, // Optimized resolution for web delivery (reduced from 2400)
+        quality: 0.7, // Increased compression for smaller file sizes (reduced from 0.98)
+        convertToWebP: true, // Use WebP format for superior web compression and performance
       })
 
       // Extract compressed file and stats
@@ -369,12 +369,20 @@ export default function HomePage() {
                 <p className="text-sm text-organic">Track what you grow</p>
               </div>
             </div>
-            <Link href="/harvests">
-              <Button variant="outline" size="sm" className="hover:border-primary/30">
-                <List className="w-4 h-4 mr-2" />
-Logs
-              </Button>
-            </Link>
+            <div className="flex items-center space-x-2">
+              <Link href="/harvests">
+                <Button variant="outline" size="sm" className="hover:border-primary/30">
+                  <List className="w-4 h-4 mr-2" />
+                  Logs
+                </Button>
+              </Link>
+              <Link href="/gallery">
+                <Button variant="outline" size="sm" className="hover:border-primary/30">
+                  <Images className="w-4 h-4 mr-2" />
+                  Gallery
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
