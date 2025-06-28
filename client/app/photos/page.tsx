@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Camera, Search, Grid, List, Calendar, MapPin, Download, Share, Trash2, Upload, ArrowLeft, Eye } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Camera, Search, Grid, List, Calendar, MapPin, Download, Trash2, Upload, ArrowLeft, Eye } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 interface PhotoWithHarvest extends HarvestImage {
   harvest?: HarvestLogResponse;
@@ -123,16 +124,16 @@ export default function PhotosPage() {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Photo Gallery</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Photos</h1>
                 <p className="text-gray-600">
-                  {loading ? "Loading photos..." : `${photos.length} harvest photos`}
+                  {loading ? "Loading..." : `${photos.length} photos`}
                 </p>
               </div>
             </div>
             <Link href="/">
               <Button className="bg-green-600 hover:bg-green-700">
                 <Upload className="w-4 h-4 mr-2" />
-                Add Harvest
+Add
               </Button>
             </Link>
           </div>
@@ -148,7 +149,7 @@ export default function PhotosPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    placeholder="Search photos by crop or filename..."
+                    placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -157,7 +158,7 @@ export default function PhotosPage() {
               </div>
               <Select value={filterFruit} onValueChange={setFilterFruit}>
                 <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Filter by crop" />
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Crops</SelectItem>
@@ -196,7 +197,7 @@ export default function PhotosPage() {
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                <p className="mt-2 text-gray-600">Loading photos...</p>
+                <p className="mt-2 text-gray-600">Loading...</p>
               </div>
             </CardContent>
           </Card>
@@ -226,12 +227,12 @@ export default function PhotosPage() {
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <Camera className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600 mb-2">No photos found</p>
-                <p className="text-sm text-gray-500">Upload photos when logging harvests to see them here</p>
+                <p className="text-gray-600 mb-2">No photos yet</p>
+                <p className="text-sm text-gray-500">Add photos when logging harvests</p>
                 <Link href="/">
                   <Button className="mt-4 bg-green-600 hover:bg-green-700">
                     <Upload className="w-4 h-4 mr-2" />
-                    Log First Harvest
+Add First
                   </Button>
                 </Link>
               </div>
@@ -247,10 +248,11 @@ export default function PhotosPage() {
                 {filteredPhotos.map((photo) => (
                   <Card key={photo.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-square relative group cursor-pointer">
-                      <img
+                      <Image
                         src={photo.public_url || "/placeholder.svg"}
                         alt={`${photo.harvest?.crop_name} harvest`}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
                         onClick={() => setSelectedPhoto(photo)}
                       />
                       <div className="absolute top-2 right-2">
@@ -297,9 +299,11 @@ export default function PhotosPage() {
                   <Card key={photo.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="pt-6">
                       <div className="flex items-center space-x-4">
-                        <img
+                        <Image
                           src={photo.public_url || "/placeholder.svg"}
                           alt={`${photo.harvest?.crop_name} harvest`}
+                          width={80}
+                          height={80}
                           className="w-20 h-20 object-cover rounded-lg cursor-pointer"
                           onClick={() => setSelectedPhoto(photo)}
                         />
@@ -359,9 +363,11 @@ export default function PhotosPage() {
           {selectedPhoto && (
             <div className="space-y-4">
               <div className="relative">
-                <img
+                <Image
                   src={selectedPhoto.public_url || "/placeholder.svg"}
                   alt={`${selectedPhoto.harvest?.crop_name} harvest`}
+                  width={800}
+                  height={600}
                   className="w-full max-h-96 object-contain rounded-lg"
                 />
               </div>
@@ -370,16 +376,16 @@ export default function PhotosPage() {
                   <strong>Crop:</strong> {selectedPhoto.harvest?.crop_name || 'Unknown'}
                 </div>
                 <div>
-                  <strong>Harvest Date:</strong> {selectedPhoto.harvest ? new Date(selectedPhoto.harvest.harvest_date).toLocaleDateString() : 'Unknown'}
+                  <strong>Date:</strong> {selectedPhoto.harvest ? new Date(selectedPhoto.harvest.harvest_date).toLocaleDateString() : 'Unknown'}
                 </div>
                 <div>
-                  <strong>Dimensions:</strong> {formatDimensions(selectedPhoto.width, selectedPhoto.height)}
+                  <strong>Size:</strong> {formatDimensions(selectedPhoto.width, selectedPhoto.height)}
                 </div>
                 <div>
-                  <strong>File Size:</strong> {formatFileSize(selectedPhoto.file_size)}
+                  <strong>File:</strong> {formatFileSize(selectedPhoto.file_size)}
                 </div>
                 <div>
-                  <strong>Upload Date:</strong> {new Date(selectedPhoto.created_at).toLocaleDateString()}
+                  <strong>Uploaded:</strong> {new Date(selectedPhoto.created_at).toLocaleDateString()}
                 </div>
                 {selectedPhoto.harvest?.location && (
                   <div>
@@ -389,7 +395,7 @@ export default function PhotosPage() {
               </div>
               {selectedPhoto.harvest?.notes && (
                 <div>
-                  <strong>Harvest Notes:</strong>
+                  <strong>Notes:</strong>
                   <p className="text-gray-600 mt-1">{selectedPhoto.harvest.notes}</p>
                 </div>
               )}

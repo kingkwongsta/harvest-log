@@ -4,7 +4,6 @@ from datetime import datetime
 from uuid import uuid4
 
 from app.main import app
-from app.dependencies import get_harvest_logs_db
 from app.models import HarvestLog
 
 # Create test client
@@ -162,13 +161,6 @@ def test_delete_harvest_log_not_found():
     assert response.status_code == 404
 
 
-# Fixture to clean up test data between tests
-@pytest.fixture(autouse=True)
-def clean_test_data():
-    """Clean up test data before each test"""
-    # Clear the in-memory database before each test
-    db = get_harvest_logs_db()
-    db.clear()
-    yield
-    # Clean up after test
-    db.clear() 
+# Note: Tests now run against actual Supabase database
+# In a real-world scenario, you would use a test database
+# or mock the database calls for unit tests 

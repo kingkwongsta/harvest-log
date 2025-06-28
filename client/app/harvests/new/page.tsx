@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CameraCapture } from "@/components/ui/camera-capture"
+import { CameraCapture } from "@/components/camera/camera-capture"
 import { Calendar, MapPin, Upload, X, Camera } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 interface HarvestForm {
   fruit: string
@@ -121,8 +122,7 @@ export default function NewHarvestPage() {
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">New Harvest Entry</h1>
-              <p className="text-gray-600">Log your latest harvest with photos and details</p>
+              <h1 className="text-2xl font-bold text-gray-900">Add Harvest</h1>
             </div>
             <Button variant="outline" onClick={() => router.back()}>
               Cancel
@@ -148,16 +148,15 @@ export default function NewHarvestPage() {
           {/* Basic Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Enter the essential details about your harvest</CardDescription>
+              <CardTitle>Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fruit">Fruit Type *</Label>
+                  <Label htmlFor="fruit">What?</Label>
                   <Select value={formData.fruit} onValueChange={(value) => handleInputChange("fruit", value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select fruit type" />
+                      <SelectValue placeholder="Choose" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="apples">Apples</SelectItem>
@@ -179,7 +178,7 @@ export default function NewHarvestPage() {
                   <Label htmlFor="variety">Variety</Label>
                   <Input
                     id="variety"
-                    placeholder="e.g., Honeycrisp, Gala"
+                    placeholder="Honeycrisp, Gala"
                     value={formData.variety}
                     onChange={(e) => handleInputChange("variety", e.target.value)}
                   />
@@ -188,12 +187,12 @@ export default function NewHarvestPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantity *</Label>
+                  <Label htmlFor="quantity">Amount</Label>
                   <Input
                     id="quantity"
                     type="number"
                     step="0.1"
-                    placeholder="Amount harvested"
+                    placeholder="12"
                     value={formData.quantity}
                     onChange={(e) => handleInputChange("quantity", e.target.value)}
                     required
@@ -201,10 +200,10 @@ export default function NewHarvestPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="unit">Unit *</Label>
+                  <Label htmlFor="unit">Unit</Label>
                   <Select value={formData.unit} onValueChange={(value) => handleInputChange("unit", value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select unit" />
+                      <SelectValue placeholder="Choose" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pieces">Pieces</SelectItem>
@@ -222,12 +221,12 @@ export default function NewHarvestPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Est. Weight (lbs)</Label>
+                  <Label htmlFor="weight">Weight</Label>
                   <Input
                     id="weight"
                     type="number"
                     step="0.1"
-                    placeholder="Optional"
+                    placeholder="5.2"
                     value={formData.weight}
                     onChange={(e) => handleInputChange("weight", e.target.value)}
                   />
@@ -235,10 +234,10 @@ export default function NewHarvestPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="quality">Quality Rating</Label>
+                <Label htmlFor="quality">Quality</Label>
                 <Select value={formData.quality} onValueChange={(value) => handleInputChange("quality", value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Rate the quality" />
+                    <SelectValue placeholder="Choose" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="excellent">Excellent</SelectItem>
@@ -254,13 +253,12 @@ export default function NewHarvestPage() {
           {/* Location & Date */}
           <Card>
             <CardHeader>
-              <CardTitle>Location & Date</CardTitle>
-              <CardDescription>When and where was this harvest collected?</CardDescription>
+              <CardTitle>When & Where</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Harvest Date *</Label>
+                  <Label htmlFor="date">Date</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
@@ -281,7 +279,7 @@ export default function NewHarvestPage() {
                       <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
                         id="location"
-                        placeholder="Garden area or specific location"
+                        placeholder="Garden area"
                         value={formData.location}
                         onChange={(e) => handleInputChange("location", e.target.value)}
                         className="pl-10"
@@ -299,16 +297,15 @@ export default function NewHarvestPage() {
           {/* Weather & Conditions */}
           <Card>
             <CardHeader>
-              <CardTitle>Weather & Conditions</CardTitle>
-              <CardDescription>Record the weather conditions during harvest</CardDescription>
+              <CardTitle>Weather</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="weather">Weather Conditions</Label>
+                <Label htmlFor="weather">Conditions</Label>
                 <div className="flex gap-2">
                   <Input
                     id="weather"
-                    placeholder="e.g., Sunny, 75°F, light breeze"
+                    placeholder="Sunny, 75°F"
                     value={formData.weather}
                     onChange={(e) => handleInputChange("weather", e.target.value)}
                     className="flex-1"
@@ -325,7 +322,6 @@ export default function NewHarvestPage() {
           <Card>
             <CardHeader>
               <CardTitle>Photos</CardTitle>
-              <CardDescription>Add photos of your harvest (up to 10 images)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Photo Upload Area */}
@@ -339,7 +335,7 @@ export default function NewHarvestPage() {
                 ) : (
                   <div>
                     <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-gray-600 mb-4">Add photos of your harvest</p>
+                    <p className="text-gray-600 mb-4">Add photos</p>
                     
                     {/* Mobile-first buttons */}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -375,7 +371,7 @@ export default function NewHarvestPage() {
                     </div>
                     
                     <p className="text-sm text-gray-500 mt-3">
-                      Up to 10 photos • PNG, JPG up to 10MB each
+                      Up to 10 photos
                     </p>
                   </div>
                 )}
@@ -386,10 +382,13 @@ export default function NewHarvestPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {photos.map((photo, index) => (
                     <div key={index} className="relative group">
-                      <img
+                      <Image
                         src={URL.createObjectURL(photo) || "/placeholder.svg"}
                         alt={`Harvest photo ${index + 1}`}
+                        width={200}
+                        height={96}
                         className="w-full h-24 object-cover rounded-lg"
+                        unoptimized
                       />
                       <Button
                         type="button"
@@ -410,12 +409,11 @@ export default function NewHarvestPage() {
           {/* Notes */}
           <Card>
             <CardHeader>
-              <CardTitle>Additional Notes</CardTitle>
-              <CardDescription>Any additional observations or comments</CardDescription>
+              <CardTitle>Notes</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
-                placeholder="Notes about ripeness, taste, growing conditions, etc."
+                placeholder="Notes about taste, quality, conditions..."
                 value={formData.notes}
                 onChange={(e) => handleInputChange("notes", e.target.value)}
                 rows={4}
@@ -433,7 +431,7 @@ export default function NewHarvestPage() {
               className="bg-green-600 hover:bg-green-700"
               disabled={isLoading || !formData.fruit || !formData.quantity || !formData.unit}
             >
-              {isLoading ? "Saving..." : "Save Harvest"}
+              {isLoading ? "Saving..." : "Save"}
             </Button>
           </div>
         </form>

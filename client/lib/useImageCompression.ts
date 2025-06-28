@@ -17,10 +17,11 @@ interface CompressionResult {
   savings: number;
 }
 
-interface CompressionError {
-  message: string;
-  originalFile: File;
-}
+// Interface for compression errors - currently unused but may be needed for future error handling
+// interface CompressionError {
+//   message: string;
+//   originalFile: File;
+// }
 
 export const useImageCompression = () => {
   const [isCompressing, setIsCompressing] = useState(false);

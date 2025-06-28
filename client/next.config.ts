@@ -7,6 +7,18 @@ const nextConfig: NextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.com',
+      },
+    ],
+  },
   env: {
     // Make sure environment variables are available in the frontend
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,

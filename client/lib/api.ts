@@ -263,7 +263,7 @@ export const imagesApi = {
     return apiRequest(`/api/images/harvest/${harvestLogId}`);
   },
 
-  delete: async (imageId: string): Promise<ApiResponse<any>> => {
+  delete: async (imageId: string): Promise<ApiResponse<unknown>> => {
     return apiRequest(`/api/images/${imageId}`, {
       method: 'DELETE',
     });

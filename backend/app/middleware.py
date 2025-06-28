@@ -1,12 +1,15 @@
 import time
 import uuid
-from typing import Callable
+import asyncio
+from typing import Callable, Dict, Optional
+from datetime import datetime, timedelta
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
 
 from app.logging_config import get_middleware_logger
+from app.exceptions import RateLimitError
 
 logger = get_middleware_logger()
 
@@ -146,4 +149,169 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         # Add performance headers
         response.headers["X-Response-Time"] = f"{duration_ms}ms"
         
-        return response 
+        return response
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """
+    Rate limiting middleware using sliding window algorithm.
+    """
+    
+    def __init__(self, app, requests_per_minute: int = 60, burst_limit: int = 10):
+        """
+        Initialize rate limiting middleware.
+        
+        Args:
+            app: FastAPI application
+            requests_per_minute: Maximum requests per minute per IP
+            burst_limit: Maximum burst requests in 10 seconds
+        """
+        super().__init__(app)
+        self.requests_per_minute = requests_per_minute
+        self.burst_limit = burst_limit
+        self.clients: Dict[str, Dict] = {}
+        self._lock = asyncio.Lock()
+    
+    def _get_client_ip(self, request: Request) -> str:
+        """Get client IP address from request."""
+        # Check for forwarded headers first
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip:
+            return real_ip
+        
+        # Fallback to direct client IP
+        return request.client.host if request.client else "unknown"
+    
+    async def _is_rate_limited(self, client_ip: str) -> bool:
+        """Check if client is rate limited."""
+        async with self._lock:
+            now = datetime.now()
+            
+            # Initialize client data if not exists
+            if client_ip not in self.clients:
+                self.clients[client_ip] = {
+                    "requests": [],
+                    "burst_requests": []
+                }
+            
+            client_data = self.clients[client_ip]
+            
+            # Clean old requests (older than 1 minute)
+            minute_ago = now - timedelta(minutes=1)
+            client_data["requests"] = [
+                req_time for req_time in client_data["requests"] 
+                if req_time > minute_ago
+            ]
+            
+            # Clean old burst requests (older than 10 seconds)
+            ten_seconds_ago = now - timedelta(seconds=10)
+            client_data["burst_requests"] = [
+                req_time for req_time in client_data["burst_requests"] 
+                if req_time > ten_seconds_ago
+            ]
+            
+            # Check rate limits
+            minute_requests = len(client_data["requests"])
+            burst_requests = len(client_data["burst_requests"])
+            
+            if minute_requests >= self.requests_per_minute:
+                logger.warning(
+                    f"Rate limit exceeded for {client_ip}: {minute_requests} requests in last minute",
+                    extra={
+                        "client_ip": client_ip,
+                        "requests_count": minute_requests,
+                        "limit": self.requests_per_minute,
+                        "limit_type": "per_minute"
+                    }
+                )
+                return True
+            
+            if burst_requests >= self.burst_limit:
+                logger.warning(
+                    f"Burst limit exceeded for {client_ip}: {burst_requests} requests in last 10 seconds",
+                    extra={
+                        "client_ip": client_ip,
+                        "requests_count": burst_requests,
+                        "limit": self.burst_limit,
+                        "limit_type": "burst"
+                    }
+                )
+                return True
+            
+            # Add current request
+            client_data["requests"].append(now)
+            client_data["burst_requests"].append(now)
+            
+            return False
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Process request with rate limiting."""
+        client_ip = self._get_client_ip(request)
+        
+        # Skip rate limiting for health checks
+        if request.url.path in ["/", "/health"]:
+            return await call_next(request)
+        
+        # Check rate limit
+        if await self._is_rate_limited(client_ip):
+            request_id = getattr(request.state, 'request_id', 'unknown')
+            
+            logger.info(
+                f"Rate limit blocked request from {client_ip}",
+                extra={
+                    "client_ip": client_ip,
+                    "request_id": request_id,
+                    "method": request.method,
+                    "url": str(request.url),
+                    "blocked": True
+                }
+            )
+            
+            # Return rate limit error
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": {
+                        "code": "RATE_LIMIT_EXCEEDED",
+                        "message": "Too many requests. Please try again later.",
+                        "status_code": 429
+                    }
+                },
+                headers={
+                    "Retry-After": "60",
+                    "X-RateLimit-Limit": str(self.requests_per_minute),
+                    "X-RateLimit-Remaining": "0"
+                }
+            )
+        
+        # Process request normally
+        response = await call_next(request)
+        
+        # Add rate limit headers
+        async with self._lock:
+            if client_ip in self.clients:
+                remaining = max(0, self.requests_per_minute - len(self.clients[client_ip]["requests"]))
+                response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
+                response.headers["X-RateLimit-Remaining"] = str(remaining)
+        
+        return response
+    
+    async def get_rate_limit_stats(self) -> Dict[str, any]:
+        """Get rate limiting statistics."""
+        async with self._lock:
+            total_clients = len(self.clients)
+            active_clients = sum(
+                1 for client_data in self.clients.values()
+                if client_data["requests"]
+            )
+            
+            return {
+                "total_clients": total_clients,
+                "active_clients": active_clients,
+                "requests_per_minute_limit": self.requests_per_minute,
+                "burst_limit": self.burst_limit
+            } 

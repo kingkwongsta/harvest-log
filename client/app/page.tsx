@@ -9,12 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { SuccessDialog } from "@/components/ui/success-dialog"
-import { ErrorDialog } from "@/components/ui/error-dialog"
+import { SuccessDialog } from "@/components/dialogs/success-dialog"
+import { ErrorDialog } from "@/components/dialogs/error-dialog"
 import { Progress } from "@/components/ui/progress"
-import { CameraCapture } from "@/components/ui/camera-capture"
-import { Apple, Calendar, MapPin, Camera, List, X, Upload } from "lucide-react"
+import { CameraCapture } from "@/components/camera/camera-capture"
+import { Calendar, Camera, List, X, Upload, Sprout, TrendingUp, Clock } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
 import { useImageCompression } from "@/lib/useImageCompression"
 
@@ -47,7 +48,7 @@ export default function HomePage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [photos, setPhotos] = useState<File[]>([])
-  const [originalPhotos, setOriginalPhotos] = useState<File[]>([])
+  const [, setOriginalPhotos] = useState<File[]>([])
   const [compressionStats, setCompressionStats] = useState<Array<{
     originalSize: number;
     compressedSize: number;
@@ -354,21 +355,24 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Simple Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+    <div className="min-h-screen bg-background">
+      {/* Nature-themed Header */}
+      <header className="bg-card border-b border-border/50">
+        <div className="max-w-4xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                <Apple className="w-5 h-5 text-white" />
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 harvest-gradient rounded-xl flex items-center justify-center shadow-md">
+                <Sprout className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-semibold text-gray-900">Harvest Log</h1>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">My Harvest Log</h1>
+                <p className="text-sm text-organic">Track what you grow</p>
+              </div>
             </div>
             <Link href="/harvests">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="hover:border-primary/30">
                 <List className="w-4 h-4 mr-2" />
-                View All
+Logs
               </Button>
             </Link>
           </div>
@@ -377,25 +381,19 @@ export default function HomePage() {
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto p-6">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Log Your Harvest</h2>
-          <p className="text-gray-600">Keep track of what you've grown and harvested</p>
-        </div>
-
         <Card>
           <CardHeader>
-            <CardTitle>New Harvest Entry</CardTitle>
-            <CardDescription>Record the details of your latest harvest</CardDescription>
+            <CardTitle>New Entry</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fruit">What did you harvest? *</Label>
+                  <Label htmlFor="fruit">What?</Label>
                   <Select value={formData.fruit} onValueChange={(value) => handleInputChange("fruit", value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select fruit/vegetable" />
+                      <SelectValue placeholder="Choose" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="avocado">Avocado</SelectItem>
@@ -415,7 +413,7 @@ export default function HomePage() {
                     <div className="mt-2">
                       <Input
                         id="customFruit"
-                        placeholder="Enter fruit/vegetable name"
+                        placeholder="Type here"
                         value={formData.customFruit}
                         onChange={(e) => handleInputChange("customFruit", e.target.value)}
                         required
@@ -425,11 +423,11 @@ export default function HomePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">How many? *</Label>
+                  <Label htmlFor="quantity">Amount</Label>
                   <Input
                     id="quantity"
                     type="number"
-                    placeholder="e.g., 12"
+                    placeholder="12"
                     value={formData.quantity}
                     onChange={(e) => handleInputChange("quantity", e.target.value)}
                     required
@@ -439,19 +437,19 @@ export default function HomePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Unit/Weight (optional)</Label>
+                  <Label htmlFor="weight">Unit</Label>
                   <Input
                     id="weight"
-                    placeholder="e.g., lbs, kg, pieces"
+                    placeholder="lbs, kg, pieces"
                     value={formData.weight}
                     onChange={(e) => handleInputChange("weight", e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="date">When? *</Label>
+                  <Label htmlFor="date">When?</Label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
                       id="date"
                       type="datetime-local"
@@ -467,7 +465,7 @@ export default function HomePage() {
               {/* Photo Upload */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Photos (optional)</Label>
+                  <Label>Photos</Label>
                   <div className="flex items-center space-x-2">
                     {compressionStats.length > 0 && (
                       <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
@@ -488,16 +486,16 @@ export default function HomePage() {
                 
                 <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                   isCompressing 
-                    ? 'border-green-400 bg-green-50' 
-                    : 'border-gray-300 hover:border-green-400'
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-border hover:border-primary/50'
                 }`}>
                   {isCompressing ? (
                     <div>
-                      <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-gray-600">
+                      <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-foreground">
                         Compressing images... {compressionProgress > 0 && `${compressionProgress}%`}
                       </p>
-                      <p className="text-sm text-gray-500 mt-1">Please wait...</p>
+                      <p className="text-sm text-organic mt-1">Please wait...</p>
                       
                       {/* Progress bar during compression */}
                       {compressionProgress > 0 && (
@@ -508,21 +506,21 @@ export default function HomePage() {
                     </div>
                   ) : photos.length >= 5 ? (
                     <div>
-                      <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-gray-600">Maximum photos reached</p>
-                      <p className="text-sm text-gray-500 mt-1">Remove a photo to add more</p>
+                      <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-foreground">Maximum photos reached</p>
+                      <p className="text-sm text-organic mt-1">Remove a photo to add more</p>
                     </div>
                   ) : (
                     <div>
-                      <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                      <p className="text-gray-600 mb-4">Add photos of your harvest</p>
+                      <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-foreground mb-4">Add photos</p>
                       
                       {/* Mobile-first buttons */}
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <Button
                           type="button"
+                          variant="harvest"
                           onClick={() => setShowCamera(true)}
-                          className="bg-green-600 hover:bg-green-700 text-white"
                           disabled={photos.length >= 5}
                         >
                           <Camera className="w-4 h-4 mr-2" />
@@ -551,8 +549,8 @@ export default function HomePage() {
                         </div>
                       </div>
                       
-                      <p className="text-sm text-gray-500 mt-3">
-                        Up to 5 photos • Auto-compressed for faster upload
+                      <p className="text-sm text-organic mt-3">
+                        Up to 5 photos
                       </p>
                     </div>
                   )}
@@ -569,10 +567,13 @@ export default function HomePage() {
                   <div className="grid grid-cols-5 gap-2 mt-3">
                     {photos.map((photo, index) => (
                       <div key={index} className="relative group">
-                        <img
+                        <Image
                           src={URL.createObjectURL(photo) || "/placeholder.svg"}
                           alt={`Photo ${index + 1}`}
+                          width={80}
+                          height={64}
                           className="w-full h-16 object-cover rounded border"
+                          unoptimized
                         />
                         <button
                           type="button"
@@ -603,7 +604,7 @@ export default function HomePage() {
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
-                  placeholder="Any notes about this harvest? (taste, quality, growing conditions, etc.)"
+                  placeholder="Notes about taste, quality, conditions..."
                   value={formData.notes}
                   onChange={(e) => handleInputChange("notes", e.target.value)}
                   rows={3}
@@ -612,7 +613,9 @@ export default function HomePage() {
 
               <Button
                 type="submit"
-                className="w-full bg-green-600 hover:bg-green-700"
+                variant="harvest"
+                size="lg"
+                className="w-full"
                 disabled={
                   isSubmitting || 
                   isCompressing || 
@@ -626,49 +629,61 @@ export default function HomePage() {
                 ) : isSubmitting ? (
                   photos.length > 0 ? "Saving harvest and uploading photos..." : "Saving harvest..."
                 ) : (
-                  `Log Harvest${photos.length > 0 ? ` & Upload ${photos.length} Photo${photos.length > 1 ? 's' : ''}` : ''}`
+                  'Save'
                 )}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Quick Stats */}
-        <div className="mt-8 grid grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className="text-2xl font-bold text-green-600">
+        {/* Harvest Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <div className="w-12 h-12 harvest-gradient rounded-full flex items-center justify-center mx-auto mb-3">
+                <Sprout className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-2xl font-bold text-foreground">
                 {isLoadingStats ? "..." : stats.total_harvests}
               </div>
-              <div className="text-sm text-gray-600">Total Harvests</div>
+              <p className="text-sm text-organic">Total Harvests</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className="text-2xl font-bold text-blue-600">
+          
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center mx-auto mb-3">
+                <TrendingUp className="w-6 h-6 text-accent-foreground" />
+              </div>
+              <div className="text-2xl font-bold text-foreground">
                 {isLoadingStats ? "..." : stats.this_month}
               </div>
-              <div className="text-sm text-gray-600">This Month</div>
+              <p className="text-sm text-organic">This Month</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className="text-2xl font-bold text-purple-600">
+          
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-3">
+                <Clock className="w-6 h-6 text-secondary-foreground" />
+              </div>
+              <div className="text-2xl font-bold text-foreground">
                 {isLoadingStats ? "..." : stats.this_week}
               </div>
-              <div className="text-sm text-gray-600">This Week</div>
+              <p className="text-sm text-organic">This Week</p>
             </CardContent>
           </Card>
         </div>
+
       </div>
 
       {/* Success Dialog */}
       <SuccessDialog
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
-        title="Harvest Logged Successfully!"
-        description={`Your harvest has been recorded${photos.length > 0 ? ` with ${photos.length} photo${photos.length > 1 ? 's' : ''}` : ''} and added to your log.`}
-        actionLabel="Continue Logging"
+        title="Saved!"
+        description="Your harvest has been saved."
+        actionLabel="Continue"
         onAction={() => {
           setShowSuccessDialog(false)
         }}
@@ -678,7 +693,7 @@ export default function HomePage() {
       <ErrorDialog
         open={showErrorDialog}
         onOpenChange={setShowErrorDialog}
-        title="Failed to Log Harvest"
+        title="Error"
         description={errorMessage}
         actionLabel="Try Again"
         onAction={() => {
