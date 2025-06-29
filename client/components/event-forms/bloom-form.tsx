@@ -10,11 +10,14 @@ import { Separator } from '@/components/ui/separator'
 import { Upload, X, Plus, Minus } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 
+import type { BloomStage } from '@/lib/api'
+
 interface BloomFormProps {
   onSubmit: (data: {
     flower_type: string
-    bloom_stage?: string
+    bloom_stage?: BloomStage
     metrics?: Record<string, any>
+    images?: File[]
   }) => void
   isSubmitting: boolean
 }
@@ -45,7 +48,7 @@ const commonFlowerTypes = [
 
 export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
   const [flowerType, setFlowerType] = useState('')
-  const [bloomStage, setBloomStage] = useState('full_bloom')
+  const [bloomStage, setBloomStage] = useState<BloomStage>('full_bloom')
   const [images, setImages] = useState<File[]>([])
   
   // Bloom metrics
@@ -95,6 +98,7 @@ export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
       flower_type: flowerType.trim(),
       bloom_stage: bloomStage,
       metrics: Object.keys(metrics).length > 0 ? metrics : undefined,
+      images: images.length > 0 ? images : undefined,
     })
   }
 
@@ -175,7 +179,7 @@ export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
 
             <div className="space-y-2">
               <Label htmlFor="bloom-stage">Bloom Stage</Label>
-              <Select value={bloomStage} onValueChange={setBloomStage}>
+              <Select value={bloomStage} onValueChange={(value) => setBloomStage(value as BloomStage)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -332,8 +336,8 @@ export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
       </Card>
 
       <div className="flex justify-end space-x-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Recording Bloom...' : 'Record Bloom'}
+        <Button type="submit" disabled={isSubmitting} className="bg-pink-500 hover:bg-pink-600 text-white" size="lg">
+          {isSubmitting ? 'Recording Bloom...' : 'Record Bloom Event'}
         </Button>
       </div>
     </form>

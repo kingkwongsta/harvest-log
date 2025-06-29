@@ -15,7 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import { CameraCapture } from "@/components/camera/camera-capture"
 import { Calendar, Camera, X, Upload, Sprout, TrendingUp, Clock } from "lucide-react"
 import Image from "next/image"
-import { harvestLogsApi, imagesApi, ApiError, HarvestStats, plantsApi, type Plant } from "@/lib/api"
+import { harvestLogsApi, eventsApi, imagesApi, ApiError, EventStats, plantsApi, type Plant } from "@/lib/api"
 import { useImageCompression } from "@/lib/useImageCompression"
 import { EventLoggingModal } from "@/components/event-logging-modal"
 import { toast } from "@/components/ui/use-toast"
@@ -59,10 +59,13 @@ export default function HomePage() {
   const [showErrorDialog, setShowErrorDialog] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [showCamera, setShowCamera] = useState(false)
-  const [stats, setStats] = useState<HarvestStats>({
-    total_harvests: 0,
+  const [stats, setStats] = useState<EventStats>({
+    total_events: 0,
     this_month: 0,
-    this_week: 0
+    this_week: 0,
+    harvest_events: 0,
+    bloom_events: 0,
+    snapshot_events: 0
   })
   const [isLoadingStats, setIsLoadingStats] = useState(true)
   
@@ -80,17 +83,37 @@ export default function HomePage() {
     getReadableFileSize 
   } = useImageCompression()
 
-  // Fetch harvest statistics on component mount
+  // Fetch event statistics on component mount
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true)
-        const response = await harvestLogsApi.getStats()
-        if (response.success && response.data) {
-          setStats(response.data)
+        // Try to get event stats first (new system)
+        try {
+          const eventResponse = await eventsApi.getStats()
+          if (eventResponse.success && eventResponse.data) {
+            setStats(eventResponse.data)
+            return
+          }
+        } catch (eventError) {
+          console.log('Event stats not available, falling back to harvest stats')
+        }
+        
+        // Fallback to harvest stats (legacy system)
+        const harvestResponse = await harvestLogsApi.getStats()
+        if (harvestResponse.success && harvestResponse.data) {
+          // Convert harvest stats to event stats format
+          setStats({
+            total_events: harvestResponse.data.total_harvests,
+            this_month: harvestResponse.data.this_month,
+            this_week: harvestResponse.data.this_week,
+            harvest_events: harvestResponse.data.total_harvests,
+            bloom_events: 0,
+            snapshot_events: 0
+          })
         }
       } catch (error) {
-        console.error('Error fetching harvest stats:', error)
+        console.error('Error fetching stats:', error)
         // Keep default values if API fails
       } finally {
         setIsLoadingStats(false)
@@ -133,15 +156,35 @@ export default function HomePage() {
     })
   }
 
-  // Refetch stats after successful harvest creation
+  // Refetch stats after successful event creation
   const refetchStats = async () => {
     try {
-      const response = await harvestLogsApi.getStats()
-      if (response.success && response.data) {
-        setStats(response.data)
+      // Try to get event stats first (new system)
+      try {
+        const eventResponse = await eventsApi.getStats()
+        if (eventResponse.success && eventResponse.data) {
+          setStats(eventResponse.data)
+          return
+        }
+      } catch (eventError) {
+        console.log('Event stats not available, falling back to harvest stats')
+      }
+      
+      // Fallback to harvest stats (legacy system)
+      const harvestResponse = await harvestLogsApi.getStats()
+      if (harvestResponse.success && harvestResponse.data) {
+        // Convert harvest stats to event stats format
+        setStats({
+          total_events: harvestResponse.data.total_harvests,
+          this_month: harvestResponse.data.this_month,
+          this_week: harvestResponse.data.this_week,
+          harvest_events: harvestResponse.data.total_harvests,
+          bloom_events: 0,
+          snapshot_events: 0
+        })
       }
     } catch (error) {
-      console.error('Error refetching harvest stats:', error)
+      console.error('Error refetching stats:', error)
     }
   }
 
@@ -704,7 +747,7 @@ export default function HomePage() {
                 <Sprout className="w-6 h-6 text-white" />
               </div>
               <div className="text-2xl font-bold text-foreground">
-                {isLoadingStats ? "..." : stats.total_harvests}
+                {isLoadingStats ? "..." : stats.total_events}
               </div>
               <p className="text-sm text-organic">Total Harvests</p>
             </CardContent>
@@ -736,37 +779,6 @@ export default function HomePage() {
         </div>
 
       </div>
-
-      {/* Success Dialog */}
-      <SuccessDialog
-        open={showSuccessDialog}
-        onOpenChange={setShowSuccessDialog}
-        title="Saved!"
-        description="Your harvest has been saved."
-        actionLabel="Continue"
-        onAction={() => {
-          setShowSuccessDialog(false)
-        }}
-      />
-
-      {/* Error Dialog */}
-      <ErrorDialog
-        open={showErrorDialog}
-        onOpenChange={setShowErrorDialog}
-        title="Error"
-        description={errorMessage}
-        actionLabel="Try Again"
-        onAction={() => {
-          setShowErrorDialog(false)
-        }}
-      />
-
-      {/* Camera Capture */}
-      <CameraCapture
-        isOpen={showCamera}
-        onCapture={handleCameraCapture}
-        onClose={() => setShowCamera(false)}
-      />
 
       {/* Plant Journey Event Modal */}
       <EventLoggingModal

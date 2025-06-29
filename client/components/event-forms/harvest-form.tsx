@@ -14,6 +14,7 @@ interface HarvestFormProps {
     produce: string
     quantity: number
     unit: string
+    images?: File[]
   }) => void
   isSubmitting: boolean
 }
@@ -97,6 +98,7 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
       produce: produce.trim(),
       quantity: parseFloat(quantity),
       unit: finalUnit.trim(),
+      images: images.length > 0 ? images : undefined,
     })
   }
 
@@ -207,16 +209,16 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
           )}
 
           <div className="space-y-2">
-            <Label>Harvest Photos (Optional)</Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+            <Label className="text-sm font-medium">Harvest Photos (Optional)</Label>
+            <div className="border-2 border-dashed border-muted rounded-lg p-6 hover:border-primary/50 transition-colors">
               <div className="text-center">
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
                 <div className="mt-4">
                   <label htmlFor="harvest-images" className="cursor-pointer">
-                    <span className="mt-2 block text-sm font-medium text-gray-900">
+                    <span className="mt-2 block text-sm font-medium text-foreground">
                       Upload harvest photos
                     </span>
-                    <span className="mt-1 block text-xs text-gray-500">
+                    <span className="mt-1 block text-xs text-muted-foreground">
                       PNG, JPG, GIF up to 10MB each (max 5 photos)
                     </span>
                   </label>
@@ -260,8 +262,8 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
       </Card>
 
       <div className="flex justify-end space-x-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Logging Harvest...' : 'Log Harvest'}
+        <Button type="submit" disabled={isSubmitting} variant="harvest" size="lg">
+          {isSubmitting ? 'Logging Harvest...' : 'Log Harvest Event'}
         </Button>
       </div>
     </form>

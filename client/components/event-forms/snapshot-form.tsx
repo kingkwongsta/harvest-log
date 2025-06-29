@@ -14,6 +14,7 @@ import { toast } from '@/components/ui/use-toast'
 interface SnapshotFormProps {
   onSubmit: (data: {
     metrics: Record<string, any>
+    images?: File[]
   }) => void
   isSubmitting: boolean
 }
@@ -85,7 +86,8 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
     })
 
     onSubmit({
-      metrics
+      metrics,
+      images: images.length > 0 ? images : undefined,
     })
   }
 
@@ -223,7 +225,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
                 <Checkbox
                   id="new-growth"
                   checked={newGrowth}
-                  onCheckedChange={setNewGrowth}
+                  onCheckedChange={(checked) => setNewGrowth(checked === true)}
                 />
                 <Label htmlFor="new-growth" className="text-sm">
                   New growth visible
@@ -234,7 +236,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
                 <Checkbox
                   id="flowering"
                   checked={floweringStatus}
-                  onCheckedChange={setFloweringStatus}
+                  onCheckedChange={(checked) => setFloweringStatus(checked === true)}
                 />
                 <Label htmlFor="flowering" className="text-sm">
                   Currently flowering
@@ -245,7 +247,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
                 <Checkbox
                   id="pest-issues"
                   checked={pestIssues}
-                  onCheckedChange={setPestIssues}
+                  onCheckedChange={(checked) => setPestIssues(checked === true)}
                 />
                 <Label htmlFor="pest-issues" className="text-sm text-orange-700">
                   Pest issues present
@@ -256,7 +258,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
                 <Checkbox
                   id="fruiting"
                   checked={fruitingStatus}
-                  onCheckedChange={setFruitingStatus}
+                  onCheckedChange={(checked) => setFruitingStatus(checked === true)}
                 />
                 <Label htmlFor="fruiting" className="text-sm">
                   Producing fruit/vegetables
@@ -267,7 +269,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
                 <Checkbox
                   id="disease-signs"
                   checked={diseaseSignsPresent}
-                  onCheckedChange={setDiseaseSignsPresent}
+                  onCheckedChange={(checked) => setDiseaseSignsPresent(checked === true)}
                 />
                 <Label htmlFor="disease-signs" className="text-sm text-red-700">
                   Disease signs present
@@ -392,8 +394,8 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
       </Card>
 
       <div className="flex justify-end space-x-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving Snapshot...' : 'Save Snapshot'}
+        <Button type="submit" disabled={isSubmitting} className="bg-blue-500 hover:bg-blue-600 text-white" size="lg">
+          {isSubmitting ? 'Recording Snapshot...' : 'Record Snapshot Event'}
         </Button>
       </div>
     </form>

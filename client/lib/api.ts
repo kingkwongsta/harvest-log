@@ -67,6 +67,15 @@ export interface HarvestStats {
   this_week: number;
 }
 
+export interface EventStats {
+  total_events: number;
+  this_month: number;
+  this_week: number;
+  harvest_events: number;
+  bloom_events: number;
+  snapshot_events: number;
+}
+
 // Plant Journey Types
 export type EventType = 'harvest' | 'bloom' | 'snapshot';
 export type PlantStatus = 'active' | 'harvested' | 'deceased' | 'dormant';
@@ -511,6 +520,11 @@ export const eventsApi = {
     });
     
     return uploadRequest(`/api/images/upload-multiple/${eventId}`, formData);
+  },
+
+  // Get event statistics
+  getStats: async (): Promise<ApiResponse<EventStats>> => {
+    return apiRequest('/api/events/stats');
   },
 };
 
