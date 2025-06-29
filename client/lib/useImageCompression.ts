@@ -37,11 +37,11 @@ export const useImageCompression = () => {
     setCompressionProgress(0);
 
     const defaultOptions = {
-      maxSizeMB: 2,
-      maxWidthOrHeight: 2000,
-      quality: 0.9,
+      maxSizeMB: 1.5,
+      maxWidthOrHeight: 1600,
+      quality: 0.7,
       useWebWorker: true,
-      convertToWebP: false,
+      convertToWebP: true, // Enable WebP for better compression and web performance
       ...options,
     };
 
