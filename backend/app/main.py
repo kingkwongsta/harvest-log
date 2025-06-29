@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from app.config import settings
-from app.routers import harvest_logs, images
+from app.routers import harvest_logs, images, events, plants
 from app.database import init_supabase, create_harvest_logs_table, close_supabase, health_check as db_health_check
 from app.logging_config import setup_logging, get_app_logger
 from app.middleware import LoggingMiddleware, PerformanceMiddleware
@@ -92,11 +92,19 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "harvest-logs",
-            "description": "Operations for managing harvest log entries",
+            "description": "Legacy operations for managing harvest log entries",
         },
         {
             "name": "images",
             "description": "Operations for managing harvest images with Supabase Storage",
+        },
+        {
+            "name": "plants",
+            "description": "Operations for managing plants and varieties",
+        },
+        {
+            "name": "plant-events",
+            "description": "Unified operations for managing plant events (harvest, bloom, snapshot)",
         },
         {
             "name": "health",
@@ -130,6 +138,8 @@ app.add_exception_handler(Exception, general_exception_handler)
 # Include routers
 app.include_router(harvest_logs.router)
 app.include_router(images.router)
+app.include_router(plants.router)
+app.include_router(events.router)
 
 
 @app.get(

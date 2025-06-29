@@ -1,0 +1,490 @@
+from fastapi import APIRouter, Depends, status, Request, Query, HTTPException
+from typing import List, Optional, Dict, Any
+from uuid import UUID
+from datetime import datetime
+
+from app.plant_models import (
+    PlantEvent,
+    PlantEventCreate,
+    PlantEventUpdate,
+    PlantEventResponse,
+    PlantEventListResponse,
+    HarvestEventCreate,
+    BloomEventCreate,
+    SnapshotEventCreate,
+    EventType,
+    get_event_create_model,
+    validate_event_data
+)
+from app.dependencies import get_supabase_client
+from app.logging_config import get_api_logger
+from app.exceptions import NotFoundError, DatabaseError, ValidationException
+from app.models import ErrorResponse
+
+logger = get_api_logger()
+
+router = APIRouter(
+    prefix="/api/events",
+    tags=["plant-events"],
+    responses={
+        404: {"model": ErrorResponse, "description": "Event not found"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"}
+    }
+)
+
+
+@router.post(
+    "/",
+    response_model=PlantEventResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create plant event",
+    description="Create a new plant event (harvest, bloom, or snapshot) with dynamic validation based on event type."
+)
+async def create_plant_event(
+    request: Request,
+    client = Depends(get_supabase_client)
+) -> PlantEventResponse:
+    """
+    Create a new plant event with dynamic validation.
+    
+    The event_type field determines which validation model is used:
+    - **harvest**: Requires produce, quantity, unit
+    - **bloom**: Requires flower_type, optional bloom_stage
+    - **snapshot**: Optional metrics for growth tracking
+    
+    All events support: plant_id, event_date, description, notes, location
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        # Parse request body
+        body = await request.json()
+        event_type = body.get("event_type")
+        
+        if not event_type:
+            raise ValidationException("event_type is required")
+        
+        logger.info(f"API: Creating new {event_type} event", 
+                   extra={"request_id": request_id, "event_type": event_type})
+        
+        # Validate data with appropriate model
+        validated_data = validate_event_data(event_type, body)
+        
+        # Convert to database format
+        event_data = {
+            "plant_id": str(validated_data.plant_id) if validated_data.plant_id else None,
+            "event_type": validated_data.event_type.value,
+            "event_date": validated_data.event_date.isoformat() if validated_data.event_date else None,
+            "description": validated_data.description,
+            "notes": validated_data.notes,
+            "location": validated_data.location
+        }
+        
+        # Add event-type specific fields
+        if event_type == EventType.HARVEST:
+            event_data.update({
+                "produce": validated_data.produce,
+                "quantity": validated_data.quantity,
+                "unit": validated_data.unit
+            })
+        elif event_type == EventType.BLOOM:
+            event_data.update({
+                "flower_type": validated_data.flower_type,
+                "bloom_stage": validated_data.bloom_stage.value if validated_data.bloom_stage else None
+            })
+        elif event_type == EventType.SNAPSHOT:
+            event_data.update({
+                "metrics": validated_data.metrics
+            })
+        
+        # Insert into database
+        logger.debug("API: Inserting event into database", 
+                    extra={
+                        "request_id": request_id,
+                        "table": "plant_events",
+                        "db_operation": "insert"
+                    })
+        
+        result = client.table("plant_events").insert(event_data).execute()
+        
+        if not result.data:
+            raise DatabaseError("Failed to create plant event")
+        
+        # Fetch the complete event with related data
+        event_id = result.data[0]["id"]
+        complete_event = await get_plant_event_by_id(event_id, client, request_id)
+        
+        logger.info(f"API: Successfully created {event_type} event with ID {event_id}", 
+                   extra={"request_id": request_id, "record_id": str(event_id)})
+        
+        return PlantEventResponse(
+            success=True,
+            message=f"{event_type.title()} event created successfully",
+            data=complete_event
+        )
+        
+    except ValidationException as e:
+        logger.warning(f"API: Validation error creating event: {str(e)}", 
+                      extra={"request_id": request_id})
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"API: Failed to create plant event: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to create plant event: {str(e)}")
+
+
+@router.get(
+    "/",
+    response_model=PlantEventListResponse,
+    summary="Get plant events",
+    description="Retrieve plant events with filtering options."
+)
+async def get_plant_events(
+    request: Request,
+    plant_id: Optional[UUID] = Query(None, description="Filter by plant ID"),
+    event_type: Optional[EventType] = Query(None, description="Filter by event type"),
+    date_from: Optional[datetime] = Query(None, description="Filter events from this date"),
+    date_to: Optional[datetime] = Query(None, description="Filter events to this date"),
+    limit: int = Query(default=50, ge=1, le=100, description="Number of events to return"),
+    offset: int = Query(default=0, ge=0, description="Number of events to skip"),
+    client = Depends(get_supabase_client)
+) -> PlantEventListResponse:
+    """
+    Get plant events with optional filtering.
+    
+    - **plant_id**: Filter events for a specific plant
+    - **event_type**: Filter by harvest, bloom, or snapshot events
+    - **date_from/date_to**: Filter by date range
+    - **limit/offset**: Pagination parameters
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info("API: Retrieving plant events", 
+                   extra={
+                       "request_id": request_id,
+                       "plant_id": str(plant_id) if plant_id else None,
+                       "event_type": event_type.value if event_type else None,
+                       "limit": limit,
+                       "offset": offset
+                   })
+        
+        # Build query with filters
+        query = client.table("plant_events").select("""
+            *,
+            plant:plants(id, name, variety:plant_varieties(id, name, category)),
+            images:event_images(*)
+        """)
+        
+        # Apply filters
+        if plant_id:
+            query = query.eq("plant_id", str(plant_id))
+        
+        if event_type:
+            query = query.eq("event_type", event_type.value)
+        
+        if date_from:
+            query = query.gte("event_date", date_from.isoformat())
+        
+        if date_to:
+            query = query.lte("event_date", date_to.isoformat())
+        
+        # Apply pagination and ordering
+        query = query.order("event_date", desc=True).range(offset, offset + limit - 1)
+        
+        logger.debug("API: Executing events query", 
+                    extra={
+                        "request_id": request_id,
+                        "table": "plant_events",
+                        "db_operation": "select"
+                    })
+        
+        result = query.execute()
+        
+        # Convert to PlantEvent models
+        events = []
+        for event_data in result.data:
+            # Add public URLs to images
+            if event_data.get("images"):
+                from app.storage import storage_service
+                for image in event_data["images"]:
+                    image["public_url"] = storage_service.get_public_url(image["file_path"])
+            
+            event = PlantEvent(**event_data)
+            events.append(event)
+        
+        logger.info(f"API: Successfully retrieved {len(events)} plant events", 
+                   extra={"request_id": request_id})
+        
+        return PlantEventListResponse(
+            success=True,
+            message=f"Retrieved {len(events)} plant events",
+            data=events,
+            total=len(events)
+        )
+        
+    except Exception as e:
+        logger.error(f"API: Failed to retrieve plant events: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to retrieve plant events: {str(e)}")
+
+
+@router.get(
+    "/{event_id}",
+    response_model=PlantEventResponse,
+    summary="Get plant event by ID",
+    description="Retrieve a specific plant event by its unique identifier."
+)
+async def get_plant_event(
+    event_id: UUID,
+    request: Request,
+    client = Depends(get_supabase_client)
+) -> PlantEventResponse:
+    """
+    Get a specific plant event by ID.
+    
+    - **event_id**: Unique identifier of the plant event (UUID format)
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"API: Retrieving plant event with ID {event_id}", 
+                   extra={"request_id": request_id, "record_id": str(event_id)})
+        
+        event = await get_plant_event_by_id(event_id, client, request_id)
+        if not event:
+            logger.warning(f"API: Plant event not found: {event_id}", 
+                          extra={"request_id": request_id, "record_id": str(event_id)})
+            raise NotFoundError("Plant event", str(event_id))
+        
+        logger.info(f"API: Successfully retrieved plant event {event_id}", 
+                   extra={"request_id": request_id, "record_id": str(event_id)})
+        
+        return PlantEventResponse(
+            success=True,
+            message="Plant event retrieved successfully",
+            data=event
+        )
+        
+    except NotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"API: Failed to retrieve plant event {event_id}: {str(e)}", 
+                    extra={"request_id": request_id, "record_id": str(event_id)}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to retrieve plant event: {str(e)}")
+
+
+@router.put(
+    "/{event_id}",
+    response_model=PlantEventResponse,
+    summary="Update plant event",
+    description="Update an existing plant event with new information."
+)
+async def update_plant_event(
+    event_id: UUID,
+    event_update: PlantEventUpdate,
+    request: Request,
+    client = Depends(get_supabase_client)
+) -> PlantEventResponse:
+    """
+    Update an existing plant event.
+    
+    - **event_id**: Unique identifier of the plant event to update
+    - Only provided fields will be updated, others remain unchanged
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"API: Updating plant event {event_id}", 
+                   extra={"request_id": request_id, "record_id": str(event_id)})
+        
+        # Build update data, excluding None values
+        update_data = {}
+        for field, value in event_update.model_dump(exclude_unset=True).items():
+            if value is not None:
+                if field == "bloom_stage" and hasattr(value, 'value'):
+                    update_data[field] = value.value
+                else:
+                    update_data[field] = value
+        
+        if not update_data:
+            raise ValidationException("No fields provided for update")
+        
+        # Add updated_at timestamp
+        update_data["updated_at"] = datetime.now().isoformat()
+        
+        logger.debug("API: Updating event in database", 
+                    extra={
+                        "request_id": request_id,
+                        "table": "plant_events",
+                        "db_operation": "update",
+                        "record_id": str(event_id)
+                    })
+        
+        result = client.table("plant_events").update(update_data).eq("id", str(event_id)).execute()
+        
+        if not result.data:
+            logger.warning(f"API: Plant event not found for update: {event_id}", 
+                          extra={"request_id": request_id, "record_id": str(event_id)})
+            raise NotFoundError("Plant event", str(event_id))
+        
+        # Fetch the updated event
+        updated_event = await get_plant_event_by_id(event_id, client, request_id)
+        
+        logger.info(f"API: Successfully updated plant event {event_id}", 
+                   extra={"request_id": request_id, "record_id": str(event_id)})
+        
+        return PlantEventResponse(
+            success=True,
+            message="Plant event updated successfully",
+            data=updated_event
+        )
+        
+    except NotFoundError:
+        raise
+    except ValidationException as e:
+        logger.warning(f"API: Validation error updating event: {str(e)}", 
+                      extra={"request_id": request_id})
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"API: Failed to update plant event {event_id}: {str(e)}", 
+                    extra={"request_id": request_id, "record_id": str(event_id)}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to update plant event: {str(e)}")
+
+
+@router.delete(
+    "/{event_id}",
+    response_model=PlantEventResponse,
+    summary="Delete plant event",
+    description="Delete a plant event entry permanently."
+)
+async def delete_plant_event(
+    event_id: UUID,
+    request: Request,
+    client = Depends(get_supabase_client)
+) -> PlantEventResponse:
+    """
+    Delete a plant event by ID.
+    
+    - **event_id**: Unique identifier of the plant event to delete
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"API: Deleting plant event {event_id}", 
+                   extra={"request_id": request_id, "record_id": str(event_id)})
+        
+        # First fetch the event to return it in response
+        event_to_delete = await get_plant_event_by_id(event_id, client, request_id)
+        if not event_to_delete:
+            logger.warning(f"API: Plant event not found for deletion: {event_id}", 
+                          extra={"request_id": request_id, "record_id": str(event_id)})
+            raise NotFoundError("Plant event", str(event_id))
+        
+        # Delete the event (cascade will handle related images)
+        logger.debug("API: Deleting event from database", 
+                    extra={
+                        "request_id": request_id,
+                        "table": "plant_events",
+                        "db_operation": "delete",
+                        "record_id": str(event_id)
+                    })
+        
+        result = client.table("plant_events").delete().eq("id", str(event_id)).execute()
+        
+        if not result.data:
+            raise DatabaseError("Failed to delete plant event")
+        
+        logger.info(f"API: Successfully deleted plant event {event_id}", 
+                   extra={"request_id": request_id, "record_id": str(event_id)})
+        
+        return PlantEventResponse(
+            success=True,
+            message="Plant event deleted successfully",
+            data=event_to_delete
+        )
+        
+    except NotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"API: Failed to delete plant event {event_id}: {str(e)}", 
+                    extra={"request_id": request_id, "record_id": str(event_id)}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to delete plant event: {str(e)}")
+
+
+# Helper functions
+async def get_plant_event_by_id(event_id: UUID, client, request_id: str) -> Optional[PlantEvent]:
+    """Helper function to get a plant event by ID with all related data"""
+    try:
+        logger.debug(f"DB: Fetching plant event {event_id}", 
+                    extra={
+                        "request_id": request_id,
+                        "table": "plant_events",
+                        "db_operation": "select",
+                        "record_id": str(event_id)
+                    })
+        
+        result = client.table("plant_events").select("""
+            *,
+            plant:plants(
+                id, name, variety_id, planted_date, location, status, notes,
+                variety:plant_varieties(id, name, category, description)
+            ),
+            images:event_images(*)
+        """).eq("id", str(event_id)).execute()
+        
+        if not result.data:
+            return None
+        
+        event_data = result.data[0]
+        
+        # Add public URLs to images
+        if event_data.get("images"):
+            from app.storage import storage_service
+            for image in event_data["images"]:
+                image["public_url"] = storage_service.get_public_url(image["file_path"])
+        
+        return PlantEvent(**event_data)
+        
+    except Exception as e:
+        logger.error(f"DB: Failed to fetch plant event {event_id}: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to fetch plant event: {str(e)}")
+
+
+# Backward compatibility endpoints
+@router.get(
+    "/harvest-logs",
+    response_model=PlantEventListResponse,
+    summary="Get harvest events (compatibility)",
+    description="Backward compatibility endpoint - returns only harvest events in legacy format.",
+    deprecated=True
+)
+async def get_harvest_events_compat(
+    request: Request,
+    client = Depends(get_supabase_client)
+) -> PlantEventListResponse:
+    """Backward compatibility endpoint for harvest logs"""
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    logger.info("API: Using legacy harvest-logs endpoint", 
+               extra={"request_id": request_id, "deprecated": True})
+    
+    # Call the main events endpoint with harvest filter
+    return await get_plant_events(
+        request=request,
+        plant_id=None,
+        event_type=EventType.HARVEST,
+        date_from=None,
+        date_to=None,
+        limit=50,
+        offset=0,
+        client=client
+    )

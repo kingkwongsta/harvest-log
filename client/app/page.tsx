@@ -15,8 +15,10 @@ import { Progress } from "@/components/ui/progress"
 import { CameraCapture } from "@/components/camera/camera-capture"
 import { Calendar, Camera, X, Upload, Sprout, TrendingUp, Clock } from "lucide-react"
 import Image from "next/image"
-import { harvestLogsApi, imagesApi, ApiError, HarvestStats } from "@/lib/api"
+import { harvestLogsApi, imagesApi, ApiError, HarvestStats, plantsApi, type Plant } from "@/lib/api"
 import { useImageCompression } from "@/lib/useImageCompression"
+import { EventLoggingModal } from "@/components/event-logging-modal"
+import { toast } from "@/components/ui/use-toast"
 
 interface HarvestForm {
   fruit: string
@@ -63,6 +65,11 @@ export default function HomePage() {
     this_week: 0
   })
   const [isLoadingStats, setIsLoadingStats] = useState(true)
+  
+  // Plant Journey Modal State
+  const [showEventModal, setShowEventModal] = useState(false)
+  const [plants, setPlants] = useState<Plant[]>([])
+  const [isLoadingPlants, setIsLoadingPlants] = useState(false)
 
   // Image compression hook
   const { 
@@ -92,6 +99,39 @@ export default function HomePage() {
 
     fetchStats()
   }, [])
+
+  // Load plants when event modal opens
+  const loadPlants = async () => {
+    if (isLoadingPlants) return
+    
+    try {
+      setIsLoadingPlants(true)
+      const response = await plantsApi.getPlants()
+      if (response.success && response.data) {
+        setPlants(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading plants:', error)
+    } finally {
+      setIsLoadingPlants(false)
+    }
+  }
+
+  const handleOpenEventModal = () => {
+    setShowEventModal(true)
+    loadPlants()
+  }
+
+  const handleEventCreated = async (event: any) => {
+    // Refresh stats after new event is created
+    await refetchStats()
+    
+    // Show success message
+    toast({
+      title: 'Event logged successfully!',
+      description: `${event.event_type} event has been saved.`,
+    })
+  }
 
   // Refetch stats after successful harvest creation
   const refetchStats = async () => {
@@ -368,9 +408,42 @@ export default function HomePage() {
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto p-6">
+        {/* Event Logging Options */}
+        <div className="mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="cursor-pointer hover:shadow-lg transition-all border-2 border-green-100 hover:border-green-200">
+              <CardContent className="p-4 text-center">
+                <div className="text-3xl mb-2">🌱</div>
+                <h3 className="font-semibold text-green-700 mb-1">Plant Journey</h3>
+                <p className="text-sm text-gray-600 mb-3">Track harvests, blooms, and growth snapshots</p>
+                <Button 
+                  onClick={handleOpenEventModal}
+                  variant="outline" 
+                  size="sm"
+                  className="w-full border-green-200 text-green-700 hover:bg-green-50"
+                >
+                  Log New Event
+                </Button>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-2 border-amber-100">
+              <CardContent className="p-4 text-center">
+                <div className="text-3xl mb-2">🌾</div>
+                <h3 className="font-semibold text-amber-700 mb-1">Quick Harvest</h3>
+                <p className="text-sm text-gray-600 mb-3">Fast harvest entry with the form below</p>
+                <div className="text-sm text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                  ← Use form below
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        
         <Card>
           <CardHeader>
-            <CardTitle>New Entry</CardTitle>
+            <CardTitle>Quick Harvest Entry</CardTitle>
+            <p className="text-sm text-gray-600">Traditional harvest logging form</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -693,6 +766,14 @@ export default function HomePage() {
         isOpen={showCamera}
         onCapture={handleCameraCapture}
         onClose={() => setShowCamera(false)}
+      />
+
+      {/* Plant Journey Event Modal */}
+      <EventLoggingModal
+        isOpen={showEventModal}
+        onClose={() => setShowEventModal(false)}
+        onEventCreated={handleEventCreated}
+        plants={plants}
       />
     </div>
   )
