@@ -75,6 +75,15 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
       return
     }
 
+    if (produce.trim().length > 100) {
+      toast({
+        title: 'Validation Error',
+        description: 'Product name must be 100 characters or less.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     if (!quantity || parseFloat(quantity) <= 0) {
       toast({
         title: 'Validation Error',
@@ -89,6 +98,15 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
       toast({
         title: 'Validation Error',
         description: 'Please specify the unit of measurement.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (finalUnit.trim().length > 50) {
+      toast({
+        title: 'Validation Error',
+        description: 'Unit must be 50 characters or less.',
         variant: 'destructive',
       })
       return
@@ -154,6 +172,7 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
                 onChange={(e) => setProduce(e.target.value)}
                 placeholder="e.g., Tomatoes, Cherry Tomatoes..."
                 list="produce-suggestions"
+                maxLength={100}
                 required
               />
               <datalist id="produce-suggestions">
@@ -203,6 +222,7 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
                 value={customUnit}
                 onChange={(e) => setCustomUnit(e.target.value)}
                 placeholder="Enter custom unit..."
+                maxLength={50}
                 required
               />
             </div>

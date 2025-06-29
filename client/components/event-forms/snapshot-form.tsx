@@ -41,6 +41,34 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validate metric ranges
+    if (height && (parseFloat(height) <= 0 || parseFloat(height) > 10000)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Height must be between 0.1 and 10000 cm.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (width && (parseFloat(width) <= 0 || parseFloat(width) > 10000)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Width must be between 0.1 and 10000 cm.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (leafCount && (parseInt(leafCount) < 0 || parseInt(leafCount) > 10000)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Leaf count must be between 0 and 10000.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     // Build metrics object
     const metrics: Record<string, any> = {}
     
@@ -53,7 +81,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
       metrics.width_cm = parseFloat(width)
     }
     
-    if (leafCount && parseInt(leafCount) > 0) {
+    if (leafCount && parseInt(leafCount) >= 0) {
       metrics.leaf_count = parseInt(leafCount)
     }
     
@@ -156,6 +184,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
                 type="number"
                 step="0.1"
                 min="0.1"
+                max="10000"
                 value={height}
                 onChange={(e) => setHeight(e.target.value)}
                 placeholder="25.5"
@@ -169,6 +198,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
                 type="number"
                 step="0.1"
                 min="0.1"
+                max="10000"
                 value={width}
                 onChange={(e) => setWidth(e.target.value)}
                 placeholder="15.0"
@@ -181,6 +211,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
                 id="leaf-count"
                 type="number"
                 min="0"
+                max="10000"
                 value={leafCount}
                 onChange={(e) => setLeafCount(e.target.value)}
                 placeholder="12"

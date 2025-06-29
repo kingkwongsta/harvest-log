@@ -222,6 +222,21 @@ class SnapshotEventData(BaseModel):
         return validated_metrics
 
 
+# Weather Models
+class WeatherData(BaseModel):
+    temperature: float = Field(..., description="Temperature in Celsius")
+    humidity: float = Field(..., description="Relative humidity in percent")
+    weather_code: int = Field(..., description="WMO weather interpretation code")
+    wind_speed: float = Field(..., description="Wind speed in km/h")
+    
+    class Config:
+        from_attributes = True
+
+class Coordinates(BaseModel):
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+
+
 # Plant Event Models
 class PlantEventBase(BaseModel):
     """Base model for plant event data"""
@@ -231,6 +246,7 @@ class PlantEventBase(BaseModel):
     description: Optional[str] = Field(None, max_length=500, description="Event description")
     notes: Optional[str] = Field(None, max_length=2000, description="Additional notes about the event")
     location: Optional[str] = Field(None, max_length=200, description="Location where event occurred")
+    coordinates: Optional[Coordinates] = Field(None, description="Coordinates for weather data")
     
     @field_validator('event_date')
     @classmethod
@@ -308,6 +324,7 @@ class PlantEvent(PlantEventBase):
     flower_type: Optional[str] = Field(None, description="Type of flower (bloom events only)")
     bloom_stage: Optional[BloomStage] = Field(None, description="Stage of blooming (bloom events only)")
     metrics: Optional[Dict[str, Any]] = Field(None, description="Flexible metrics data (primarily snapshot events)")
+    weather: Optional[WeatherData] = Field(None, description="Weather data at the time of the event")
     
     created_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the event was created")
     updated_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the event was last updated")
@@ -460,6 +477,23 @@ class EventImageResponse(BaseModel):
     success: bool = Field(..., description="Whether the operation was successful")
     message: str = Field(..., description="Response message")
     data: Optional[EventImage] = Field(None, description="The event image data if applicable")
+
+
+class EventStats(BaseModel):
+    """Event statistics model"""
+    total_events: int = Field(..., description="Total number of events")
+    this_month: int = Field(..., description="Events created this month")
+    this_week: int = Field(..., description="Events created this week")
+    harvest_events: int = Field(..., description="Total harvest events")
+    bloom_events: int = Field(..., description="Total bloom events")
+    snapshot_events: int = Field(..., description="Total snapshot events")
+
+
+class EventStatsResponse(BaseModel):
+    """Response model for event statistics operations"""
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Response message")
+    data: Optional[EventStats] = Field(None, description="The event statistics data")
 
 
 # Helper functions for dynamic model selection

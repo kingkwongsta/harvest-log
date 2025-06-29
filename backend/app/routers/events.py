@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status, Request, Query, HTTPException
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.plant_models import (
     PlantEvent,
@@ -13,6 +13,9 @@ from app.plant_models import (
     BloomEventCreate,
     SnapshotEventCreate,
     EventType,
+    EventStats,
+    EventStatsResponse,
+    Coordinates,
     get_event_create_model,
     validate_event_data
 )
@@ -20,6 +23,7 @@ from app.dependencies import get_supabase_client
 from app.logging_config import get_api_logger
 from app.exceptions import NotFoundError, DatabaseError, ValidationException
 from app.models import ErrorResponse
+from app.weather import get_weather_data
 
 logger = get_api_logger()
 
@@ -71,6 +75,11 @@ async def create_plant_event(
         # Validate data with appropriate model
         validated_data = validate_event_data(event_type, body)
         
+        # Fetch weather data if coordinates are provided
+        weather_data = None
+        if validated_data.coordinates:
+            weather_data = await get_weather_data(validated_data.coordinates)
+
         # Convert to database format
         event_data = {
             "plant_id": str(validated_data.plant_id) if validated_data.plant_id else None,
@@ -78,7 +87,8 @@ async def create_plant_event(
             "event_date": validated_data.event_date.isoformat() if validated_data.event_date else None,
             "description": validated_data.description,
             "notes": validated_data.notes,
-            "location": validated_data.location
+            "location": validated_data.location,
+            "weather": weather_data.model_dump() if weather_data else None
         }
         
         # Add event-type specific fields
@@ -230,6 +240,95 @@ async def get_plant_events(
                     extra={"request_id": request_id}, 
                     exc_info=True)
         raise DatabaseError(f"Failed to retrieve plant events: {str(e)}")
+
+
+@router.get(
+    "/stats",
+    response_model=EventStatsResponse,
+    summary="Get event statistics",
+    description="Retrieve comprehensive statistics for all plant events."
+)
+async def get_event_stats(
+    request: Request,
+    client = Depends(get_supabase_client)
+) -> EventStatsResponse:
+    """
+    Get comprehensive event statistics.
+    
+    Returns statistics including:
+    - Total event count across all types
+    - This month's event count
+    - This week's event count
+    - Count by event type (harvest, bloom, snapshot)
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info("API: Retrieving event statistics", extra={"request_id": request_id})
+        
+        # Get current date info
+        now = datetime.now()
+        
+        # Start of current month
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # Start of current week (Monday)
+        days_since_monday = now.weekday()
+        week_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_since_monday)
+        
+        # Query total count
+        total_response = client.table('plant_events').select('id', count='exact').execute()
+        total_count = total_response.count or 0
+        
+        # Query this month count
+        month_response = client.table('plant_events').select('id', count='exact').gte('event_date', month_start.isoformat()).execute()
+        month_count = month_response.count or 0
+        
+        # Query this week count
+        week_response = client.table('plant_events').select('id', count='exact').gte('event_date', week_start.isoformat()).execute()
+        week_count = week_response.count or 0
+        
+        # Query count by event type
+        harvest_response = client.table('plant_events').select('id', count='exact').eq('event_type', 'harvest').execute()
+        harvest_count = harvest_response.count or 0
+        
+        bloom_response = client.table('plant_events').select('id', count='exact').eq('event_type', 'bloom').execute()
+        bloom_count = bloom_response.count or 0
+        
+        snapshot_response = client.table('plant_events').select('id', count='exact').eq('event_type', 'snapshot').execute()
+        snapshot_count = snapshot_response.count or 0
+        
+        stats = EventStats(
+            total_events=total_count,
+            this_month=month_count,
+            this_week=week_count,
+            harvest_events=harvest_count,
+            bloom_events=bloom_count,
+            snapshot_events=snapshot_count
+        )
+        
+        logger.info(f"API: Successfully retrieved event stats", 
+                   extra={
+                       "request_id": request_id,
+                       "total_events": total_count,
+                       "this_month": month_count,
+                       "this_week": week_count,
+                       "harvest_events": harvest_count,
+                       "bloom_events": bloom_count,
+                       "snapshot_events": snapshot_count
+                   })
+        
+        return EventStatsResponse(
+            success=True,
+            message="Event statistics retrieved successfully",
+            data=stats
+        )
+        
+    except Exception as e:
+        logger.error(f"API: Failed to retrieve event stats: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to retrieve event statistics: {str(e)}")
 
 
 @router.get(

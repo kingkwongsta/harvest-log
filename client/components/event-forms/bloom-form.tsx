@@ -69,6 +69,15 @@ export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
       return
     }
 
+    if (flowerType.trim().length > 100) {
+      toast({
+        title: 'Validation Error',
+        description: 'Flower type must be 100 characters or less.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     // Build metrics object
     const metrics: Record<string, any> = {}
     
@@ -168,6 +177,7 @@ export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
                 onChange={(e) => setFlowerType(e.target.value)}
                 placeholder="e.g., Sunflower, Tomato Flower..."
                 list="flower-suggestions"
+                maxLength={100}
                 required
               />
               <datalist id="flower-suggestions">

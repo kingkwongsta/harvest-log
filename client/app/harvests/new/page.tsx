@@ -28,12 +28,18 @@ interface HarvestForm {
   quality: string
 }
 
+interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
 export default function NewHarvestPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [photos, setPhotos] = useState<File[]>([])
   const [showCamera, setShowCamera] = useState(false)
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [formData, setFormData] = useState<HarvestForm>({
     fruit: "",
     variety: "",
@@ -82,6 +88,7 @@ export default function NewHarvestPage() {
         harvest_date: new Date(formData.date).toISOString(),
         location: formData.location || undefined,
         notes: formData.notes || undefined,
+        coordinates: coordinates || undefined,
       }
 
       // Call the API
@@ -103,17 +110,22 @@ export default function NewHarvestPage() {
     }
   }
 
-  const getCurrentWeather = () => {
-    // Simulate weather API call
-    const weather = "Sunny, 75°F, 65% humidity"
-    handleInputChange("weather", weather)
-  }
-
   const getCurrentLocation = () => {
-    // Simulate GPS location
-    const location = "North Garden, Zone A"
-    handleInputChange("location", location)
-  }
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setCoordinates({ latitude, longitude });
+          handleInputChange("location", `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`);
+        },
+        (error) => {
+          setError("Error getting location: " + error.message);
+        }
+      );
+    } else {
+      setError("Geolocation is not supported by this browser.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
