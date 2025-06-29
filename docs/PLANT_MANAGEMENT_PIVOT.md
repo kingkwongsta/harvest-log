@@ -45,23 +45,3 @@ A single, unified entry point on the main dashboard for all logging activities.
 2.  **Select Event Type**: A modal opens, prompting the user to select: "Harvest", "Bloom", or "Plant Snapshot".
 3.  **Dynamic Form**: The modal then displays a form with fields relevant only to the chosen event type.
 4.  **Submit Event**: The form submits to the single `POST /api/events` endpoint, simplifying both user experience and development.
-
-### 4. Storage & Media Handling
-
-- **Photos** uploaded to Supabase Storage bucket `plant-media/` with path `{user_id}/{event_type}/{uuid}.jpg`.
-- Store returned public URL(s) in `photo_url` array column for each event.
-
-### 5. Minimal UI Views
-
-- **Plant Timeline** – merge events chronologically (snapshots, blooms, harvests).  
-- **Events List** – filterable table for quick data export.
-
-### 6. MVP Success Criteria
-
-- Users can log the three event types with optional photos.  
-- Data persists in Supabase and appears in Plant Timeline.  
-- RLS ensures only the owner can read/write their events.
-
-> Once this base is solid, extend with richer visualization and sharing features.
-
-*Use this feature catalogue as the starting point for prioritization and MVP definition.* 
