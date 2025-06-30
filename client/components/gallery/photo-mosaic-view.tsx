@@ -12,20 +12,23 @@ import {
   Info,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Leaf,
+  Flower,
+  Eye
 } from "lucide-react"
 import Image from "next/image"
-import type { HarvestLogResponse, HarvestImage } from "@/lib/api"
+import type { PlantEvent, EventImage } from "@/lib/api"
 
 interface PhotoMosaicViewProps {
-  harvests: HarvestLogResponse[]
+  events: PlantEvent[]
   loading: boolean
   error: string | null
 }
 
 interface PhotoItem {
-  image: HarvestImage
-  harvest: HarvestLogResponse
+  image: EventImage
+  event: PlantEvent
   aspectRatio: number
 }
 
@@ -57,21 +60,47 @@ const formatDate = (dateString: string) => {
   })
 }
 
-export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewProps) {
+const getEventIcon = (eventType: string) => {
+  switch (eventType) {
+    case 'harvest':
+      return Leaf
+    case 'bloom':
+      return Flower
+    case 'snapshot':
+      return Eye
+    default:
+      return Eye
+  }
+}
+
+const getEventColor = (eventType: string) => {
+  switch (eventType) {
+    case 'harvest':
+      return 'text-green-600'
+    case 'bloom':
+      return 'text-pink-600'
+    case 'snapshot':
+      return 'text-blue-600'
+    default:
+      return 'text-gray-600'
+  }
+}
+
+export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoItem | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number>(0)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [showDetails, setShowDetails] = useState(false)
 
-  // Collect all photos with their harvest context
+  // Collect all photos with their event context
   const allPhotos = useMemo(() => {
     const photos: PhotoItem[] = []
-    harvests.forEach((harvest) => {
-      if (harvest.images) {
-        harvest.images.forEach((image) => {
+    events.forEach((event) => {
+      if (event.images) {
+        event.images.forEach((image) => {
           photos.push({
             image,
-            harvest,
+            event,
             aspectRatio: getImageAspectRatio(image.width, image.height)
           })
         })
@@ -84,11 +113,11 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
     )
     
     return photos
-  }, [harvests])
+  }, [events])
 
-  // Group photos by crop type for color coding
+  // Group photos by plant variety for color coding
   const cropColors: Record<string, string> = {}
-  const uniqueCrops = Array.from(new Set(harvests.map(h => h.crop_name)))
+  const uniqueCrops = Array.from(new Set(events.map(e => e.plant?.variety?.name || e.produce || 'Unknown Plant')))
   const colors = [
     'bg-red-100 border-red-200',
     'bg-green-100 border-green-200', 
@@ -102,6 +131,13 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
   uniqueCrops.forEach((crop, index) => {
     cropColors[crop] = colors[index % colors.length]
   })
+
+  // Group photos by event type for additional color coding
+  const eventTypeColors: Record<string, string> = {
+    'harvest': 'border-green-300',
+    'bloom': 'border-pink-300', 
+    'snapshot': 'border-blue-300'
+  }
 
   const masonryColumns = getMasonryColumns(allPhotos)
 
@@ -201,7 +237,7 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
           <span className="text-2xl">📸</span>
         </div>
         <h3 className="text-lg font-semibold mb-2">No Photos Yet</h3>
-        <p className="text-organic">Start adding photos to your harvests to see them here</p>
+        <p className="text-organic">Start adding photos to your plant events to see them here</p>
       </div>
     )
   }
@@ -224,16 +260,16 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
             <div className="text-2xl font-bold text-foreground">
               {uniqueCrops.length}
             </div>
-            <p className="text-sm text-organic">Crop Types</p>
+            <p className="text-sm text-organic">Plant Types</p>
           </CardContent>
         </Card>
         
         <Card className="text-center">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-foreground">
-              {harvests.length}
+              {events.length}
             </div>
-            <p className="text-sm text-organic">Harvest Sessions</p>
+            <p className="text-sm text-organic">Plant Events</p>
           </CardContent>
         </Card>
         
@@ -258,12 +294,12 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
                 onClick={() => openLightbox(photo)}
               >
                 <div 
-                  className={`border-2 ${cropColors[photo.harvest.crop_name]} rounded-lg overflow-hidden`}
+                  className={`border-2 ${cropColors[photo.event.plant?.variety?.name || photo.event.produce || 'Unknown Plant']} ${eventTypeColors[photo.event.event_type]} rounded-lg overflow-hidden`}
                   style={{ aspectRatio: photo.aspectRatio }}
                 >
                   <Image
                     src={photo.image.public_url || "/placeholder.svg"}
-                    alt={`${photo.harvest.crop_name} harvest`}
+                    alt={`${photo.event.plant?.variety?.name || photo.event.produce || 'Plant'} ${photo.event.event_type}`}
                     width={400}
                     height={400 / photo.aspectRatio}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -275,11 +311,18 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <div className="flex items-center justify-between">
                         <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            {(() => {
+                              const EventIcon = getEventIcon(photo.event.event_type)
+                              return <EventIcon className={`w-3 h-3 ${getEventColor(photo.event.event_type)} text-white`} />
+                            })()}
+                            <span className="text-white/80 text-xs capitalize">{photo.event.event_type}</span>
+                          </div>
                           <h3 className="text-white font-semibold text-sm">
-                            {photo.harvest.crop_name}
+                            {photo.event.plant?.variety?.name || photo.event.produce || 'Plant Event'}
                           </h3>
                           <p className="text-white/80 text-xs">
-                            {formatDate(photo.harvest.harvest_date)}
+                            {formatDate(photo.event.event_date)}
                           </p>
                         </div>
                         <Button
@@ -318,11 +361,11 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
             onClick={() => openLightbox(photo)}
           >
             <div 
-              className={`border-2 ${cropColors[photo.harvest.crop_name]} rounded-lg overflow-hidden aspect-square`}
+              className={`border-2 ${cropColors[photo.event.plant?.variety?.name || photo.event.produce || 'Unknown Plant']} ${eventTypeColors[photo.event.event_type]} rounded-lg overflow-hidden aspect-square`}
             >
               <Image
                 src={photo.image.public_url || "/placeholder.svg"}
-                alt={`${photo.harvest.crop_name} harvest`}
+                alt={`${photo.event.plant?.variety?.name || photo.event.produce || 'Plant'} ${photo.event.event_type}`}
                 width={300}
                 height={300}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -334,11 +377,18 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
                 <div className="absolute bottom-0 left-0 right-0 p-3">
                   <div className="flex items-center justify-between">
                     <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        {(() => {
+                          const EventIcon = getEventIcon(photo.event.event_type)
+                          return <EventIcon className={`w-3 h-3 ${getEventColor(photo.event.event_type)} text-white`} />
+                        })()}
+                        <span className="text-white/80 text-xs capitalize">{photo.event.event_type}</span>
+                      </div>
                       <h3 className="text-white font-semibold text-sm">
-                        {photo.harvest.crop_name}
+                        {photo.event.plant?.variety?.name || photo.event.produce || 'Plant Event'}
                       </h3>
                       <p className="text-white/80 text-xs">
-                        {formatDate(photo.harvest.harvest_date)}
+                        {formatDate(photo.event.event_date)}
                       </p>
                     </div>
                     <Button
@@ -412,7 +462,7 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
           <div className="relative max-w-4xl max-h-full p-4">
             <Image
               src={selectedPhoto.image.public_url || "/placeholder.svg"}
-              alt={`${selectedPhoto.harvest.crop_name} harvest`}
+              alt={`${selectedPhoto.event.plant?.variety?.name || selectedPhoto.event.produce || 'Plant'} ${selectedPhoto.event.event_type}`}
               width={800}
               height={600}
               className="max-w-full max-h-full object-contain rounded-lg"
@@ -426,8 +476,15 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
               <div className="max-w-4xl mx-auto">
                 <div className="flex items-start justify-between mb-4">
                   <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      {(() => {
+                        const EventIcon = getEventIcon(selectedPhoto.event.event_type)
+                        return <EventIcon className={`w-5 h-5 ${getEventColor(selectedPhoto.event.event_type)} text-white`} />
+                      })()}
+                      <span className="text-white/80 text-sm capitalize">{selectedPhoto.event.event_type}</span>
+                    </div>
                     <h2 className="text-xl font-semibold mb-1">
-                      {selectedPhoto.harvest.crop_name}
+                      {selectedPhoto.event.plant?.variety?.name || selectedPhoto.event.produce || 'Plant Event'}
                     </h2>
                     <p className="text-white/80 text-sm">
                       Photo {selectedIndex + 1} of {allPhotos.length}
@@ -453,27 +510,34 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      <span>{formatDate(selectedPhoto.harvest.harvest_date)}</span>
+                      <span>{formatDate(selectedPhoto.event.event_date)}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Scale className="w-4 h-4" />
-                      <span>{selectedPhoto.harvest.quantity} {selectedPhoto.harvest.unit}</span>
-                    </div>
-                    {/* TODO: Add location support when available in HarvestLogResponse
-                    {selectedPhoto.harvest.location && (
+                    {selectedPhoto.event.quantity && (
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        <span>{selectedPhoto.harvest.location}</span>
+                        <Scale className="w-4 h-4" />
+                        <span>{selectedPhoto.event.quantity} {selectedPhoto.event.unit}</span>
                       </div>
                     )}
-                    */}
+                    {selectedPhoto.event.coordinates && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>{selectedPhoto.event.coordinates.latitude.toFixed(4)}, {selectedPhoto.event.coordinates.longitude.toFixed(4)}</span>
+                      </div>
+                    )}
                   </div>
                   
-                  {selectedPhoto.harvest.notes && (
+                  {(selectedPhoto.event.notes || selectedPhoto.event.description) && (
                     <div className="space-y-2">
                       <div className="flex items-start gap-2">
                         <StickyNote className="w-4 h-4 mt-0.5" />
-                        <span className="text-white/90">{selectedPhoto.harvest.notes}</span>
+                        <div className="text-white/90">
+                          {selectedPhoto.event.description && (
+                            <p className="font-medium mb-1">{selectedPhoto.event.description}</p>
+                          )}
+                          {selectedPhoto.event.notes && (
+                            <p>{selectedPhoto.event.notes}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

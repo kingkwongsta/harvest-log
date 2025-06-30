@@ -26,12 +26,15 @@ import {
   Camera,
   Award,
   Target,
-  Activity
+  Activity,
+  Leaf,
+  Flower,
+  Eye
 } from "lucide-react"
-import type { HarvestLogResponse } from "@/lib/api"
+import type { PlantEvent } from "@/lib/api"
 
 interface DashboardViewProps {
-  harvests: HarvestLogResponse[]
+  events: PlantEvent[]
   loading: boolean
   error: string | null
 }
@@ -40,7 +43,7 @@ interface ChartData {
   name: string
   value: number
   quantity?: number
-  harvests?: number
+  events?: number
   photos?: number
   color?: string
 }
@@ -48,8 +51,15 @@ interface ChartData {
 interface TimeSeriesData {
   date: string
   quantity: number
-  harvests: number
+  events: number
   cumulative: number
+}
+
+interface EventTypeData {
+  date: string
+  harvest: number
+  bloom: number
+  snapshot: number
 }
 
 const COLORS = [
@@ -65,16 +75,16 @@ const getMonthYear = (dateString: string) => {
   })
 }
 
-const generateTimeSeriesData = (harvests: HarvestLogResponse[]): TimeSeriesData[] => {
-  const monthlyData: Record<string, { quantity: number; harvests: number }> = {}
+const generateTimeSeriesData = (events: PlantEvent[]): TimeSeriesData[] => {
+  const monthlyData: Record<string, { quantity: number; events: number }> = {}
   
-  harvests.forEach(harvest => {
-    const monthYear = getMonthYear(harvest.harvest_date)
+  events.forEach(event => {
+    const monthYear = getMonthYear(event.event_date)
     if (!monthlyData[monthYear]) {
-      monthlyData[monthYear] = { quantity: 0, harvests: 0 }
+      monthlyData[monthYear] = { quantity: 0, events: 0 }
     }
-    monthlyData[monthYear].quantity += harvest.quantity
-    monthlyData[monthYear].harvests += 1
+    monthlyData[monthYear].quantity += event.quantity || 0
+    monthlyData[monthYear].events += 1
   })
 
   let cumulative = 0
@@ -85,13 +95,34 @@ const generateTimeSeriesData = (harvests: HarvestLogResponse[]): TimeSeriesData[
       return {
         date,
         quantity: data.quantity,
-        harvests: data.harvests,
+        events: data.events,
         cumulative
       }
     })
 }
 
-export function DashboardView({ harvests, loading, error }: DashboardViewProps) {
+const generateEventTypeData = (events: PlantEvent[]): EventTypeData[] => {
+  const monthlyData: Record<string, { harvest: number; bloom: number; snapshot: number }> = {}
+  
+  events.forEach(event => {
+    const monthYear = getMonthYear(event.event_date)
+    if (!monthlyData[monthYear]) {
+      monthlyData[monthYear] = { harvest: 0, bloom: 0, snapshot: 0 }
+    }
+    monthlyData[monthYear][event.event_type] += 1
+  })
+
+  return Object.entries(monthlyData)
+    .sort(([a], [b]) => new Date(a + ' 1').getTime() - new Date(b + ' 1').getTime())
+    .map(([date, data]) => ({
+      date,
+      harvest: data.harvest,
+      bloom: data.bloom,
+      snapshot: data.snapshot
+    }))
+}
+
+export function DashboardView({ events, loading, error }: DashboardViewProps) {
   const [activeTab, setActiveTab] = useState("overview")
 
   if (loading) {
@@ -114,30 +145,30 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
     )
   }
 
-  if (harvests.length === 0) {
+  if (events.length === 0) {
     return (
       <div className="text-center py-12">
         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
           <Activity className="w-8 h-8 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-semibold mb-2">No Data to Visualize</h3>
-        <p className="text-organic">Add some harvests to see charts and analytics</p>
+        <p className="text-organic">Add some plant events to see charts and analytics</p>
       </div>
     )
   }
 
   // Aggregate data for different visualizations
   const cropData: ChartData[] = []
-  const cropStats: Record<string, { quantity: number; harvests: number; photos: number }> = {}
+  const cropStats: Record<string, { quantity: number; events: number; photos: number }> = {}
   
-  harvests.forEach(harvest => {
-    const crop = harvest.crop_name
+  events.forEach(event => {
+    const crop = event.plant?.variety?.name || event.produce || 'Unknown Plant'
     if (!cropStats[crop]) {
-      cropStats[crop] = { quantity: 0, harvests: 0, photos: 0 }
+      cropStats[crop] = { quantity: 0, events: 0, photos: 0 }
     }
-    cropStats[crop].quantity += harvest.quantity
-    cropStats[crop].harvests += 1
-    cropStats[crop].photos += harvest.images?.length || 0
+    cropStats[crop].quantity += event.quantity || 0
+    cropStats[crop].events += 1
+    cropStats[crop].photos += event.images?.length || 0
   })
 
   Object.entries(cropStats).forEach(([crop, stats], index) => {
@@ -145,7 +176,7 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
       name: crop,
       value: stats.quantity,
       quantity: stats.quantity,
-      harvests: stats.harvests,
+      events: stats.events,
       photos: stats.photos,
       color: COLORS[index % COLORS.length]
     })
@@ -154,15 +185,23 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
   cropData.sort((a, b) => b.value - a.value)
 
   // Time series data
-  const timeSeriesData = generateTimeSeriesData(harvests)
+  const timeSeriesData = generateTimeSeriesData(events)
+  const eventTypeData = generateEventTypeData(events)
 
   // Calculate key metrics
-  const totalHarvests = harvests.length
-  const totalQuantity = harvests.reduce((sum, h) => sum + h.quantity, 0)
-  const totalPhotos = harvests.reduce((sum, h) => sum + (h.images?.length || 0), 0)
+  const totalEvents = events.length
+  const totalQuantity = events.reduce((sum, e) => sum + (e.quantity || 0), 0)
+  const totalPhotos = events.reduce((sum, e) => sum + (e.images?.length || 0), 0)
   const uniqueCrops = Object.keys(cropStats).length
 
-  // Find best and worst performing crops
+  // Event type breakdown
+  const eventCounts = {
+    harvest: events.filter(e => e.event_type === 'harvest').length,
+    bloom: events.filter(e => e.event_type === 'bloom').length,
+    snapshot: events.filter(e => e.event_type === 'snapshot').length
+  }
+
+  // Find best and most active plants
   const bestCrop = cropData[0]
   const mostPhotographed = cropData.reduce((max, crop) => 
     (crop.photos || 0) > (max.photos || 0) ? crop : max
@@ -171,11 +210,11 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
   // Recent activity (last 30 days)
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  const recentHarvests = harvests.filter(h => 
-    new Date(h.harvest_date) >= thirtyDaysAgo
+  const recentEvents = events.filter(e => 
+    new Date(e.event_date) >= thirtyDaysAgo
   )
 
-  // Seasonal analysis
+  // Seasonal analysis (only for harvest events)
   const seasonalData = [
     { name: 'Spring', value: 0, color: '#8dd1e1' },
     { name: 'Summer', value: 0, color: '#ffc658' },
@@ -183,13 +222,20 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
     { name: 'Winter', value: 0, color: '#8884d8' }
   ]
 
-  harvests.forEach(harvest => {
-    const month = new Date(harvest.harvest_date).getMonth()
-    if (month >= 2 && month <= 4) seasonalData[0].value += harvest.quantity
-    else if (month >= 5 && month <= 7) seasonalData[1].value += harvest.quantity
-    else if (month >= 8 && month <= 10) seasonalData[2].value += harvest.quantity
-    else seasonalData[3].value += harvest.quantity
+  events.filter(e => e.event_type === 'harvest').forEach(event => {
+    const month = new Date(event.event_date).getMonth()
+    if (month >= 2 && month <= 4) seasonalData[0].value += event.quantity || 0
+    else if (month >= 5 && month <= 7) seasonalData[1].value += event.quantity || 0
+    else if (month >= 8 && month <= 10) seasonalData[2].value += event.quantity || 0
+    else seasonalData[3].value += event.quantity || 0
   })
+
+  // Event type pie chart data
+  const eventTypeChartData = [
+    { name: 'Harvest', value: eventCounts.harvest, color: '#82ca9d' },
+    { name: 'Bloom', value: eventCounts.bloom, color: '#ffc658' },
+    { name: 'Snapshot', value: eventCounts.snapshot, color: '#8884d8' }
+  ].filter(item => item.value > 0)
 
   const CustomTooltip = ({ active, payload, label }: { 
     active?: boolean; 
@@ -219,11 +265,11 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-organic">Total Harvests</p>
-                <p className="text-2xl font-bold">{totalHarvests}</p>
+                <p className="text-sm text-organic">Total Events</p>
+                <p className="text-2xl font-bold">{totalEvents}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <Scale className="w-6 h-6 text-green-600" />
+                <Activity className="w-6 h-6 text-green-600" />
               </div>
             </div>
           </CardContent>
@@ -247,7 +293,7 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-organic">Crop Varieties</p>
+                <p className="text-sm text-organic">Plant Varieties</p>
                 <p className="text-2xl font-bold">{uniqueCrops}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -285,7 +331,7 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
             <div className="space-y-2">
               <p className="text-xl font-semibold capitalize">{bestCrop.name}</p>
               <p className="text-sm text-organic">
-                {bestCrop.quantity} total • {bestCrop.harvests} harvests
+                {bestCrop.quantity} harvested • {bestCrop.events} events
               </p>
               <div className="w-full bg-secondary rounded-full h-2">
                 <div 
@@ -308,7 +354,7 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
             <div className="space-y-2">
               <p className="text-xl font-semibold capitalize">{mostPhotographed.name}</p>
               <p className="text-sm text-organic">
-                {mostPhotographed.photos} photos • {mostPhotographed.harvests} harvests
+                {mostPhotographed.photos} photos • {mostPhotographed.events} events
               </p>
               <div className="w-full bg-secondary rounded-full h-2">
                 <div 
@@ -329,18 +375,18 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <p className="text-xl font-semibold">{recentHarvests.length}</p>
+              <p className="text-xl font-semibold">{recentEvents.length}</p>
               <p className="text-sm text-organic">
-                Harvests in last 30 days
+                Events in last 30 days
               </p>
               <div className="flex items-center gap-2">
-                {recentHarvests.length > 0 ? (
+                {recentEvents.length > 0 ? (
                   <TrendingUp className="w-4 h-4 text-green-600" />
                 ) : (
                   <TrendingDown className="w-4 h-4 text-red-600" />
                 )}
                 <span className="text-sm text-organic">
-                  {recentHarvests.length > 0 ? 'Active' : 'Inactive'}
+                  {recentEvents.length > 0 ? 'Active' : 'Inactive'}
                 </span>
               </div>
             </div>
@@ -350,9 +396,10 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
 
       {/* Charts */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="crops">Crops</TabsTrigger>
+          <TabsTrigger value="events">Events</TabsTrigger>
+          <TabsTrigger value="plants">Plants</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="seasonal">Seasonal</TabsTrigger>
         </TabsList>
@@ -361,13 +408,13 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Harvest Distribution</CardTitle>
+                <CardTitle>Event Type Distribution</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={cropData.slice(0, 8)}
+                      data={eventTypeChartData}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -376,7 +423,7 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {cropData.slice(0, 8).map((entry, index) => (
+                      {eventTypeChartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -388,7 +435,7 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
 
             <Card>
               <CardHeader>
-                <CardTitle>Top Crops by Quantity</CardTitle>
+                <CardTitle>Plant Harvest Distribution</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -405,10 +452,53 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
           </div>
         </TabsContent>
 
-        <TabsContent value="crops" className="space-y-6">
+        <TabsContent value="events" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Crop Performance Comparison</CardTitle>
+              <CardTitle>Events Over Time</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <AreaChart data={eventTypeData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Area 
+                    type="monotone" 
+                    dataKey="harvest" 
+                    stackId="1" 
+                    stroke="#82ca9d" 
+                    fill="#82ca9d" 
+                    name="Harvest Events"
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="bloom" 
+                    stackId="1" 
+                    stroke="#ffc658" 
+                    fill="#ffc658" 
+                    name="Bloom Events"
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="snapshot" 
+                    stackId="1" 
+                    stroke="#8884d8" 
+                    fill="#8884d8" 
+                    name="Snapshot Events"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="plants" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Plant Performance Comparison</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -419,8 +509,8 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
                   <YAxis yAxisId="right" orientation="right" />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="quantity" fill="#8884d8" name="Total Quantity" />
-                  <Bar yAxisId="right" dataKey="harvests" fill="#82ca9d" name="Number of Harvests" />
+                  <Bar yAxisId="left" dataKey="quantity" fill="#8884d8" name="Total Harvested" />
+                  <Bar yAxisId="right" dataKey="events" fill="#82ca9d" name="Number of Events" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -430,7 +520,7 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
         <TabsContent value="trends" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Harvest Trends Over Time</CardTitle>
+              <CardTitle>Activity Trends Over Time</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -448,16 +538,16 @@ export function DashboardView({ harvests, loading, error }: DashboardViewProps) 
                     stackId="1" 
                     stroke="#8884d8" 
                     fill="#8884d8" 
-                    name="Monthly Quantity"
+                    name="Monthly Harvest Quantity"
                   />
                   <Line 
                     yAxisId="right" 
                     type="monotone" 
-                    dataKey="cumulative" 
-                    stroke="#ff7300" 
-                    strokeWidth={3}
-                    dot={{ fill: '#ff7300' }}
-                    name="Cumulative Total"
+                    dataKey="events" 
+                    stroke="#82ca9d" 
+                    strokeWidth={2}
+                    dot={{ fill: '#82ca9d' }}
+                    name="Monthly Events"
                   />
                 </AreaChart>
               </ResponsiveContainer>
