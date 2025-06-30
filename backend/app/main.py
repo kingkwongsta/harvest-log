@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from app.config import settings
-from app.routers import harvest_logs, images, events, plants
+from app.routers import harvest_logs, images, events, plants, weather
 from app.database import init_supabase, create_harvest_logs_table, close_supabase, health_check as db_health_check
 from app.logging_config import setup_logging, get_app_logger
 from app.middleware import LoggingMiddleware, PerformanceMiddleware
@@ -110,6 +110,10 @@ app = FastAPI(
             "name": "health",
             "description": "Application health check endpoints",
         },
+        {
+            "name": "weather",
+            "description": "Weather data operations using Open-Meteo API",
+        },
     ],
     lifespan=lifespan,
     debug=settings.debug
@@ -140,6 +144,7 @@ app.include_router(harvest_logs.router)
 app.include_router(images.router)
 app.include_router(plants.router)
 app.include_router(events.router)
+app.include_router(weather.router)
 
 
 @app.get(

@@ -81,19 +81,7 @@ class InputSanitizer:
         
         return sanitized
     
-    @staticmethod
-    def sanitize_location(location: Optional[str]) -> Optional[str]:
-        """Sanitize location input."""
-        if not location:
-            return None
-        
-        sanitized = InputSanitizer.sanitize_string(location, max_length=200)
-        
-        # Allow more characters for location (including coordinates)
-        if not re.match(r'^[a-zA-Z0-9\s\-_\'\.\,\(\)\°\″\′\+\-]+$', sanitized):
-            raise ValidationException("Location contains invalid characters")
-        
-        return sanitized if sanitized else None
+    
     
     @staticmethod
     def sanitize_notes(notes: Optional[str]) -> Optional[str]:
@@ -305,8 +293,7 @@ class DataSanitizer:
             sanitized['harvest_date'] = InputValidator.validate_datetime(data['harvest_date'], 'harvest_date')
         
         # Optional fields
-        if 'location' in data:
-            sanitized['location'] = InputSanitizer.sanitize_location(data['location'])
+        
         
         if 'notes' in data:
             sanitized['notes'] = InputSanitizer.sanitize_notes(data['notes'])

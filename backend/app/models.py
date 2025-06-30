@@ -13,7 +13,6 @@ class HarvestLogBase(BaseModel):
     quantity: float = Field(..., gt=0, description="Quantity harvested")
     unit: str = Field(..., min_length=1, max_length=50, description="Unit of measurement (e.g., pounds, kilograms, pieces)")
     harvest_date: datetime = Field(..., description="Date and time of harvest")
-    location: Optional[str] = Field(None, max_length=200, description="Location where crop was harvested")
     notes: Optional[str] = Field(None, max_length=2000, description="Additional notes about the harvest")
     
     @field_validator('crop_name')
@@ -41,14 +40,6 @@ class HarvestLogBase(BaseModel):
         if isinstance(v, str):
             return InputValidator.validate_datetime(v, 'harvest_date')
         return v
-    
-    @field_validator('location')
-    @classmethod
-    def validate_location(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize location"""
-        if v is None:
-            return None
-        return InputSanitizer.sanitize_location(v)
     
     @field_validator('notes')
     @classmethod
@@ -164,7 +155,6 @@ class HarvestLogUpdate(BaseModel):
     quantity: Optional[float] = Field(None, gt=0)
     unit: Optional[str] = Field(None, min_length=1, max_length=50)
     harvest_date: Optional[datetime] = None
-    location: Optional[str] = Field(None, max_length=200)
     notes: Optional[str] = Field(None, max_length=1000)
 
 

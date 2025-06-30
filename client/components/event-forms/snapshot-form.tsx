@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,7 +14,7 @@ import { toast } from '@/components/ui/use-toast'
 
 interface SnapshotFormProps {
   onSubmit: (data: {
-    metrics: Record<string, any>
+    metrics: Record<string, number | string | boolean>
     images?: File[]
   }) => void
   isSubmitting: boolean
@@ -70,7 +71,7 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
     }
 
     // Build metrics object
-    const metrics: Record<string, any> = {}
+    const metrics: Record<string, number | string | boolean> = {}
     
     // Growth measurements
     if (height && parseFloat(height) > 0) {
@@ -402,10 +403,12 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
               {images.map((file, index) => (
                 <div key={index} className="relative">
-                  <img
+                  <Image
                     src={URL.createObjectURL(file)}
                     alt={`Progress ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg"
+                    width={200}
+                    height={96}
                   />
                   <button
                     type="button"

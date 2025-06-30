@@ -14,11 +14,12 @@ import { cn } from '@/lib/utils'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from '@/components/ui/use-toast'
-import { eventsApi, type Plant as ApiPlant, type PlantEventCreateData, type PlantEvent as ApiPlantEvent } from '@/lib/api'
+import { eventsApi, type Plant as ApiPlant, type PlantEventCreateData, type PlantEvent as ApiPlantEvent, type Coordinates, type WeatherData } from '@/lib/api'
 
 import { HarvestForm } from './event-forms/harvest-form'
 import { BloomForm } from './event-forms/bloom-form'
 import { SnapshotForm } from './event-forms/snapshot-form'
+import { GeolocationCapture } from './location/geolocation-capture'
 
 export type EventType = 'harvest' | 'bloom' | 'snapshot'
 
@@ -256,6 +257,8 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting }: EventFormProps
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
   const [location, setLocation] = useState('')
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
 
   const handleSubmit = (eventSpecificData: Partial<PlantEventCreateData> & { images?: File[] }) => {
     const { images, ...eventDataWithoutImages } = eventSpecificData
@@ -266,6 +269,7 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting }: EventFormProps
       description: description || undefined,
       notes: notes || undefined,
       location: location || undefined,
+      coordinates: coordinates || undefined,
       ...eventDataWithoutImages,
     }
 
@@ -337,18 +341,6 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting }: EventFormProps
                 className="focus-nature"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium">Location (Optional)</Label>
-              <Input
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Garden bed, greenhouse, container..."
-                maxLength={200}
-                className="focus-nature"
-              />
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -363,6 +355,31 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting }: EventFormProps
               className="focus-nature"
             />
           </div>
+
+          <GeolocationCapture
+            location={location}
+            onLocationChange={setLocation}
+            coordinates={coordinates}
+            onCoordinatesChange={setCoordinates}
+            onWeatherData={setWeatherData}
+            eventDate={eventDate.toISOString().split('T')[0]}
+            disabled={isSubmitting}
+            className="pt-4 border-t"
+          />
+
+          {weatherData && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">🌤️ Weather Conditions</h4>
+              <div className="text-sm text-blue-800 space-y-1">
+                <p>Temperature: {weatherData.temperature_min}°C - {weatherData.temperature_max}°C</p>
+                <p>Humidity: {weatherData.humidity}%</p>
+                {weatherData.precipitation > 0 && (
+                  <p>Precipitation: {weatherData.precipitation}mm</p>
+                )}
+                <p>Wind: {weatherData.wind_speed} km/h</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

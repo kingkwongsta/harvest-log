@@ -97,7 +97,6 @@ class PlantBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Name of the individual plant")
     variety_id: Optional[UUID] = Field(None, description="ID of the plant variety")
     planted_date: Optional[date] = Field(None, description="Date when the plant was planted")
-    location: Optional[str] = Field(None, max_length=200, description="Location where plant is growing")
     status: PlantStatus = Field(default=PlantStatus.ACTIVE, description="Current status of the plant")
     notes: Optional[str] = Field(None, max_length=2000, description="Additional notes about the plant")
     
@@ -106,14 +105,6 @@ class PlantBase(BaseModel):
     def validate_name(cls, v: str) -> str:
         """Validate and sanitize plant name"""
         return InputSanitizer.sanitize_crop_name(v)
-    
-    @field_validator('location')
-    @classmethod
-    def validate_location(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize location"""
-        if v is None:
-            return None
-        return InputSanitizer.sanitize_location(v)
     
     @field_validator('notes')
     @classmethod
@@ -134,7 +125,6 @@ class PlantUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     variety_id: Optional[UUID] = None
     planted_date: Optional[date] = None
-    location: Optional[str] = Field(None, max_length=200)
     status: Optional[PlantStatus] = None
     notes: Optional[str] = Field(None, max_length=2000)
 
@@ -224,10 +214,17 @@ class SnapshotEventData(BaseModel):
 
 # Weather Models
 class WeatherData(BaseModel):
-    temperature: float = Field(..., description="Temperature in Celsius")
+    temperature_min: float = Field(..., description="Minimum temperature for the day in Celsius")
+    temperature_max: float = Field(..., description="Maximum temperature for the day in Celsius")
     humidity: float = Field(..., description="Relative humidity in percent")
     weather_code: int = Field(..., description="WMO weather interpretation code")
     wind_speed: float = Field(..., description="Wind speed in km/h")
+    precipitation: float = Field(default=0.0, description="Precipitation sum in mm")
+    
+    # Computed property for average temperature
+    @property
+    def temperature_avg(self) -> float:
+        return (self.temperature_min + self.temperature_max) / 2
     
     class Config:
         from_attributes = True
@@ -246,7 +243,7 @@ class PlantEventBase(BaseModel):
     description: Optional[str] = Field(None, max_length=500, description="Event description")
     notes: Optional[str] = Field(None, max_length=2000, description="Additional notes about the event")
     location: Optional[str] = Field(None, max_length=200, description="Location where event occurred")
-    coordinates: Optional[Coordinates] = Field(None, description="Coordinates for weather data")
+    coordinates: Optional[Coordinates] = Field(None, description="GPS coordinates for weather data")
     
     @field_validator('event_date')
     @classmethod

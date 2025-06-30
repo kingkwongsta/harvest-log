@@ -22,8 +22,22 @@ export interface HarvestLogData {
   quantity: number;
   unit: string;
   harvest_date: string;
-  location?: string;
   notes?: string;
+  coordinates?: Coordinates;
+}
+
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export interface WeatherData {
+  temperature_min: number;
+  temperature_max: number;
+  humidity: number;
+  weather_code: number;
+  wind_speed: number;
+  precipitation: number;
 }
 
 export interface HarvestImage {
@@ -54,7 +68,6 @@ export interface HarvestLogResponse {
   quantity: number;
   unit: string;
   harvest_date: string;
-  location?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -100,7 +113,6 @@ export interface Plant {
   name: string;
   variety_id?: string;
   planted_date?: string;
-  location?: string;
   status: PlantStatus;
   notes?: string;
   created_at: string;
@@ -117,7 +129,8 @@ export interface PlantEvent {
   event_date: string;
   description?: string;
   notes?: string;
-  location?: string;
+  coordinates?: Coordinates;
+  weather?: WeatherData;
   
   // Harvest-specific fields
   produce?: string;
@@ -129,7 +142,7 @@ export interface PlantEvent {
   bloom_stage?: BloomStage;
   
   // Flexible metrics (primarily for snapshot events)
-  metrics?: Record<string, any>;
+  metrics?: Record<string, unknown>;
   
   created_at: string;
   updated_at: string;
@@ -159,22 +172,13 @@ export interface PlantEventCreateData {
   event_date: string;
   description?: string;
   notes?: string;
-  location?: string;
-  
-  // Event-specific fields
-  produce?: string;
-  quantity?: number;
-  unit?: string;
-  flower_type?: string;
-  bloom_stage?: BloomStage;
-  metrics?: Record<string, any>;
+  coordinates?: Coordinates;
 }
 
 export interface PlantCreateData {
   name: string;
   variety_id?: string;
   planted_date?: string;
-  location?: string;
   status?: PlantStatus;
   notes?: string;
 }
@@ -369,9 +373,9 @@ export const imagesApi = {
     });
 
     const formData = new FormData();
-    files.forEach((file, index) => {
+    files.forEach((file) => {
       formData.append('files', file);
-      console.log(`📎 Added file ${index + 1}:`, {
+      console.log(`📎 Added file ${file.name}:`, {
         name: file.name,
         size: file.size,
         type: file.type
@@ -515,7 +519,7 @@ export const eventsApi = {
   // Upload images for events
   uploadImages: async (eventId: string, files: File[]): Promise<MultipleImageUploadResponse> => {
     const formData = new FormData();
-    files.forEach((file, index) => {
+    files.forEach((file) => {
       formData.append('files', file);
     });
     
@@ -525,6 +529,22 @@ export const eventsApi = {
   // Get event statistics
   getStats: async (): Promise<ApiResponse<EventStats>> => {
     return apiRequest('/api/events/stats');
+  },
+};
+
+// Weather API functions
+export const weatherApi = {
+  getCurrentWeather: async (coordinates: Coordinates, eventDate?: string): Promise<ApiResponse<WeatherData>> => {
+    const params = new URLSearchParams({
+      latitude: coordinates.latitude.toString(),
+      longitude: coordinates.longitude.toString(),
+    });
+    
+    if (eventDate) {
+      params.append('event_date', eventDate);
+    }
+    
+    return apiRequest(`/api/weather?${params.toString()}`);
   },
 };
 

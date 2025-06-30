@@ -65,7 +65,7 @@ ON CONFLICT (name) DO UPDATE SET
 WITH plant_groupings AS (
     SELECT 
         hl.crop_name,
-        COALESCE(hl.location, 'Unknown Location') as location,
+        
         MIN(hl.harvest_date) as first_harvest_date,
         COUNT(*) as harvest_count,
         pv.id as variety_id
@@ -73,13 +73,12 @@ WITH plant_groupings AS (
     JOIN plant_varieties pv ON pv.name = hl.crop_name
     GROUP BY hl.crop_name, COALESCE(hl.location, 'Unknown Location'), pv.id
 )
-INSERT INTO plants (name, variety_id, planted_date, location, status, notes)
+INSERT INTO plants (name, variety_id, planted_date, status, notes)
 SELECT 
     pg.crop_name || ' Plant (' || pg.location || ')',
     pg.variety_id,
     -- Estimate planting date as 90 days before first harvest
     (pg.first_harvest_date - INTERVAL '90 days')::date,
-    pg.location,
     CASE 
         WHEN pg.first_harvest_date > NOW() - INTERVAL '6 months' THEN 'active'
         ELSE 'harvested'
@@ -98,7 +97,6 @@ INSERT INTO plant_events (
     unit, 
     description, 
     notes, 
-    location, 
     created_at, 
     updated_at
 )
@@ -111,8 +109,6 @@ SELECT
     hl.unit,
     'Harvested ' || hl.quantity || ' ' || hl.unit || ' of ' || hl.crop_name,
     hl.notes,
-    hl.location,
-    hl.created_at,
     hl.updated_at
 FROM harvest_logs hl
 JOIN plant_varieties pv ON pv.name = hl.crop_name

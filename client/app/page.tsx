@@ -97,7 +97,7 @@ export default function HomePage() {
     }
 
     fetchInitialData()
-  }, [])
+  }, [loadPlants])
 
   // Load plants when inline event form needs them
   const ensurePlantsLoaded = async () => {
@@ -114,7 +114,7 @@ export default function HomePage() {
 
 
   // Handle inline event form submission
-  const handleEventSubmit = async (eventData: any, images?: File[]) => {
+  const handleEventSubmit = async (eventData: PlantEventCreateData, images?: File[]) => {
     setIsEventSubmitting(true)
     try {
       // Call the events API
@@ -346,7 +346,7 @@ export default function HomePage() {
 interface DynamicEventFormProps {
   eventType: EventType
   plants: Plant[]
-  onSubmit: (data: any, images?: File[]) => void
+  onSubmit: (data: PlantEventCreateData, images?: File[]) => void
   isSubmitting: boolean
 }
 
@@ -355,17 +355,15 @@ function DynamicEventForm({ eventType, plants, onSubmit, isSubmitting }: Dynamic
   const [eventDate, setEventDate] = useState<Date>(new Date())
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
-  const [location, setLocation] = useState('')
 
-  const handleSubmit = (eventSpecificData: any & { images?: File[] }) => {
+  const handleSubmit = (eventSpecificData: PlantEventCreateData & { images?: File[] }) => {
     const { images, ...eventDataWithoutImages } = eventSpecificData
-    const baseEventData = {
+    const baseEventData: PlantEventCreateData = {
       plant_id: selectedPlant || undefined,
       event_type: eventType,
       event_date: eventDate.toISOString(),
       description: description || undefined,
       notes: notes || undefined,
-      location: location || undefined,
       ...eventDataWithoutImages,
     }
 
@@ -426,16 +424,7 @@ function DynamicEventForm({ eventType, plants, onSubmit, isSubmitting }: Dynamic
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium">Location (Optional)</Label>
-              <Input
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Garden bed, greenhouse, container..."
-                maxLength={200}
-              />
-            </div>
+            
           </div>
 
           <div className="space-y-2">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -258,10 +259,12 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
                 {images.map((file, index) => (
                   <div key={index} className="relative">
-                    <img
+                    <Image
                       src={URL.createObjectURL(file)}
                       alt={`Harvest ${index + 1}`}
                       className="w-full h-24 object-cover rounded-lg"
+                      width={200}
+                      height={96}
                     />
                     <button
                       type="button"

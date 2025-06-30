@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +18,7 @@ interface BloomFormProps {
   onSubmit: (data: {
     flower_type: string
     bloom_stage?: BloomStage
-    metrics?: Record<string, any>
+    metrics?: Record<string, number | string>
     images?: File[]
   }) => void
   isSubmitting: boolean
@@ -79,7 +81,7 @@ export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
     }
 
     // Build metrics object
-    const metrics: Record<string, any> = {}
+    const metrics: Record<string, number | string | boolean> = {}
     
     if (bloomCount && parseInt(bloomCount) > 0) {
       metrics.bloom_count = parseInt(bloomCount)
@@ -323,10 +325,12 @@ export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
               {images.map((file, index) => (
                 <div key={index} className="relative">
-                  <img
+                  <Image
                     src={URL.createObjectURL(file)}
                     alt={`Bloom ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg"
+                    width={200}
+                    height={96}
                   />
                   <button
                     type="button"

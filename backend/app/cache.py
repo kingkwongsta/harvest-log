@@ -268,6 +268,46 @@ class CacheManager:
     async def invalidate_harvest_stats(self) -> None:
         """Invalidate cached harvest statistics."""
         await self.cache.delete("harvest_stats")
+    
+    # Plant events cache methods
+    async def get_plant_event(self, event_id: str) -> Optional[Dict]:
+        """Get cached individual plant event."""
+        key = f"plant_event:{event_id}"
+        return await self.cache.get(key)
+    
+    async def set_plant_event(self, event_id: str, data: Dict, ttl: int = 600) -> None:
+        """Cache individual plant event."""
+        key = f"plant_event:{event_id}"
+        await self.cache.set(key, data, ttl)
+    
+    async def invalidate_plant_event(self, event_id: str) -> None:
+        """Invalidate cached plant event."""
+        await self.cache.delete(f"plant_event:{event_id}")
+        # Also invalidate list caches
+        await self.invalidate_plant_events_lists()
+    
+    async def invalidate_plant_events_lists(self) -> None:
+        """Invalidate all cached plant events lists."""
+        keys_to_delete = []
+        async with self.cache._lock:
+            for key in self.cache._cache.keys():
+                if key.startswith("plant_events:list:"):
+                    keys_to_delete.append(key)
+        
+        for key in keys_to_delete:
+            await self.cache.delete(key)
+    
+    async def get_event_stats(self) -> Optional[Dict]:
+        """Get cached event statistics."""
+        return await self.cache.get("event_stats")
+    
+    async def set_event_stats(self, data: Dict, ttl: int = 180) -> None:
+        """Cache event statistics."""
+        await self.cache.set("event_stats", data, ttl)
+    
+    async def invalidate_event_stats(self) -> None:
+        """Invalidate cached event statistics."""
+        await self.cache.delete("event_stats")
 
 
 # Global cache manager instance

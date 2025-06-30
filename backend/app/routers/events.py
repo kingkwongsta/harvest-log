@@ -24,6 +24,8 @@ from app.logging_config import get_api_logger
 from app.exceptions import NotFoundError, DatabaseError, ValidationException
 from app.models import ErrorResponse
 from app.weather import get_weather_data
+from app.storage import storage_service
+from app.cache import cache_manager
 
 logger = get_api_logger()
 
@@ -78,7 +80,9 @@ async def create_plant_event(
         # Fetch weather data if coordinates are provided
         weather_data = None
         if validated_data.coordinates:
-            weather_data = await get_weather_data(validated_data.coordinates)
+            # Extract the date from the event_date for weather data
+            event_date = validated_data.event_date.date() if validated_data.event_date else None
+            weather_data = await get_weather_data(validated_data.coordinates, event_date)
 
         # Convert to database format
         event_data = {
@@ -88,6 +92,8 @@ async def create_plant_event(
             "description": validated_data.description,
             "notes": validated_data.notes,
             "location": validated_data.location,
+            "latitude": validated_data.coordinates.latitude if validated_data.coordinates else None,
+            "longitude": validated_data.coordinates.longitude if validated_data.coordinates else None,
             "weather": weather_data.model_dump() if weather_data else None
         }
         
@@ -478,14 +484,33 @@ async def delete_plant_event(
         logger.info(f"API: Deleting plant event {event_id}", 
                    extra={"request_id": request_id, "record_id": str(event_id)})
         
-        # First fetch the event to return it in response
+        # First fetch the event to return it in response (with images for cleanup)
         event_to_delete = await get_plant_event_by_id(event_id, client, request_id)
         if not event_to_delete:
             logger.warning(f"API: Plant event not found for deletion: {event_id}", 
                           extra={"request_id": request_id, "record_id": str(event_id)})
             raise NotFoundError("Plant event", str(event_id))
         
-        # Delete the event (cascade will handle related images)
+        # Delete associated images from storage before database deletion
+        if event_to_delete.images:
+            for image in event_to_delete.images:
+                try:
+                    await storage_service.delete_image(image.file_path)
+                    logger.debug(f"API: Deleted image from storage: {image.file_path}", 
+                               extra={
+                                   "request_id": request_id,
+                                   "file_path": image.file_path,
+                                   "image_id": str(image.id)
+                               })
+                except Exception as e:
+                    logger.warning(f"API: Failed to delete image from storage {image.file_path}: {e}", 
+                                  extra={
+                                      "request_id": request_id,
+                                      "file_path": image.file_path,
+                                      "image_id": str(image.id)
+                                  })
+        
+        # Delete the event from database (cascade will handle image metadata)
         logger.debug("API: Deleting event from database", 
                     extra={
                         "request_id": request_id,
@@ -499,8 +524,17 @@ async def delete_plant_event(
         if not result.data:
             raise DatabaseError("Failed to delete plant event")
         
-        logger.info(f"API: Successfully deleted plant event {event_id}", 
-                   extra={"request_id": request_id, "record_id": str(event_id)})
+        # Invalidate relevant caches
+        await cache_manager.invalidate_plant_event(str(event_id))
+        await cache_manager.invalidate_event_stats()
+        
+        logger.info(f"API: Successfully deleted plant event {event_id} and {len(event_to_delete.images or [])} associated images", 
+                   extra={
+                       "request_id": request_id, 
+                       "record_id": str(event_id),
+                       "deleted_images": len(event_to_delete.images or []),
+                       "event_type": event_to_delete.event_type
+                   })
         
         return PlantEventResponse(
             success=True,

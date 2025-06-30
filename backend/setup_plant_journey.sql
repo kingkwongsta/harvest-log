@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS plants (
     name VARCHAR(100) NOT NULL,
     variety_id UUID REFERENCES plant_varieties(id),
     planted_date DATE,
-    location VARCHAR(200),
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'harvested', 'deceased', 'dormant')),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -48,7 +47,6 @@ CREATE TABLE IF NOT EXISTS plant_events (
     -- Common fields for all event types
     description TEXT,
     notes TEXT,
-    location VARCHAR(200),
     
     -- Flexible metrics storage (JSONB for extensibility)
     metrics JSONB,
@@ -199,7 +197,6 @@ SELECT
     pe.event_date,
     pe.description,
     pe.notes,
-    pe.location,
     pe.produce,
     pe.quantity,
     pe.unit,

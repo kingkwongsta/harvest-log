@@ -239,7 +239,7 @@ async def create_plant(
     - **name**: Name of the individual plant (required)
     - **variety_id**: ID of the plant variety (optional)
     - **planted_date**: Date when the plant was planted (optional)
-    - **location**: Location where plant is growing (optional)
+    
     - **status**: Current status (active, harvested, deceased, dormant)
     - **notes**: Additional notes about the plant (optional)
     """
@@ -295,7 +295,6 @@ async def get_plants(
     request: Request,
     status: Optional[PlantStatus] = Query(None, description="Filter by plant status"),
     variety_id: Optional[UUID] = Query(None, description="Filter by variety ID"),
-    location: Optional[str] = Query(None, description="Filter by location"),
     limit: int = Query(default=50, ge=1, le=100, description="Number of plants to return"),
     offset: int = Query(default=0, ge=0, description="Number of plants to skip"),
     client = Depends(get_supabase_client)
@@ -316,7 +315,6 @@ async def get_plants(
                        "request_id": request_id,
                        "status": status.value if status else None,
                        "variety_id": str(variety_id) if variety_id else None,
-                       "location": location,
                        "limit": limit,
                        "offset": offset
                    })
@@ -334,8 +332,7 @@ async def get_plants(
         if variety_id:
             query = query.eq("variety_id", str(variety_id))
         
-        if location:
-            query = query.ilike("location", f"%{location}%")
+        
         
         # Apply pagination and ordering
         query = query.order("name").range(offset, offset + limit - 1)

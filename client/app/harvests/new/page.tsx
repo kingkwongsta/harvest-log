@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { harvestLogsApi, ApiError, type HarvestLogData } from "@/lib/api"
+import { harvestLogsApi, weatherApi, ApiError, type HarvestLogData } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CameraCapture } from "@/components/camera/camera-capture"
-import { Calendar, MapPin, Upload, X, Camera } from "lucide-react"
+import { Calendar, Upload, X, Camera } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
@@ -22,15 +22,9 @@ interface HarvestForm {
   weight: string
   unit: string
   date: string
-  location: string
   weather: string
   notes: string
   quality: string
-}
-
-interface Coordinates {
-  latitude: number;
-  longitude: number;
 }
 
 export default function NewHarvestPage() {
@@ -39,7 +33,7 @@ export default function NewHarvestPage() {
   const [error, setError] = useState<string | null>(null)
   const [photos, setPhotos] = useState<File[]>([])
   const [showCamera, setShowCamera] = useState(false)
-  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  
   const [formData, setFormData] = useState<HarvestForm>({
     fruit: "",
     variety: "",
@@ -47,7 +41,6 @@ export default function NewHarvestPage() {
     weight: "",
     unit: "pieces",
     date: new Date().toISOString().split("T")[0],
-    location: "",
     weather: "",
     notes: "",
     quality: "",
@@ -86,7 +79,7 @@ export default function NewHarvestPage() {
         quantity: parseFloat(formData.quantity),
         unit: formData.unit,
         harvest_date: new Date(formData.date).toISOString(),
-        location: formData.location || undefined,
+        
         notes: formData.notes || undefined,
         coordinates: coordinates || undefined,
       }
@@ -110,20 +103,34 @@ export default function NewHarvestPage() {
     }
   }
 
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setCoordinates({ latitude, longitude });
-          handleInputChange("location", `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`);
-        },
-        (error) => {
-          setError("Error getting location: " + error.message);
-        }
-      );
-    } else {
-      setError("Geolocation is not supported by this browser.");
+  
+
+  const getCurrentWeather = async () => {
+    if (!coordinates) {
+      setError("Location required for weather data. Please get location first.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await weatherApi.getCurrentWeather(coordinates, formData.date);
+      
+      if (response.success && response.data) {
+        const weather = response.data;
+        // Format weather string with min/max temperatures
+        const weatherString = `${weather.temperature_min}°C - ${weather.temperature_max}°C, ${weather.humidity}% humidity`;
+        handleInputChange("weather", weatherString);
+      } else {
+        setError("Failed to fetch weather data");
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError("Weather data unavailable: " + err.message);
+      } else {
+        setError("Failed to fetch weather data");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -265,42 +272,21 @@ export default function NewHarvestPage() {
           {/* Location & Date */}
           <Card>
             <CardHeader>
-              <CardTitle>When & Where</CardTitle>
+              <CardTitle>When</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      id="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleInputChange("date", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="location"
-                        placeholder="Garden area"
-                        value={formData.location}
-                        onChange={(e) => handleInputChange("location", e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    <Button type="button" variant="outline" onClick={getCurrentLocation}>
-                      <MapPin className="w-4 h-4" />
-                    </Button>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="date">Date</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => handleInputChange("date", e.target.value)}
+                    className="pl-10"
+                    required
+                  />
                 </div>
               </div>
             </CardContent>

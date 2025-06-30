@@ -15,6 +15,11 @@ export function Navigation({ className = "" }: NavigationProps) {
       href: "/harvests",
       label: "Gallery",
       active: pathname === "/harvests"
+    },
+    {
+      href: "/admin",
+      label: "Admin",
+      active: pathname === "/admin"
     }
   ]
 
