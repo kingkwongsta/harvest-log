@@ -2,19 +2,20 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Sprout, TrendingUp, Clock } from "lucide-react"
-import { eventsApi, harvestLogsApi, EventStats, plantsApi, type Plant } from "@/lib/api"
+import { eventsApi, harvestLogsApi, EventStats, plantsApi, type Plant, type PlantEventCreateData } from "@/lib/api"
 import { type EventType } from "@/components/event-logging-modal"
-import { HarvestForm } from "@/components/event-forms/harvest-form"
-import { BloomForm } from "@/components/event-forms/bloom-form"
-import { SnapshotForm } from "@/components/event-forms/snapshot-form"
+import { HarvestForm, HarvestFormRef } from "@/components/event-forms/harvest-form"
+import { BloomForm, BloomFormRef } from "@/components/event-forms/bloom-form"
+import { SnapshotForm, SnapshotFormRef } from "@/components/event-forms/snapshot-form"
 import { toast } from "@/components/ui/use-toast"
+import { EventConfirmationDialog } from "@/components/dialogs/event-confirmation-dialog"
 
 
 
@@ -34,6 +35,19 @@ export default function HomePage() {
   const [isLoadingPlants, setIsLoadingPlants] = useState(false)
   const [selectedEventType, setSelectedEventType] = useState<EventType | null>('harvest')
   const [isEventSubmitting, setIsEventSubmitting] = useState(false)
+
+  // Form refs for resetting
+  const harvestFormRef = useRef<HarvestFormRef>(null)
+  const bloomFormRef = useRef<BloomFormRef>(null)
+  const snapshotFormRef = useRef<SnapshotFormRef>(null)
+
+  // Confirmation dialog state
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [confirmationData, setConfirmationData] = useState<{
+    type: 'success' | 'error'
+    message: string
+    imageCount?: number
+  }>({ type: 'success', message: '' })
 
 
   // Load plants function
@@ -151,9 +165,10 @@ export default function HomePage() {
                 variant: 'destructive',
               })
             } else {
-              toast({
-                title: 'Event created successfully!',
-                description: `${eventData.event_type} event and ${images.length} image(s) have been saved.`,
+              setConfirmationData({
+                type: 'success',
+                message: `${eventData.event_type} event and ${images.length} image(s) have been saved.`,
+                imageCount: images.length
               })
             }
           } catch (imageError) {
@@ -165,11 +180,25 @@ export default function HomePage() {
             })
           }
         } else {
-          toast({
-            title: 'Event created successfully!',
-            description: `${eventData.event_type} event has been logged.`,
+          setConfirmationData({
+            type: 'success',
+            message: `${eventData.event_type} event has been logged.`,
+            imageCount: 0
           })
         }
+        
+        // Reset the appropriate form
+        console.log('🧹 Resetting form after successful submission')
+        if (selectedEventType === 'harvest') {
+          harvestFormRef.current?.reset()
+        } else if (selectedEventType === 'bloom') {
+          bloomFormRef.current?.reset()
+        } else if (selectedEventType === 'snapshot') {
+          snapshotFormRef.current?.reset()
+        }
+        
+        // Show confirmation dialog
+        setShowConfirmation(true)
         
         // Refresh stats but keep the selected event type
         await refetchStats()
@@ -178,14 +207,20 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Error creating event:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create event',
-        variant: 'destructive',
+      setConfirmationData({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to create event'
       })
+      setShowConfirmation(true)
     } finally {
       setIsEventSubmitting(false)
     }
+  }
+
+  // Handle confirmation dialog close
+  const handleConfirmationClose = () => {
+    setShowConfirmation(false)
+    // No additional reset needed here since form is already reset after successful submission
   }
 
   // Refetch stats after successful event creation
@@ -310,6 +345,11 @@ export default function HomePage() {
             plants={plants}
             onSubmit={handleEventSubmit}
             isSubmitting={isEventSubmitting}
+            formRefs={{
+              harvestFormRef,
+              bloomFormRef,
+              snapshotFormRef
+            }}
           />
         )}
 
@@ -353,6 +393,17 @@ export default function HomePage() {
         </div>
 
       </div>
+      
+      {/* Confirmation Dialog */}
+      <EventConfirmationDialog
+        open={showConfirmation}
+        onOpenChange={setShowConfirmation}
+        type={confirmationData.type}
+        eventType={selectedEventType || undefined}
+        message={confirmationData.message}
+        imageCount={confirmationData.imageCount}
+        onClose={handleConfirmationClose}
+      />
 
     </div>
   )
@@ -364,23 +415,29 @@ interface DynamicEventFormProps {
   plants: Plant[]
   onSubmit: (data: PlantEventCreateData, images?: File[]) => void
   isSubmitting: boolean
+  formRefs: {
+    harvestFormRef: React.RefObject<HarvestFormRef | null>
+    bloomFormRef: React.RefObject<BloomFormRef | null>
+    snapshotFormRef: React.RefObject<SnapshotFormRef | null>
+  }
 }
 
-function DynamicEventForm({ eventType, plants, onSubmit, isSubmitting }: DynamicEventFormProps) {
+function DynamicEventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: DynamicEventFormProps) {
   const [selectedPlant, setSelectedPlant] = useState<string>('')
   const [eventDate, setEventDate] = useState<Date>(new Date())
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
 
-  const handleSubmit = (eventSpecificData: PlantEventCreateData & { images?: File[] }) => {
+  const handleSubmit = (eventSpecificData: Partial<PlantEventCreateData> & { images?: File[] }) => {
     const { images, ...eventDataWithoutImages } = eventSpecificData
     const baseEventData: PlantEventCreateData = {
+      ...eventDataWithoutImages,
+      // Override with form values
       plant_id: selectedPlant || undefined,
-      event_type: eventType,
       event_date: eventDate.toISOString(),
+      event_type: eventType,
       description: description || undefined,
       notes: notes || undefined,
-      ...eventDataWithoutImages,
     }
 
     onSubmit(baseEventData, images)
@@ -460,15 +517,15 @@ function DynamicEventForm({ eventType, plants, onSubmit, isSubmitting }: Dynamic
       {/* Event-specific form components */}
       <div className="mt-6">
         {eventType === 'harvest' && (
-          <HarvestForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          <HarvestForm ref={formRefs.harvestFormRef} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
         )}
         
         {eventType === 'bloom' && (
-          <BloomForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          <BloomForm ref={formRefs.bloomFormRef} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
         )}
         
         {eventType === 'snapshot' && (
-          <SnapshotForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          <SnapshotForm ref={formRefs.snapshotFormRef} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
         )}
       </div>
     </div>

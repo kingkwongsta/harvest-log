@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useImperativeHandle, forwardRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,28 +18,53 @@ interface SnapshotFormProps {
     images?: File[]
   }) => void
   isSubmitting: boolean
+  onReset?: () => void
 }
 
-export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
-  const [images, setImages] = useState<File[]>([])
-  
-  // Growth measurements
-  const [height, setHeight] = useState('')
-  const [width, setWidth] = useState('')
-  const [leafCount, setLeafCount] = useState('')
-  const [healthScore, setHealthScore] = useState([7])
-  
-  // Health indicators
-  const [newGrowth, setNewGrowth] = useState(false)
-  const [pestIssues, setPestIssues] = useState(false)
-  const [diseaseSignsPresent, setDiseaseSignsPresent] = useState(false)
-  const [floweringStatus, setFloweringStatus] = useState(false)
-  const [fruitingStatus, setFruitingStatus] = useState(false)
-  
-  // Custom metrics
-  const [customMetrics, setCustomMetrics] = useState<{ key: string; value: string; type: 'number' | 'text' | 'boolean' }[]>([])
+export interface SnapshotFormRef {
+  reset: () => void
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
+export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
+  ({ onSubmit, isSubmitting, onReset }, ref) => {
+    const [images, setImages] = useState<File[]>([])
+    
+    // Growth measurements
+    const [height, setHeight] = useState('')
+    const [width, setWidth] = useState('')
+    const [leafCount, setLeafCount] = useState('')
+    const [healthScore, setHealthScore] = useState([7])
+    
+    // Health indicators
+    const [newGrowth, setNewGrowth] = useState(false)
+    const [pestIssues, setPestIssues] = useState(false)
+    const [diseaseSignsPresent, setDiseaseSignsPresent] = useState(false)
+    const [floweringStatus, setFloweringStatus] = useState(false)
+    const [fruitingStatus, setFruitingStatus] = useState(false)
+    
+    // Custom metrics
+    const [customMetrics, setCustomMetrics] = useState<{ key: string; value: string; type: 'number' | 'text' | 'boolean' }[]>([])
+
+    const resetForm = () => {
+      setImages([])
+      setHeight('')
+      setWidth('')
+      setLeafCount('')
+      setHealthScore([7])
+      setNewGrowth(false)
+      setPestIssues(false)
+      setDiseaseSignsPresent(false)
+      setFloweringStatus(false)
+      setFruitingStatus(false)
+      setCustomMetrics([])
+      onReset?.()
+    }
+
+    useImperativeHandle(ref, () => ({
+      reset: resetForm
+    }))
+
+    const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validate metric ranges
@@ -434,4 +459,6 @@ export function SnapshotForm({ onSubmit, isSubmitting }: SnapshotFormProps) {
       </div>
     </form>
   )
-}
+})
+
+SnapshotForm.displayName = 'SnapshotForm'

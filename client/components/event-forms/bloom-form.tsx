@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useImperativeHandle, forwardRef } from 'react'
 import Image from 'next/image'
 
 import { Button } from '@/components/ui/button'
@@ -18,10 +18,15 @@ interface BloomFormProps {
   onSubmit: (data: {
     flower_type: string
     bloom_stage?: BloomStage
-    metrics?: Record<string, number | string>
+    metrics?: Record<string, number | string | boolean>
     images?: File[]
   }) => void
   isSubmitting: boolean
+  onReset?: () => void
+}
+
+export interface BloomFormRef {
+  reset: () => void
 }
 
 const bloomStages = [
@@ -48,18 +53,34 @@ const commonFlowerTypes = [
   'Wildflowers'
 ]
 
-export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
-  const [flowerType, setFlowerType] = useState('')
-  const [bloomStage, setBloomStage] = useState<BloomStage>('full_bloom')
-  const [images, setImages] = useState<File[]>([])
-  
-  // Bloom metrics
-  const [bloomCount, setBloomCount] = useState('')
-  const [flowerSize, setFlowerSize] = useState('')
-  const [flowerColor, setFlowerColor] = useState('')
-  const [customMetrics, setCustomMetrics] = useState<{ key: string; value: string }[]>([])
+export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
+  ({ onSubmit, isSubmitting, onReset }, ref) => {
+    const [flowerType, setFlowerType] = useState('')
+    const [bloomStage, setBloomStage] = useState<BloomStage>('full_bloom')
+    const [images, setImages] = useState<File[]>([])
+    
+    // Bloom metrics
+    const [bloomCount, setBloomCount] = useState('')
+    const [flowerSize, setFlowerSize] = useState('')
+    const [flowerColor, setFlowerColor] = useState('')
+    const [customMetrics, setCustomMetrics] = useState<{ key: string; value: string }[]>([])
 
-  const handleSubmit = (e: React.FormEvent) => {
+    const resetForm = () => {
+      setFlowerType('')
+      setBloomStage('full_bloom')
+      setImages([])
+      setBloomCount('')
+      setFlowerSize('')
+      setFlowerColor('')
+      setCustomMetrics([])
+      onReset?.()
+    }
+
+    useImperativeHandle(ref, () => ({
+      reset: resetForm
+    }))
+
+    const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!flowerType.trim()) {
@@ -356,4 +377,6 @@ export function BloomForm({ onSubmit, isSubmitting }: BloomFormProps) {
       </div>
     </form>
   )
-}
+})
+
+BloomForm.displayName = 'BloomForm'

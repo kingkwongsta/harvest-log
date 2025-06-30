@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useImperativeHandle, forwardRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,11 @@ interface HarvestFormProps {
     images?: File[]
   }) => void
   isSubmitting: boolean
+  onReset?: () => void
+}
+
+export interface HarvestFormRef {
+  reset: () => void
 }
 
 const commonUnits = [
@@ -57,14 +62,31 @@ const commonProduce = [
   'Berries'
 ]
 
-export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
-  const [produce, setProduce] = useState('')
-  const [quantity, setQuantity] = useState('')
-  const [unit, setUnit] = useState('')
-  const [customUnit, setCustomUnit] = useState('')
-  const [images, setImages] = useState<File[]>([])
+export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
+  ({ onSubmit, isSubmitting, onReset }, ref) => {
+    const [produce, setProduce] = useState('')
+    const [quantity, setQuantity] = useState('')
+    const [unit, setUnit] = useState('')
+    const [customUnit, setCustomUnit] = useState('')
+    const [images, setImages] = useState<File[]>([])
 
-  const handleSubmit = (e: React.FormEvent) => {
+    const resetForm = () => {
+      console.log('🧹 HarvestForm resetForm called')
+      console.log('📊 Current values before reset:', { produce, quantity, unit, images: images.length })
+      setProduce('')
+      setQuantity('')
+      setUnit('')
+      setCustomUnit('')
+      setImages([])
+      onReset?.()
+      console.log('✅ HarvestForm reset completed')
+    }
+
+    useImperativeHandle(ref, () => ({
+      reset: resetForm
+    }))
+
+    const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!produce.trim()) {
@@ -291,4 +313,6 @@ export function HarvestForm({ onSubmit, isSubmitting }: HarvestFormProps) {
       </div>
     </form>
   )
-}
+})
+
+HarvestForm.displayName = 'HarvestForm'

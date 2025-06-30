@@ -94,7 +94,7 @@ export default function AdminPage() {
         setEventToDelete(null)
         setDeleteConfirmationNumber("")
       } else {
-        console.error('Failed to delete event:', response.error)
+        console.error('Failed to delete event:', response.message)
       }
     } catch (error) {
       console.error('Error deleting event:', error)

@@ -79,9 +79,7 @@ export default function NewHarvestPage() {
         quantity: parseFloat(formData.quantity),
         unit: formData.unit,
         harvest_date: new Date(formData.date).toISOString(),
-        
         notes: formData.notes || undefined,
-        coordinates: coordinates || undefined,
       }
 
       // Call the API
@@ -105,33 +103,9 @@ export default function NewHarvestPage() {
 
   
 
+  // TODO: Re-implement weather functionality with proper location handling
   const getCurrentWeather = async () => {
-    if (!coordinates) {
-      setError("Location required for weather data. Please get location first.");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const response = await weatherApi.getCurrentWeather(coordinates, formData.date);
-      
-      if (response.success && response.data) {
-        const weather = response.data;
-        // Format weather string with min/max temperatures
-        const weatherString = `${weather.temperature_min}°C - ${weather.temperature_max}°C, ${weather.humidity}% humidity`;
-        handleInputChange("weather", weatherString);
-      } else {
-        setError("Failed to fetch weather data");
-      }
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError("Weather data unavailable: " + err.message);
-      } else {
-        setError("Failed to fetch weather data");
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    setError("Weather functionality temporarily disabled - location handling needs to be implemented");
   };
 
   return (

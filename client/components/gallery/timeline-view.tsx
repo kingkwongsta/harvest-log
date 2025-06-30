@@ -239,12 +239,14 @@ export function TimelineView({ harvests, loading, error }: TimelineViewProps) {
                               {harvest.quantity} {harvest.unit}
                             </div>
 
+                            {/* TODO: Add location support when available in HarvestLogResponse
                             {harvest.location && (
                               <div className="flex items-center text-sm text-organic">
                                 <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
                                 {harvest.location}
                               </div>
                             )}
+                            */}
 
                             {harvest.images && harvest.images.length > 0 && (
                               <div className="flex items-center text-sm text-organic">

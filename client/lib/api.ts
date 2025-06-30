@@ -173,6 +173,18 @@ export interface PlantEventCreateData {
   description?: string;
   notes?: string;
   coordinates?: Coordinates;
+  
+  // Harvest-specific fields
+  produce?: string;
+  quantity?: number;
+  unit?: string;
+  
+  // Bloom-specific fields
+  flower_type?: string;
+  bloom_stage?: BloomStage;
+  
+  // Snapshot-specific fields (flexible metrics)
+  metrics?: Record<string, unknown>;
 }
 
 export interface PlantCreateData {

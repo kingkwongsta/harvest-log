@@ -459,12 +459,14 @@ export function PhotoMosaicView({ harvests, loading, error }: PhotoMosaicViewPro
                       <Scale className="w-4 h-4" />
                       <span>{selectedPhoto.harvest.quantity} {selectedPhoto.harvest.unit}</span>
                     </div>
+                    {/* TODO: Add location support when available in HarvestLogResponse
                     {selectedPhoto.harvest.location && (
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4" />
                         <span>{selectedPhoto.harvest.location}</span>
                       </div>
                     )}
+                    */}
                   </div>
                   
                   {selectedPhoto.harvest.notes && (

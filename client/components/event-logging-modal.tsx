@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,10 +16,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { toast } from '@/components/ui/use-toast'
 import { eventsApi, type Plant as ApiPlant, type PlantEventCreateData, type PlantEvent as ApiPlantEvent, type Coordinates, type WeatherData } from '@/lib/api'
 
-import { HarvestForm } from './event-forms/harvest-form'
-import { BloomForm } from './event-forms/bloom-form'
-import { SnapshotForm } from './event-forms/snapshot-form'
+import { HarvestForm, HarvestFormRef } from './event-forms/harvest-form'
+import { BloomForm, BloomFormRef } from './event-forms/bloom-form'
+import { SnapshotForm, SnapshotFormRef } from './event-forms/snapshot-form'
 import { GeolocationCapture } from './location/geolocation-capture'
+import { EventConfirmationDialog } from './dialogs/event-confirmation-dialog'
 
 export type EventType = 'harvest' | 'bloom' | 'snapshot'
 
@@ -47,11 +48,25 @@ function getEventIcon(eventType: EventType): string {
 export function EventLoggingModal({ isOpen, onClose, onEventCreated, plants }: EventLoggingModalProps) {
   const [selectedEventType, setSelectedEventType] = useState<EventType | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Confirmation dialog state
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [confirmationData, setConfirmationData] = useState<{
+    type: 'success' | 'error'
+    message: string
+    imageCount?: number
+  }>({ type: 'success', message: '' })
+
+  // Form refs for resetting
+  const harvestFormRef = useRef<HarvestFormRef>(null)
+  const bloomFormRef = useRef<BloomFormRef>(null)
+  const snapshotFormRef = useRef<SnapshotFormRef>(null)
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
       setSelectedEventType(null)
+      setShowConfirmation(false)
     }
   }, [isOpen])
 
@@ -63,109 +78,186 @@ export function EventLoggingModal({ isOpen, onClose, onEventCreated, plants }: E
     setSelectedEventType(null)
   }
 
+  const handleConfirmationClose = () => {
+    console.log('🔄 Confirmation dialog closing')
+    console.log('📊 Current confirmation data:', confirmationData)
+    console.log('📋 Current selected event type:', selectedEventType)
+    
+    setShowConfirmation(false)
+    
+    // Reset forms based on event type
+    if (selectedEventType === 'harvest') {
+      console.log('🗑️ Resetting harvest form')
+      harvestFormRef.current?.reset()
+    } else if (selectedEventType === 'bloom') {
+      console.log('🗑️ Resetting bloom form')
+      bloomFormRef.current?.reset()
+    } else if (selectedEventType === 'snapshot') {
+      console.log('🗑️ Resetting snapshot form')
+      snapshotFormRef.current?.reset()
+    }
+    
+    // If it was a successful event, go back to event type selection
+    if (confirmationData.type === 'success') {
+      console.log('✅ Success - returning to event type selection')
+      setSelectedEventType(null)
+    } else {
+      console.log('❌ Error - keeping current form for retry')
+    }
+    // For errors, keep the current form so user can try again
+  }
+
   const handleEventSubmit = async (eventData: PlantEventCreateData, images?: File[]) => {
     setIsSubmitting(true)
+    console.log('🎯 Starting event submission:', { eventType: eventData.event_type, hasImages: !!images?.length })
+    
     try {
       // Call the new events API
+      console.log('📤 Sending API request with data:', eventData)
       const response = await eventsApi.create(eventData)
+      console.log('📥 API Response:', response)
       
       if (response.success && response.data) {
         const createdEvent = response.data
+        console.log('✅ Event created successfully:', createdEvent.id)
         
         // Upload images if any were provided
         if (images && images.length > 0) {
           try {
+            console.log(`📸 Uploading ${images.length} images for event ${createdEvent.id}`)
             const imageResponse = await eventsApi.uploadImages(createdEvent.id, images)
+            console.log('📥 Image upload response:', imageResponse)
+            
             if (!imageResponse.success) {
-              console.warn('Some images failed to upload:', imageResponse.message)
-              toast({
-                title: 'Event created with image upload issues',
-                description: `${eventData.event_type} event was saved, but some images failed to upload.`,
-                variant: 'destructive',
+              console.warn('⚠️ Some images failed to upload:', imageResponse.message)
+              setConfirmationData({
+                type: 'success',
+                message: `${eventData.event_type} event was saved, but some images failed to upload.`,
+                imageCount: 0
               })
             } else {
-              toast({
-                title: 'Event created successfully!',
-                description: `${eventData.event_type} event and ${images.length} image(s) have been saved.`,
+              console.log('✅ Images uploaded successfully')
+              setConfirmationData({
+                type: 'success',
+                message: `${eventData.event_type} event and ${images.length} image(s) have been saved.`,
+                imageCount: images.length
               })
             }
           } catch (imageError) {
-            console.error('Error uploading images:', imageError)
-            toast({
-              title: 'Event created with image upload error',
-              description: `${eventData.event_type} event was saved, but images failed to upload.`,
-              variant: 'destructive',
+            console.error('❌ Error uploading images:', imageError)
+            setConfirmationData({
+              type: 'success',
+              message: `${eventData.event_type} event was saved, but images failed to upload.`,
+              imageCount: 0
             })
           }
         } else {
-          toast({
-            title: 'Event created successfully!',
-            description: `${eventData.event_type} event has been logged.`,
+          console.log('✅ Event saved without images')
+          setConfirmationData({
+            type: 'success',
+            message: `${eventData.event_type} event has been logged.`,
+            imageCount: 0
           })
         }
         
-        onEventCreated(createdEvent)
-        onClose()
+        console.log('🎉 Setting confirmation data and showing dialog')
+        console.log('📊 Current state before:', { showConfirmation, confirmationData })
+        
+        // Set confirmation dialog state
+        setShowConfirmation(true)
+        console.log('✅ setShowConfirmation(true) called')
+        
+        // Call parent callback
+        try {
+          console.log('📞 Calling onEventCreated callback')
+          onEventCreated(createdEvent)
+          console.log('✅ onEventCreated callback completed')
+        } catch (callbackError) {
+          console.error('❌ Error in onEventCreated callback:', callbackError)
+        }
       } else {
+        console.error('❌ API returned error:', response.message)
         throw new Error(response.message || 'Failed to create event')
       }
     } catch (error) {
-      console.error('Error creating event:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create event',
-        variant: 'destructive',
+      console.error('❌ Error creating event:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create event'
+      console.error('❌ Full error details:', error)
+      
+      setConfirmationData({
+        type: 'error',
+        message: errorMessage
       })
+      console.log('🚨 Showing error confirmation dialog')
+      setShowConfirmation(true)
     } finally {
       setIsSubmitting(false)
+      console.log('🏁 Event submission completed')
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-foreground">
-            {!selectedEventType ? '🌱 Log New Plant Event' : `${getEventIcon(selectedEventType)} Log ${selectedEventType.charAt(0).toUpperCase() + selectedEventType.slice(1)} Event`}
-          </DialogTitle>
-          {!selectedEventType && (
-            <p className="text-muted-foreground mt-2">Choose the type of event you want to record for your plant journey</p>
-          )}
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-foreground">
+              {!selectedEventType ? '🌱 Log New Plant Event' : `${getEventIcon(selectedEventType)} Log ${selectedEventType.charAt(0).toUpperCase() + selectedEventType.slice(1)} Event`}
+            </DialogTitle>
+            {!selectedEventType && (
+              <p className="text-muted-foreground mt-2">Choose the type of event you want to record for your plant journey</p>
+            )}
+          </DialogHeader>
 
-        {!selectedEventType ? (
-          <EventTypeSelector onSelect={handleEventTypeSelect} />
-        ) : (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Button variant="outline" size="sm" onClick={handleBack} className="hover:bg-muted">
-                  ← Back to Selection
-                </Button>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    selectedEventType === 'harvest' ? 'harvest-gradient' :
-                    selectedEventType === 'bloom' ? 'bg-pink-500' : 'bg-blue-500'
-                  }`}>
-                    <span className="text-lg">{getEventIcon(selectedEventType)}</span>
+          {!selectedEventType ? (
+            <EventTypeSelector onSelect={handleEventTypeSelect} />
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Button variant="outline" size="sm" onClick={handleBack} className="hover:bg-muted">
+                    ← Back to Selection
+                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      selectedEventType === 'harvest' ? 'harvest-gradient' :
+                      selectedEventType === 'bloom' ? 'bg-pink-500' : 'bg-blue-500'
+                    }`}>
+                      <span className="text-lg">{getEventIcon(selectedEventType)}</span>
+                    </div>
+                    <span className="font-medium text-foreground">
+                      {selectedEventType.charAt(0).toUpperCase() + selectedEventType.slice(1)} Event
+                    </span>
                   </div>
-                  <span className="font-medium text-foreground">
-                    {selectedEventType.charAt(0).toUpperCase() + selectedEventType.slice(1)} Event
-                  </span>
                 </div>
               </div>
-            </div>
 
-            <EventForm
-              eventType={selectedEventType}
-              plants={plants}
-              onSubmit={handleEventSubmit}
-              isSubmitting={isSubmitting}
-            />
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+              <EventForm
+                eventType={selectedEventType}
+                plants={plants}
+                onSubmit={handleEventSubmit}
+                isSubmitting={isSubmitting}
+                formRefs={{
+                  harvestFormRef,
+                  bloomFormRef,
+                  snapshotFormRef
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <EventConfirmationDialog
+        open={showConfirmation}
+        onOpenChange={setShowConfirmation}
+        type={confirmationData.type}
+        eventType={selectedEventType || undefined}
+        message={confirmationData.message}
+        imageCount={confirmationData.imageCount}
+        onClose={handleConfirmationClose}
+      />
+    </>
   )
 }
 
@@ -249,9 +341,14 @@ interface EventFormProps {
   plants: Plant[]
   onSubmit: (data: PlantEventCreateData, images?: File[]) => void
   isSubmitting: boolean
+  formRefs?: {
+    harvestFormRef: React.RefObject<HarvestFormRef | null>
+    bloomFormRef: React.RefObject<BloomFormRef | null>
+    snapshotFormRef: React.RefObject<SnapshotFormRef | null>
+  }
 }
 
-function EventForm({ eventType, plants, onSubmit, isSubmitting }: EventFormProps) {
+function EventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: EventFormProps) {
   const [selectedPlant, setSelectedPlant] = useState<string>('')
   const [eventDate, setEventDate] = useState<Date>(new Date())
   const [description, setDescription] = useState('')
@@ -268,11 +365,13 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting }: EventFormProps
       event_date: eventDate.toISOString(),
       description: description || undefined,
       notes: notes || undefined,
-      location: location || undefined,
       coordinates: coordinates || undefined,
+      // Merge event-specific data (produce, quantity, unit, flower_type, bloom_stage, metrics)
       ...eventDataWithoutImages,
     }
 
+    console.log('🚀 Submitting event data:', baseEventData)
+    console.log('📸 Images to upload:', images?.length || 0)
     onSubmit(baseEventData, images)
   }
 
@@ -386,15 +485,27 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting }: EventFormProps
       {/* Event-specific form components */}
       <div className="mt-6">
         {eventType === 'harvest' && (
-          <HarvestForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          <HarvestForm 
+            ref={formRefs?.harvestFormRef}
+            onSubmit={handleSubmit} 
+            isSubmitting={isSubmitting} 
+          />
         )}
         
         {eventType === 'bloom' && (
-          <BloomForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          <BloomForm 
+            ref={formRefs?.bloomFormRef}
+            onSubmit={handleSubmit} 
+            isSubmitting={isSubmitting} 
+          />
         )}
         
         {eventType === 'snapshot' && (
-          <SnapshotForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+          <SnapshotForm 
+            ref={formRefs?.snapshotFormRef}
+            onSubmit={handleSubmit} 
+            isSubmitting={isSubmitting} 
+          />
         )}
       </div>
     </div>
