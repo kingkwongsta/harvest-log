@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { harvestLogsApi, ApiError, type HarvestLogResponse } from "@/lib/api"
+import { eventsApi, ApiError, type PlantEvent } from "@/lib/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,10 @@ import {
   BarChart3, 
   Search, 
   Sprout,
-  Zap
+  Zap,
+  Leaf,
+  Flower,
+  Camera
 } from "lucide-react"
 import Link from "next/link"
 
@@ -58,82 +61,96 @@ const VIEW_MODES = [
 
 export default function HarvestsPage() {
   const [currentView, setCurrentView] = useState<ViewMode>('timeline')
-  const [harvests, setHarvests] = useState<HarvestLogResponse[]>([])
-  const [filteredHarvests, setFilteredHarvests] = useState<HarvestLogResponse[]>([])
+  const [events, setEvents] = useState<PlantEvent[]>([])
+  const [filteredEvents, setFilteredEvents] = useState<PlantEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterCrop, setFilterCrop] = useState("all")
+  const [filterEventType, setFilterEventType] = useState("all")
   const [sortBy, setSortBy] = useState("date")
 
-  // Fetch harvest data
+  // Fetch event data
   useEffect(() => {
-    const fetchHarvests = async () => {
+    const fetchEvents = async () => {
       try {
         setLoading(true)
-        const response = await harvestLogsApi.getAll()
+        const response = await eventsApi.getAll()
         if (response.success && response.data) {
-          setHarvests(response.data)
-          setFilteredHarvests(response.data)
+          setEvents(response.data)
+          setFilteredEvents(response.data)
         } else {
-          setError(response.message || "Failed to load harvests")
+          setError(response.message || "Failed to load events")
         }
       } catch (err) {
         if (err instanceof ApiError) {
           setError(err.message)
         } else {
-          setError("Failed to load harvests")
+          setError("Failed to load events")
         }
       } finally {
         setLoading(false)
       }
     }
 
-    fetchHarvests()
+    fetchEvents()
   }, [])
 
   // Filter and search logic
   useEffect(() => {
-    let filtered = [...harvests]
+    let filtered = [...events]
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(harvest =>
-        harvest.crop_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        harvest.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(event =>
+        (event.plant?.variety?.name || event.produce || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.description?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
-    // Crop filter
+    // Crop/Plant filter
     if (filterCrop !== "all") {
-      filtered = filtered.filter(harvest => 
-        harvest.crop_name.toLowerCase() === filterCrop.toLowerCase()
+      filtered = filtered.filter(event => 
+        (event.plant?.variety?.name || event.produce || '').toLowerCase() === filterCrop.toLowerCase()
       )
+    }
+
+    // Event type filter
+    if (filterEventType !== "all") {
+      filtered = filtered.filter(event => event.event_type === filterEventType)
     }
 
     // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'date':
-          return new Date(b.harvest_date).getTime() - new Date(a.harvest_date).getTime()
+          return new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
         case 'crop':
-          return a.crop_name.localeCompare(b.crop_name)
+          const cropA = a.plant?.variety?.name || a.produce || ''
+          const cropB = b.plant?.variety?.name || b.produce || ''
+          return cropA.localeCompare(cropB)
         case 'quantity':
-          return b.quantity - a.quantity
+          return (b.quantity || 0) - (a.quantity || 0)
+        case 'type':
+          return a.event_type.localeCompare(b.event_type)
         default:
           return 0
       }
     })
 
-    setFilteredHarvests(filtered)
-  }, [harvests, searchTerm, filterCrop, sortBy])
+    setFilteredEvents(filtered)
+  }, [events, searchTerm, filterCrop, filterEventType, sortBy])
 
   // Get unique crop types for filter
-  const uniqueCrops = Array.from(new Set(harvests.map(h => h.crop_name))).sort()
+  const uniqueCrops = Array.from(new Set(events.map(e => e.plant?.variety?.name || e.produce || 'Unknown').filter(Boolean))).sort()
+
+  // Get unique event types for filter
+  const uniqueEventTypes = Array.from(new Set(events.map(e => e.event_type))).sort()
 
   const renderCurrentView = () => {
     const commonProps = {
-      harvests: filteredHarvests,
+      events: filteredEvents,
       loading,
       error
     }
@@ -159,7 +176,7 @@ export default function HarvestsPage() {
           <div className="w-12 h-12 harvest-gradient rounded-full flex items-center justify-center mx-auto mb-4">
             <Sprout className="w-6 h-6 text-white animate-pulse" />
           </div>
-          <p className="text-organic">Loading your harvest gallery...</p>
+          <p className="text-organic">Loading your plant journey...</p>
         </div>
       </div>
     )
@@ -192,10 +209,10 @@ export default function HarvestsPage() {
           {/* Page Header */}
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">My Harvests</h1>
+              <h1 className="text-2xl font-bold text-foreground">Plant Journey</h1>
               <p className="text-sm text-organic">
-                {filteredHarvests.length} harvest{filteredHarvests.length !== 1 ? 's' : ''} • 
-                {filteredHarvests.reduce((total, h) => total + (h.images?.length ?? 0), 0)} photos
+                {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} • 
+                {filteredEvents.reduce((total, e) => total + (e.images?.length ?? 0), 0)} photos
               </p>
             </div>
           </div>
@@ -225,21 +242,39 @@ export default function HarvestsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search harvests, notes..."
+                placeholder="Search plants, events, notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
             <Select value={filterCrop} onValueChange={setFilterCrop}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="All crops" />
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="All plants" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All crops</SelectItem>
+                <SelectItem value="all">All plants</SelectItem>
                 {uniqueCrops.map((crop) => (
                   <SelectItem key={crop} value={crop}>
                     {crop}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterEventType} onValueChange={setFilterEventType}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="All events" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All events</SelectItem>
+                {uniqueEventTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    <div className="flex items-center gap-2">
+                      {type === 'harvest' && <Leaf className="w-3 h-3" />}
+                      {type === 'bloom' && <Flower className="w-3 h-3" />}
+                      {type === 'snapshot' && <Camera className="w-3 h-3" />}
+                      <span className="capitalize">{type}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -250,7 +285,8 @@ export default function HarvestsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="date">Date</SelectItem>
-                <SelectItem value="crop">Crop</SelectItem>
+                <SelectItem value="crop">Plant</SelectItem>
+                <SelectItem value="type">Event Type</SelectItem>
                 <SelectItem value="quantity">Quantity</SelectItem>
               </SelectContent>
             </Select>
@@ -260,23 +296,23 @@ export default function HarvestsPage() {
 
       {/* Current View */}
       <main className="max-w-7xl mx-auto px-6 py-6">
-        {filteredHarvests.length === 0 ? (
+        {filteredEvents.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No harvests found</h3>
+            <h3 className="text-lg font-semibold mb-2">No events found</h3>
             <p className="text-organic mb-4">
-              {searchTerm || filterCrop !== "all" 
+              {searchTerm || filterCrop !== "all" || filterEventType !== "all"
                 ? "Try adjusting your search or filters"
-                : "Start by logging your first harvest"
+                : "Start by logging your first plant event"
               }
             </p>
-            {!searchTerm && filterCrop === "all" && (
+            {!searchTerm && filterCrop === "all" && filterEventType === "all" && (
               <Link href="/">
                 <Button variant="harvest">
                   <Sprout className="w-4 h-4 mr-2" />
-                  Add First Harvest
+                  Add First Event
                 </Button>
               </Link>
             )}

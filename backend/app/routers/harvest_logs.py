@@ -60,7 +60,7 @@ async def create_harvest_log(
     - **quantity**: Quantity harvested (required, must be > 0)  
     - **unit**: Unit of measurement (required)
     - **harvest_date**: Date and time of harvest (required)
-    - **location**: Location where crop was harvested (optional)
+    
     - **notes**: Additional notes about the harvest (optional)
     """
     request_id = getattr(request.state, 'request_id', 'unknown')
@@ -138,7 +138,7 @@ async def get_harvest_logs_paginated(
     crop_name_search: Optional[str] = Query(None, max_length=100, description="Search in crop names"),
     harvest_date_from: Optional[datetime] = Query(None, description="Filter from date"),
     harvest_date_to: Optional[datetime] = Query(None, description="Filter to date"),
-    location: Optional[str] = Query(None, max_length=200, description="Filter by location"),
+    
     include_total: bool = Query(False, description="Include total count (slower)"),
     client = Depends(get_supabase_client)
 ) -> PaginatedHarvestLogResponse:

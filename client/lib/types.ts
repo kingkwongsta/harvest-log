@@ -16,7 +16,6 @@ export interface DetailedHarvestForm {
   quantity: string
   weight: string
   date: string
-  location: string
   notes: string
 }
 

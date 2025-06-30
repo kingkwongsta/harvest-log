@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS harvest_logs (
     quantity FLOAT NOT NULL CHECK (quantity > 0),
     unit VARCHAR(50) NOT NULL,
     harvest_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    location VARCHAR(200),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

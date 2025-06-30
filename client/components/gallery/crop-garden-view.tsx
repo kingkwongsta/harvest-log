@@ -13,13 +13,16 @@ import {
   TrendingDown,
   Minus,
   Award,
-  Expand
+  Expand,
+  Leaf,
+  Flower,
+  Eye
 } from "lucide-react"
 import Image from "next/image"
-import type { HarvestLogResponse } from "@/lib/api"
+import type { PlantEvent } from "@/lib/api"
 
 interface CropGardenViewProps {
-  harvests: HarvestLogResponse[]
+  events: PlantEvent[]
   loading: boolean
   error: string | null
 }
@@ -27,15 +30,20 @@ interface CropGardenViewProps {
 interface CropData {
   name: string
   emoji: string
-  harvests: HarvestLogResponse[]
+  events: PlantEvent[]
   totalQuantity: number
-  totalHarvests: number
+  totalEvents: number
   averageQuantity: number
-  firstHarvest: string
-  lastHarvest: string
-  bestHarvest: HarvestLogResponse
+  firstEvent: string
+  lastEvent: string
+  bestEvent: PlantEvent
   trend: 'up' | 'down' | 'stable'
   images: string[]
+  eventCounts: {
+    harvest: number
+    bloom: number
+    snapshot: number
+  }
 }
 
 const CROP_EMOJIS: Record<string, string> = {
@@ -65,19 +73,23 @@ const getCropEmoji = (cropName: string): string => {
   return CROP_EMOJIS[key] || CROP_EMOJIS['default']
 }
 
-const calculateTrend = (harvests: HarvestLogResponse[]): 'up' | 'down' | 'stable' => {
-  if (harvests.length < 2) return 'stable'
+const calculateTrend = (events: PlantEvent[]): 'up' | 'down' | 'stable' => {
+  // Only calculate trend for harvest events with quantities
+  const harvestEvents = events.filter(e => e.event_type === 'harvest' && e.quantity)
   
-  const sorted = [...harvests].sort((a, b) => 
-    new Date(a.harvest_date).getTime() - new Date(b.harvest_date).getTime()
+  if (harvestEvents.length < 2) return 'stable'
+  
+  const sorted = [...harvestEvents].sort((a, b) => 
+    new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
   )
   
   const firstHalf = sorted.slice(0, Math.ceil(sorted.length / 2))
   const secondHalf = sorted.slice(Math.floor(sorted.length / 2))
   
-  const firstAvg = firstHalf.reduce((sum, h) => sum + h.quantity, 0) / firstHalf.length
-  const secondAvg = secondHalf.reduce((sum, h) => sum + h.quantity, 0) / secondHalf.length
+  const firstAvg = firstHalf.reduce((sum, e) => sum + (e.quantity || 0), 0) / firstHalf.length
+  const secondAvg = secondHalf.reduce((sum, e) => sum + (e.quantity || 0), 0) / secondHalf.length
   
+  if (firstAvg === 0) return 'stable'
   const diff = (secondAvg - firstAvg) / firstAvg
   
   if (diff > 0.1) return 'up'
@@ -93,49 +105,57 @@ const formatDate = (dateString: string) => {
   })
 }
 
-export function CropGardenView({ harvests, loading, error }: CropGardenViewProps) {
+export function CropGardenView({ events, loading, error }: CropGardenViewProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [expandedCrop, setExpandedCrop] = useState<string | null>(null)
 
-  // Group harvests by crop type
-  const cropGroups = harvests.reduce((acc, harvest) => {
-    const cropName = harvest.crop_name
+  // Group events by plant variety or produce name
+  const cropGroups = events.reduce((acc, event) => {
+    const cropName = event.plant?.variety?.name || event.produce || 'Unknown Plant'
     if (!acc[cropName]) {
       acc[cropName] = []
     }
-    acc[cropName].push(harvest)
+    acc[cropName].push(event)
     return acc
-  }, {} as Record<string, HarvestLogResponse[]>)
+  }, {} as Record<string, PlantEvent[]>)
 
   // Process crop data
-  const cropData: CropData[] = Object.entries(cropGroups).map(([name, cropHarvests]) => {
-    const totalQuantity = cropHarvests.reduce((sum, h) => sum + h.quantity, 0)
-    const totalHarvests = cropHarvests.length
-    const averageQuantity = totalQuantity / totalHarvests
+  const cropData: CropData[] = Object.entries(cropGroups).map(([name, cropEvents]) => {
+    const harvestEvents = cropEvents.filter(e => e.event_type === 'harvest')
+    const totalQuantity = harvestEvents.reduce((sum, e) => sum + (e.quantity || 0), 0)
+    const totalEvents = cropEvents.length
+    const averageQuantity = harvestEvents.length > 0 ? totalQuantity / harvestEvents.length : 0
     
-    const sortedByDate = [...cropHarvests].sort((a, b) => 
-      new Date(a.harvest_date).getTime() - new Date(b.harvest_date).getTime()
+    const sortedByDate = [...cropEvents].sort((a, b) => 
+      new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
     )
     
-    const bestHarvest = [...cropHarvests].sort((a, b) => b.quantity - a.quantity)[0]
-    const trend = calculateTrend(cropHarvests)
+    const bestEvent = [...harvestEvents].sort((a, b) => (b.quantity || 0) - (a.quantity || 0))[0] || cropEvents[0]
+    const trend = calculateTrend(cropEvents)
     
-    const images = cropHarvests
-      .flatMap(h => h.images?.map(img => img.public_url) || [])
+    const images = cropEvents
+      .flatMap(e => e.images?.map(img => img.public_url) || [])
       .filter(Boolean) as string[]
+    
+    const eventCounts = {
+      harvest: cropEvents.filter(e => e.event_type === 'harvest').length,
+      bloom: cropEvents.filter(e => e.event_type === 'bloom').length,
+      snapshot: cropEvents.filter(e => e.event_type === 'snapshot').length,
+    }
     
     return {
       name,
       emoji: getCropEmoji(name),
-      harvests: cropHarvests,
+      events: cropEvents,
       totalQuantity,
-      totalHarvests,
+      totalEvents,
       averageQuantity,
-      firstHarvest: sortedByDate[0].harvest_date,
-      lastHarvest: sortedByDate[sortedByDate.length - 1].harvest_date,
-      bestHarvest,
+      firstEvent: sortedByDate[0].event_date,
+      lastEvent: sortedByDate[sortedByDate.length - 1].event_date,
+      bestEvent,
       trend,
-      images: images.slice(0, 6) // Limit to 6 images per crop
+      images: images.slice(0, 6), // Limit to 6 images per crop
+      eventCounts
     }
   })
 
@@ -171,32 +191,32 @@ export function CropGardenView({ harvests, loading, error }: CropGardenViewProps
             <div className="text-2xl font-bold text-foreground">
               {cropData.length}
             </div>
-            <p className="text-sm text-organic">Crop Varieties</p>
+            <p className="text-sm text-organic">Plant Varieties</p>
           </CardContent>
         </Card>
         
         <Card className="text-center">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-foreground">
-              {harvests.reduce((sum, h) => sum + h.quantity, 0)}
+              {events.length}
             </div>
-            <p className="text-sm text-organic">Total Harvest</p>
+            <p className="text-sm text-organic">Total Events</p>
           </CardContent>
         </Card>
         
         <Card className="text-center">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-foreground">
-              {Math.round(harvests.reduce((sum, h) => sum + h.quantity, 0) / harvests.length)}
+              {cropData.reduce((sum, c) => sum + c.totalQuantity, 0)}
             </div>
-            <p className="text-sm text-organic">Avg per Harvest</p>
+            <p className="text-sm text-organic">Total Harvested</p>
           </CardContent>
         </Card>
         
         <Card className="text-center">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-foreground">
-              {harvests.reduce((sum, h) => sum + (h.images?.length || 0), 0)}
+              {events.reduce((sum, e) => sum + (e.images?.length || 0), 0)}
             </div>
             <p className="text-sm text-organic">Total Photos</p>
           </CardContent>
@@ -241,9 +261,25 @@ export function CropGardenView({ harvests, loading, error }: CropGardenViewProps
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-foreground">
-                    {crop.totalHarvests}
+                    {crop.totalEvents}
                   </div>
-                  <p className="text-xs text-organic">Times Harvested</p>
+                  <p className="text-xs text-organic">Total Events</p>
+                </div>
+              </div>
+
+              {/* Event Type Breakdown */}
+              <div className="flex justify-center gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <Leaf className="w-3 h-3 text-green-600" />
+                  <span>{crop.eventCounts.harvest}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Flower className="w-3 h-3 text-pink-600" />
+                  <span>{crop.eventCounts.bloom}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Eye className="w-3 h-3 text-blue-600" />
+                  <span>{crop.eventCounts.snapshot}</span>
                 </div>
               </div>
 
@@ -302,47 +338,51 @@ export function CropGardenView({ harvests, loading, error }: CropGardenViewProps
                 </div>
               )}
 
-              {/* Harvest Details */}
+              {/* Event Details */}
               <div className="space-y-2 pt-2 border-t border-border/50">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-organic flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    First Harvest
+                    First Event
                   </span>
                   <span className="text-foreground">
-                    {formatDate(crop.firstHarvest)}
+                    {formatDate(crop.firstEvent)}
                   </span>
                 </div>
                 
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-organic flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    Latest Harvest
+                    Latest Event
                   </span>
                   <span className="text-foreground">
-                    {formatDate(crop.lastHarvest)}
+                    {formatDate(crop.lastEvent)}
                   </span>
                 </div>
                 
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-organic flex items-center gap-1">
-                    <Award className="w-3 h-3" />
-                    Best Harvest
-                  </span>
-                  <span className="text-foreground">
-                    {crop.bestHarvest.quantity} {crop.bestHarvest.unit}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-organic flex items-center gap-1">
-                    <Scale className="w-3 h-3" />
-                    Average
-                  </span>
-                  <span className="text-foreground">
-                    {Math.round(crop.averageQuantity)} {crop.bestHarvest.unit}
-                  </span>
-                </div>
+                {crop.bestEvent.quantity && (
+                  <>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-organic flex items-center gap-1">
+                        <Award className="w-3 h-3" />
+                        Best Harvest
+                      </span>
+                      <span className="text-foreground">
+                        {crop.bestEvent.quantity} {crop.bestEvent.unit}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-organic flex items-center gap-1">
+                        <Scale className="w-3 h-3" />
+                        Avg Harvest
+                      </span>
+                      <span className="text-foreground">
+                        {Math.round(crop.averageQuantity)} {crop.bestEvent.unit}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Expand Button */}
@@ -352,34 +392,53 @@ export function CropGardenView({ harvests, loading, error }: CropGardenViewProps
                 className="w-full"
                 onClick={() => setExpandedCrop(expandedCrop === crop.name ? null : crop.name)}
               >
-                {expandedCrop === crop.name ? 'Show Less' : 'View All Harvests'}
+                {expandedCrop === crop.name ? 'Show Less' : 'View All Events'}
               </Button>
 
-              {/* Expanded Harvest List */}
+              {/* Expanded Event List */}
               {expandedCrop === crop.name && (
                 <div className="space-y-2 pt-2 border-t border-border/50">
-                  {crop.harvests
-                    .sort((a, b) => new Date(b.harvest_date).getTime() - new Date(a.harvest_date).getTime())
-                    .map((harvest) => (
-                      <div 
-                        key={harvest.id}
-                        className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-xs"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-3 h-3 text-muted-foreground" />
-                          <span>{formatDate(harvest.harvest_date)}</span>
-                          {harvest.images && harvest.images.length > 0 && (
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Camera className="w-3 h-3" />
-                              <span>{harvest.images.length}</span>
-                            </div>
-                          )}
+                  {crop.events
+                    .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
+                    .map((event) => {
+                      const getEventIcon = (type: string) => {
+                        switch (type) {
+                          case 'harvest': return <Leaf className="w-3 h-3 text-green-600" />
+                          case 'bloom': return <Flower className="w-3 h-3 text-pink-600" />
+                          case 'snapshot': return <Eye className="w-3 h-3 text-blue-600" />
+                          default: return <Eye className="w-3 h-3 text-gray-600" />
+                        }
+                      }
+                      
+                      return (
+                        <div 
+                          key={event.id}
+                          className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            {getEventIcon(event.event_type)}
+                            <Calendar className="w-3 h-3 text-muted-foreground" />
+                            <span>{formatDate(event.event_date)}</span>
+                            {event.images && event.images.length > 0 && (
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Camera className="w-3 h-3" />
+                                <span>{event.images.length}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {event.event_type}
+                            </Badge>
+                            {event.quantity && (
+                              <Badge variant="outline" className="text-xs">
+                                {event.quantity} {event.unit}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {harvest.quantity} {harvest.unit}
-                        </Badge>
-                      </div>
-                    ))}
+                      )
+                    })}
                 </div>
               )}
             </CardContent>
@@ -396,7 +455,7 @@ export function CropGardenView({ harvests, loading, error }: CropGardenViewProps
           <div className="relative max-w-4xl max-h-full">
             <Image
               src={selectedImage}
-              alt="Harvest photo"
+              alt="Plant event photo"
               width={800}
               height={600}
               className="max-w-full max-h-full object-contain rounded-lg"

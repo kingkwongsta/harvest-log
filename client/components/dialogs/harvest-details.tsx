@@ -2,7 +2,7 @@
 
 import React from "react"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, MapPin, Scale, StickyNote } from "lucide-react"
+import { Calendar, Scale, StickyNote } from "lucide-react"
 import { type HarvestLogResponse } from "@/lib/api"
 
 interface HarvestDetailsProps {
@@ -44,13 +44,7 @@ export const HarvestDetails = React.memo(function HarvestDetails({ harvest }: Ha
           <span>{formatDate(harvest.harvest_date)}</span>
         </div>
 
-        {harvest.location && (
-          <div className="flex items-center gap-2 text-sm sm:col-span-2">
-            <MapPin className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">Location:</span>
-            <span>{harvest.location}</span>
-          </div>
-        )}
+        
       </div>
 
       {/* Notes */}

@@ -22,8 +22,22 @@ export interface HarvestLogData {
   quantity: number;
   unit: string;
   harvest_date: string;
-  location?: string;
   notes?: string;
+  coordinates?: Coordinates;
+}
+
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export interface WeatherData {
+  temperature_min: number;
+  temperature_max: number;
+  humidity: number;
+  weather_code: number;
+  wind_speed: number;
+  precipitation: number;
 }
 
 export interface HarvestImage {
@@ -54,7 +68,6 @@ export interface HarvestLogResponse {
   quantity: number;
   unit: string;
   harvest_date: string;
-  location?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -65,6 +78,131 @@ export interface HarvestStats {
   total_harvests: number;
   this_month: number;
   this_week: number;
+}
+
+export interface EventStats {
+  total_events: number;
+  this_month: number;
+  this_week: number;
+  harvest_events: number;
+  bloom_events: number;
+  snapshot_events: number;
+}
+
+// Plant Journey Types
+export type EventType = 'harvest' | 'bloom' | 'snapshot';
+export type PlantStatus = 'active' | 'harvested' | 'deceased' | 'dormant';
+export type PlantCategory = 'vegetable' | 'fruit' | 'flower' | 'herb' | 'tree' | 'shrub' | 'other';
+export type BloomStage = 'bud' | 'opening' | 'full_bloom' | 'fading' | 'seed_set';
+
+export interface PlantVariety {
+  id: string;
+  name: string;
+  category: PlantCategory;
+  description?: string;
+  growing_season?: string;
+  harvest_time_days?: number;
+  typical_yield?: string;
+  care_instructions?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Plant {
+  id: string;
+  name: string;
+  variety_id?: string;
+  planted_date?: string;
+  status: PlantStatus;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  variety?: PlantVariety;
+  events?: PlantEvent[];
+}
+
+export interface PlantEvent {
+  id: string;
+  user_id?: string;
+  plant_id?: string;
+  event_type: EventType;
+  event_date: string;
+  description?: string;
+  notes?: string;
+  coordinates?: Coordinates;
+  weather?: WeatherData;
+  
+  // Harvest-specific fields
+  produce?: string;
+  quantity?: number;
+  unit?: string;
+  
+  // Bloom-specific fields
+  flower_type?: string;
+  bloom_stage?: BloomStage;
+  
+  // Flexible metrics (primarily for snapshot events)
+  metrics?: Record<string, unknown>;
+  
+  created_at: string;
+  updated_at: string;
+  images?: EventImage[];
+  plant?: Plant;
+}
+
+export interface EventImage {
+  id: string;
+  event_id: string;
+  filename: string;
+  original_filename: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
+  width?: number;
+  height?: number;
+  upload_order: number;
+  public_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlantEventCreateData {
+  plant_id?: string;
+  event_type: EventType;
+  event_date: string;
+  description?: string;
+  notes?: string;
+  coordinates?: Coordinates;
+  
+  // Harvest-specific fields
+  produce?: string;
+  quantity?: number;
+  unit?: string;
+  
+  // Bloom-specific fields
+  flower_type?: string;
+  bloom_stage?: BloomStage;
+  
+  // Snapshot-specific fields (flexible metrics)
+  metrics?: Record<string, unknown>;
+}
+
+export interface PlantCreateData {
+  name: string;
+  variety_id?: string;
+  planted_date?: string;
+  status?: PlantStatus;
+  notes?: string;
+}
+
+export interface PlantVarietyCreateData {
+  name: string;
+  category: PlantCategory;
+  description?: string;
+  growing_season?: string;
+  harvest_time_days?: number;
+  typical_yield?: string;
+  care_instructions?: string;
 }
 
 export interface ImageUploadResponse {
@@ -247,9 +385,9 @@ export const imagesApi = {
     });
 
     const formData = new FormData();
-    files.forEach((file, index) => {
+    files.forEach((file) => {
       formData.append('files', file);
-      console.log(`📎 Added file ${index + 1}:`, {
+      console.log(`📎 Added file ${file.name}:`, {
         name: file.name,
         size: file.size,
         type: file.type
@@ -267,6 +405,158 @@ export const imagesApi = {
     return apiRequest(`/api/images/${imageId}`, {
       method: 'DELETE',
     });
+  },
+};
+
+// Plant Journey API functions
+export const plantsApi = {
+  // Plant Varieties
+  createVariety: async (data: PlantVarietyCreateData): Promise<ApiResponse<PlantVariety>> => {
+    return apiRequest('/api/plants/varieties', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getVarieties: async (category?: PlantCategory, search?: string): Promise<ApiResponse<PlantVariety[]>> => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (search) params.append('search', search);
+    
+    const query = params.toString();
+    return apiRequest(`/api/plants/varieties${query ? `?${query}` : ''}`);
+  },
+
+  getVariety: async (id: string): Promise<ApiResponse<PlantVariety>> => {
+    return apiRequest(`/api/plants/varieties/${id}`);
+  },
+
+  // Plants
+  createPlant: async (data: PlantCreateData): Promise<ApiResponse<Plant>> => {
+    return apiRequest('/api/plants/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getPlants: async (status?: PlantStatus, varietyId?: string, location?: string): Promise<ApiResponse<Plant[]>> => {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (varietyId) params.append('variety_id', varietyId);
+    if (location) params.append('location', location);
+    
+    const query = params.toString();
+    return apiRequest(`/api/plants/${query ? `?${query}` : ''}`);
+  },
+
+  getPlant: async (id: string): Promise<ApiResponse<Plant>> => {
+    return apiRequest(`/api/plants/${id}`);
+  },
+
+  updatePlant: async (id: string, data: Partial<PlantCreateData>): Promise<ApiResponse<Plant>> => {
+    return apiRequest(`/api/plants/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deletePlant: async (id: string): Promise<ApiResponse<Plant>> => {
+    return apiRequest(`/api/plants/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getPlantEvents: async (
+    plantId: string,
+    eventType?: EventType,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<ApiResponse<PlantEvent[]>> => {
+    const params = new URLSearchParams();
+    if (eventType) params.append('event_type', eventType);
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    
+    const query = params.toString();
+    return apiRequest(`/api/plants/${plantId}/events${query ? `?${query}` : ''}`);
+  },
+};
+
+// Plant Events API functions
+export const eventsApi = {
+  create: async (data: PlantEventCreateData): Promise<ApiResponse<PlantEvent>> => {
+    return apiRequest('/api/events/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getAll: async (
+    plantId?: string,
+    eventType?: EventType,
+    dateFrom?: string,
+    dateTo?: string,
+    limit?: number,
+    offset?: number
+  ): Promise<ApiResponse<PlantEvent[]>> => {
+    const params = new URLSearchParams();
+    if (plantId) params.append('plant_id', plantId);
+    if (eventType) params.append('event_type', eventType);
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    
+    const query = params.toString();
+    return apiRequest(`/api/events/${query ? `?${query}` : ''}`);
+  },
+
+  getById: async (id: string): Promise<ApiResponse<PlantEvent>> => {
+    return apiRequest(`/api/events/${id}`);
+  },
+
+  update: async (id: string, data: Partial<PlantEventCreateData>): Promise<ApiResponse<PlantEvent>> => {
+    return apiRequest(`/api/events/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string): Promise<ApiResponse<PlantEvent>> => {
+    return apiRequest(`/api/events/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Upload images for events
+  uploadImages: async (eventId: string, files: File[]): Promise<MultipleImageUploadResponse> => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+    
+    return uploadRequest(`/api/images/upload-multiple/${eventId}`, formData);
+  },
+
+  // Get event statistics
+  getStats: async (): Promise<ApiResponse<EventStats>> => {
+    return apiRequest('/api/events/stats');
+  },
+};
+
+// Weather API functions
+export const weatherApi = {
+  getCurrentWeather: async (coordinates: Coordinates, eventDate?: string): Promise<ApiResponse<WeatherData>> => {
+    const params = new URLSearchParams({
+      latitude: coordinates.latitude.toString(),
+      longitude: coordinates.longitude.toString(),
+    });
+    
+    if (eventDate) {
+      params.append('event_date', eventDate);
+    }
+    
+    return apiRequest(`/api/weather?${params.toString()}`);
   },
 };
 
