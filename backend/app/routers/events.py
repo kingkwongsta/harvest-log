@@ -131,6 +131,9 @@ async def create_plant_event(
         event_id = result.data[0]["id"]
         complete_event = await get_plant_event_by_id(event_id, client, request_id)
         
+        # Invalidate event stats cache since we added a new event
+        await cache_manager.invalidate_event_stats()
+        
         logger.info(f"API: Successfully created {event_type} event with ID {event_id}", 
                    extra={"request_id": request_id, "record_id": str(event_id)})
         
@@ -272,6 +275,16 @@ async def get_event_stats(
     try:
         logger.info("API: Retrieving event statistics", extra={"request_id": request_id})
         
+        # Try to get from cache first
+        cached_stats = await cache_manager.get_event_stats()
+        if cached_stats:
+            logger.info("API: Retrieved event stats from cache", extra={"request_id": request_id})
+            return EventStatsResponse(
+                success=True,
+                message="Event statistics retrieved successfully",
+                data=EventStats(**cached_stats)
+            )
+        
         # Get current date info
         now = datetime.now()
         
@@ -312,6 +325,9 @@ async def get_event_stats(
             bloom_events=bloom_count,
             snapshot_events=snapshot_count
         )
+        
+        # Cache the results for 3 minutes
+        await cache_manager.set_event_stats(stats.dict(), ttl=180)
         
         logger.info(f"API: Successfully retrieved event stats", 
                    extra={
@@ -439,6 +455,9 @@ async def update_plant_event(
         
         # Fetch the updated event
         updated_event = await get_plant_event_by_id(event_id, client, request_id)
+        
+        # Invalidate event stats cache since event was modified
+        await cache_manager.invalidate_event_stats()
         
         logger.info(f"API: Successfully updated plant event {event_id}", 
                    extra={"request_id": request_id, "record_id": str(event_id)})

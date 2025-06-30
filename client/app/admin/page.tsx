@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { formatDistanceToNow } from "date-fns"
 
 
@@ -20,6 +21,10 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all")
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [eventToDelete, setEventToDelete] = useState<PlantEvent | null>(null)
+  const [deleteConfirmationNumber, setDeleteConfirmationNumber] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
   
 
   useEffect(() => {
@@ -67,6 +72,41 @@ export default function AdminPage() {
 
   const toggleEventExpansion = (eventId: string) => {
     setExpandedEvent(expandedEvent === eventId ? null : eventId)
+  }
+
+  const handleDeleteClick = (event: PlantEvent) => {
+    setEventToDelete(event)
+    setDeleteConfirmationNumber("")
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (deleteConfirmationNumber !== "8" || !eventToDelete) {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const response = await eventsApi.delete(eventToDelete.id)
+      if (response.success) {
+        setEvents(prev => prev.filter(e => e.id !== eventToDelete.id))
+        setDeleteDialogOpen(false)
+        setEventToDelete(null)
+        setDeleteConfirmationNumber("")
+      } else {
+        console.error('Failed to delete event:', response.error)
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false)
+    setEventToDelete(null)
+    setDeleteConfirmationNumber("")
   }
 
   
@@ -190,7 +230,13 @@ export default function AdminPage() {
                       >
                         {expandedEvent === event.id ? 'Collapse' : 'Expand'}
                       </Button>
-                      
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteClick(event)}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </div>
                   <CardDescription>
@@ -336,6 +382,64 @@ export default function AdminPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Event</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this event? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {eventToDelete && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant={eventToDelete.event_type === 'harvest' ? 'default' : eventToDelete.event_type === 'bloom' ? 'secondary' : 'outline'}>
+                    {eventToDelete.event_type}
+                  </Badge>
+                  <span className="font-medium">
+                    {eventToDelete.plant?.name || eventToDelete.produce || `${eventToDelete.event_type} Event`}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <div>Event ID: {eventToDelete.id}</div>
+                  <div>Date: {new Date(eventToDelete.event_date).toLocaleDateString()}</div>
+                  <div>Created: {formatDistanceToNow(new Date(eventToDelete.created_at), { addSuffix: true })}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="delete-confirmation" className="block text-sm font-medium">
+                  Enter the confirmation code to delete:
+                </label>
+                <Input
+                  id="delete-confirmation"
+                  type="number"
+                  value={deleteConfirmationNumber}
+                  onChange={(e) => setDeleteConfirmationNumber(e.target.value)}
+                  placeholder="Confirmation code"
+                  className={deleteConfirmationNumber === "8" ? "border-green-500" : ""}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDeleteCancel} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteConfirm}
+              disabled={deleteConfirmationNumber !== "8" || isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Event"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

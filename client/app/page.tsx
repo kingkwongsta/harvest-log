@@ -90,14 +90,30 @@ export default function HomePage() {
       }
     }
 
+    const loadInitialPlants = async () => {
+      if (isLoadingPlants) return
+      
+      try {
+        setIsLoadingPlants(true)
+        const response = await plantsApi.getPlants()
+        if (response.success && response.data) {
+          setPlants(response.data)
+        }
+      } catch (error) {
+        console.error('Error loading plants:', error)
+      } finally {
+        setIsLoadingPlants(false)
+      }
+    }
+
     // Load plants since harvest form is selected by default
     const fetchInitialData = async () => {
       await fetchStats()
-      await loadPlants()
+      await loadInitialPlants()
     }
 
     fetchInitialData()
-  }, [loadPlants])
+  }, [])
 
   // Load plants when inline event form needs them
   const ensurePlantsLoaded = async () => {
