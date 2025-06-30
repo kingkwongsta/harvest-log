@@ -94,7 +94,7 @@ async def create_plant_event(
             "location": validated_data.location,
             "latitude": validated_data.coordinates.latitude if validated_data.coordinates else None,
             "longitude": validated_data.coordinates.longitude if validated_data.coordinates else None,
-            "weather": weather_data.model_dump() if weather_data else None
+            "weather": weather_data.dict() if weather_data else None
         }
         
         # Add event-type specific fields

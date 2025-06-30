@@ -1,6 +1,12 @@
 -- Plant Journey Database Schema
 -- Migration from harvest-only to complete plant management system
 
+-- Drop tables if they exist to allow for idempotent script execution
+DROP TABLE IF EXISTS event_images CASCADE;
+DROP TABLE IF EXISTS plant_events CASCADE;
+DROP TABLE IF EXISTS plants CASCADE;
+DROP TABLE IF EXISTS plant_varieties CASCADE;
+
 -- Create plant_varieties table for managing plant types
 CREATE TABLE IF NOT EXISTS plant_varieties (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -48,6 +54,13 @@ CREATE TABLE IF NOT EXISTS plant_events (
     description TEXT,
     notes TEXT,
     
+    -- Location coordinates
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    
+    -- Weather data (JSONB for extensibility)
+    weather JSONB,
+    
     -- Flexible metrics storage (JSONB for extensibility)
     metrics JSONB,
     
@@ -87,13 +100,20 @@ CREATE TABLE IF NOT EXISTS event_images (
 );
 
 -- Create triggers for updated_at columns
+DROP TRIGGER IF EXISTS update_plant_varieties_updated_at ON plant_varieties;
+DROP TRIGGER IF EXISTS update_plants_updated_at ON plants;
+DROP TRIGGER IF EXISTS update_plant_events_updated_at ON plant_events;
+DROP TRIGGER IF EXISTS update_event_images_updated_at ON event_images;
+
+DROP FUNCTION IF EXISTS update_updated_at_column();
+
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$ language 'plpgsql';
 
 -- Create triggers for all tables
 CREATE TRIGGER update_plant_varieties_updated_at 
