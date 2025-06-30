@@ -8,14 +8,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import { Upload, X, Plus, Minus } from 'lucide-react'
+import { Upload, X, Plus, Minus, Calendar } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 
-import type { BloomStage } from '@/lib/api'
+import type { BloomStage, Plant } from '@/lib/api'
 
 interface BloomFormProps {
+  plants: Plant[]
   onSubmit: (data: {
+    plant_id?: string
+    event_date: string
+    description?: string
+    notes?: string
     flower_type: string
     bloom_stage?: BloomStage
     metrics?: Record<string, number | string | boolean>
@@ -54,7 +60,14 @@ const commonFlowerTypes = [
 ]
 
 export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
-  ({ onSubmit, isSubmitting, onReset }, ref) => {
+  ({ plants, onSubmit, isSubmitting, onReset }, ref) => {
+    // Common event fields
+    const [selectedPlant, setSelectedPlant] = useState('')
+    const [eventDate, setEventDate] = useState(new Date())
+    const [description, setDescription] = useState('')
+    const [notes, setNotes] = useState('')
+    
+    // Bloom-specific fields
     const [flowerType, setFlowerType] = useState('')
     const [bloomStage, setBloomStage] = useState<BloomStage>('full_bloom')
     const [images, setImages] = useState<File[]>([])
@@ -66,6 +79,12 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     const [customMetrics, setCustomMetrics] = useState<{ key: string; value: string }[]>([])
 
     const resetForm = () => {
+      // Reset common fields
+      setSelectedPlant('')
+      setEventDate(new Date())
+      setDescription('')
+      setNotes('')
+      // Reset bloom-specific fields
       setFlowerType('')
       setBloomStage('full_bloom')
       setImages([])
@@ -127,6 +146,10 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     })
 
     onSubmit({
+      plant_id: selectedPlant || undefined,
+      event_date: eventDate.toISOString(),
+      description: description.trim() || undefined,
+      notes: notes.trim() || undefined,
       flower_type: flowerType.trim(),
       bloom_stage: bloomStage,
       metrics: Object.keys(metrics).length > 0 ? metrics : undefined,
@@ -187,186 +210,248 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
       <Card>
         <CardHeader>
           <CardTitle className="text-pink-700 flex items-center">
-            🌸 Bloom Details
+            🌸 Bloom Event Details
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="flower-type">Flower Type *</Label>
-              <Input
-                id="flower-type"
-                value={flowerType}
-                onChange={(e) => setFlowerType(e.target.value)}
-                placeholder="e.g., Sunflower, Tomato Flower..."
-                list="flower-suggestions"
-                maxLength={100}
-                required
-              />
-              <datalist id="flower-suggestions">
-                {commonFlowerTypes.map(type => (
-                  <option key={type} value={type} />
-                ))}
-              </datalist>
+        <CardContent className="space-y-6">
+          {/* Event Details Section */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-pink-700">Event Information</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="plant">Plant (Optional)</Label>
+                <Select value={selectedPlant} onValueChange={setSelectedPlant}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a plant..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plants.map((plant) => (
+                      <SelectItem key={plant.id} value={plant.id}>
+                        {plant.name} {plant.variety && `(${plant.variety.name})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-date">Event Date *</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    id="event-date"
+                    type="datetime-local"
+                    value={eventDate.toISOString().slice(0, 16)}
+                    onChange={(e) => setEventDate(new Date(e.target.value))}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bloom-stage">Bloom Stage</Label>
-              <Select value={bloomStage} onValueChange={(value) => setBloomStage(value as BloomStage)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {bloomStages.map(stage => (
-                    <SelectItem key={stage.value} value={stage.value}>
-                      <div>
-                        <div className="font-medium">{stage.label}</div>
-                        <div className="text-xs text-gray-500">{stage.description}</div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Bloom Measurements (Optional)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="bloom-count">Number of Blooms</Label>
+              <Label htmlFor="description">Description (Optional)</Label>
               <Input
-                id="bloom-count"
-                type="number"
-                min="1"
-                value={bloomCount}
-                onChange={(e) => setBloomCount(e.target.value)}
-                placeholder="5"
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of this bloom event..."
+                maxLength={500}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="flower-size">Flower Size (cm)</Label>
-              <Input
-                id="flower-size"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={flowerSize}
-                onChange={(e) => setFlowerSize(e.target.value)}
-                placeholder="7.5"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="flower-color">Flower Color</Label>
-              <Input
-                id="flower-color"
-                value={flowerColor}
-                onChange={(e) => setFlowerColor(e.target.value)}
-                placeholder="Bright yellow"
+              <Label htmlFor="notes">Additional Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any additional observations, conditions, or details..."
+                rows={3}
+                maxLength={2000}
               />
             </div>
           </div>
 
           <Separator />
 
+          {/* Basic Bloom Information */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Additional Measurements</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addCustomMetric}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Metric
-              </Button>
+            <Label className="text-sm font-medium text-pink-700">Bloom Details</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="flower-type">Flower Type *</Label>
+                <Input
+                  id="flower-type"
+                  value={flowerType}
+                  onChange={(e) => setFlowerType(e.target.value)}
+                  placeholder="e.g., Sunflower, Tomato Flower..."
+                  list="flower-suggestions"
+                  maxLength={100}
+                  required
+                />
+                <datalist id="flower-suggestions">
+                  {commonFlowerTypes.map(type => (
+                    <option key={type} value={type} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bloom-stage">Bloom Stage</Label>
+                <Select value={bloomStage} onValueChange={(value) => setBloomStage(value as BloomStage)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bloomStages.map(stage => (
+                      <SelectItem key={stage.value} value={stage.value}>
+                        <div>
+                          <div className="font-medium">{stage.label}</div>
+                          <div className="text-xs text-gray-500">{stage.description}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Bloom Measurements */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-pink-700">Bloom Measurements (Optional)</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bloom-count">Number of Blooms</Label>
+                <Input
+                  id="bloom-count"
+                  type="number"
+                  min="1"
+                  value={bloomCount}
+                  onChange={(e) => setBloomCount(e.target.value)}
+                  placeholder="5"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="flower-size">Flower Size (cm)</Label>
+                <Input
+                  id="flower-size"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  value={flowerSize}
+                  onChange={(e) => setFlowerSize(e.target.value)}
+                  placeholder="7.5"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="flower-color">Flower Color</Label>
+                <Input
+                  id="flower-color"
+                  value={flowerColor}
+                  onChange={(e) => setFlowerColor(e.target.value)}
+                  placeholder="Bright yellow"
+                />
+              </div>
             </div>
 
-            {customMetrics.map((metric, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <Input
-                  placeholder="Metric name"
-                  value={metric.key}
-                  onChange={(e) => updateCustomMetric(index, 'key', e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="Value"
-                  value={metric.value}
-                  onChange={(e) => updateCustomMetric(index, 'value', e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeCustomMetric(index)}
-                >
-                  <Minus className="h-4 w-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Additional Measurements</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addCustomMetric}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Metric
                 </Button>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Bloom Photos (Optional)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-            <div className="text-center">
-              <Upload className="mx-auto h-12 w-12 text-gray-400" />
-              <div className="mt-4">
-                <label htmlFor="bloom-images" className="cursor-pointer">
-                  <span className="mt-2 block text-sm font-medium text-gray-900">
-                    Upload bloom photos
-                  </span>
-                  <span className="mt-1 block text-xs text-gray-500">
-                    PNG, JPG, GIF up to 10MB each (max 5 photos)
-                  </span>
-                </label>
-                <input
-                  id="bloom-images"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="sr-only"
-                />
-              </div>
-            </div>
-          </div>
-
-          {images.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
-              {images.map((file, index) => (
-                <div key={index} className="relative">
-                  <Image
-                    src={URL.createObjectURL(file)}
-                    alt={`Bloom ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg"
-                    width={200}
-                    height={96}
+              {customMetrics.map((metric, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <Input
+                    placeholder="Metric name"
+                    value={metric.key}
+                    onChange={(e) => updateCustomMetric(index, 'key', e.target.value)}
+                    className="flex-1"
                   />
-                  <button
+                  <Input
+                    placeholder="Value"
+                    value={metric.value}
+                    onChange={(e) => updateCustomMetric(index, 'value', e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
                     type="button"
-                    onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeCustomMetric(index)}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <div className="text-xs text-gray-500 mt-1 truncate">
-                    {file.name}
-                  </div>
+                    <Minus className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
-          )}
+          </div>
+
+          <Separator />
+
+          {/* Photo Upload */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-pink-700">Bloom Photos (Optional)</Label>
+            <div className="border-2 border-dashed border-muted rounded-lg p-6 hover:border-primary/50 transition-colors">
+              <div className="text-center">
+                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                <div className="mt-4">
+                  <label htmlFor="bloom-images" className="cursor-pointer">
+                    <span className="mt-2 block text-sm font-medium text-foreground">
+                      Upload bloom photos
+                    </span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      PNG, JPG, GIF up to 10MB each (max 5 photos)
+                    </span>
+                  </label>
+                  <input
+                    id="bloom-images"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="sr-only"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
+                {images.map((file, index) => (
+                  <div key={index} className="relative">
+                    <Image
+                      src={URL.createObjectURL(file)}
+                      alt={`Bloom ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg"
+                      width={200}
+                      height={96}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <div className="text-xs text-gray-500 mt-1 truncate">
+                      {file.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

@@ -5,15 +5,23 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Upload, X, Plus, Minus } from 'lucide-react'
+import { Upload, X, Plus, Minus, Calendar } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
+import type { Plant } from '@/lib/api'
 
 interface SnapshotFormProps {
+  plants: Plant[]
   onSubmit: (data: {
+    plant_id?: string
+    event_date: string
+    description?: string
+    notes?: string
     metrics: Record<string, number | string | boolean>
     images?: File[]
   }) => void
@@ -26,7 +34,14 @@ export interface SnapshotFormRef {
 }
 
 export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
-  ({ onSubmit, isSubmitting, onReset }, ref) => {
+  ({ plants, onSubmit, isSubmitting, onReset }, ref) => {
+    // Common event fields
+    const [selectedPlant, setSelectedPlant] = useState('')
+    const [eventDate, setEventDate] = useState(new Date())
+    const [description, setDescription] = useState('')
+    const [notes, setNotes] = useState('')
+    
+    // Snapshot-specific fields
     const [images, setImages] = useState<File[]>([])
     
     // Growth measurements
@@ -46,6 +61,12 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
     const [customMetrics, setCustomMetrics] = useState<{ key: string; value: string; type: 'number' | 'text' | 'boolean' }[]>([])
 
     const resetForm = () => {
+      // Reset common fields
+      setSelectedPlant('')
+      setEventDate(new Date())
+      setDescription('')
+      setNotes('')
+      // Reset snapshot-specific fields
       setImages([])
       setHeight('')
       setWidth('')
@@ -140,6 +161,10 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
     })
 
     onSubmit({
+      plant_id: selectedPlant || undefined,
+      event_date: eventDate.toISOString(),
+      description: description.trim() || undefined,
+      notes: notes.trim() || undefined,
       metrics,
       images: images.length > 0 ? images : undefined,
     })
@@ -198,257 +223,316 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
       <Card>
         <CardHeader>
           <CardTitle className="text-blue-700 flex items-center">
-            📏 Growth Measurements
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="height">Height (cm)</Label>
-              <Input
-                id="height"
-                type="number"
-                step="0.1"
-                min="0.1"
-                max="10000"
-                value={height}
-                onChange={(e) => setHeight(e.target.value)}
-                placeholder="25.5"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="width">Width/Spread (cm)</Label>
-              <Input
-                id="width"
-                type="number"
-                step="0.1"
-                min="0.1"
-                max="10000"
-                value={width}
-                onChange={(e) => setWidth(e.target.value)}
-                placeholder="15.0"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="leaf-count">Leaf Count</Label>
-              <Input
-                id="leaf-count"
-                type="number"
-                min="0"
-                max="10000"
-                value={leafCount}
-                onChange={(e) => setLeafCount(e.target.value)}
-                placeholder="12"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-blue-700 flex items-center">
-            💚 Health Assessment
+            📸 Plant Snapshot Details
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Event Details Section */}
           <div className="space-y-4">
+            <Label className="text-sm font-medium text-blue-700">Event Information</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="plant">Plant (Optional)</Label>
+                <Select value={selectedPlant} onValueChange={setSelectedPlant}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a plant..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plants.map((plant) => (
+                      <SelectItem key={plant.id} value={plant.id}>
+                        {plant.name} {plant.variety && `(${plant.variety.name})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-date">Event Date *</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    id="event-date"
+                    type="datetime-local"
+                    value={eventDate.toISOString().slice(0, 16)}
+                    onChange={(e) => setEventDate(new Date(e.target.value))}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label>Overall Health Score: {healthScore[0]}/10</Label>
-              <Slider
-                value={healthScore}
-                onValueChange={setHealthScore}
-                max={10}
-                min={1}
-                step={1}
-                className="w-full"
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Input
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of this snapshot event..."
+                maxLength={500}
               />
-              <div className="text-xs text-gray-500 flex justify-between">
-                <span>Poor (1)</span>
-                <span>Good (5)</span>
-                <span>Excellent (10)</span>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Additional Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any additional observations, conditions, or details..."
+                rows={3}
+                maxLength={2000}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Growth Measurements */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-blue-700">Growth Measurements</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="height">Height (cm)</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="10000"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder="25.5"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="width">Width/Spread (cm)</Label>
+                <Input
+                  id="width"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="10000"
+                  value={width}
+                  onChange={(e) => setWidth(e.target.value)}
+                  placeholder="15.0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="leaf-count">Leaf Count</Label>
+                <Input
+                  id="leaf-count"
+                  type="number"
+                  min="0"
+                  max="10000"
+                  value={leafCount}
+                  onChange={(e) => setLeafCount(e.target.value)}
+                  placeholder="12"
+                />
               </div>
             </div>
           </div>
 
           <Separator />
 
-          <div className="space-y-4">
-            <Label className="text-sm font-medium">Health Indicators</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="new-growth"
-                  checked={newGrowth}
-                  onCheckedChange={(checked) => setNewGrowth(checked === true)}
+          {/* Health Assessment */}
+          <div className="space-y-6">
+            <Label className="text-sm font-medium text-blue-700">Health Assessment</Label>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Overall Health Score: {healthScore[0]}/10</Label>
+                <Slider
+                  value={healthScore}
+                  onValueChange={setHealthScore}
+                  max={10}
+                  min={1}
+                  step={1}
+                  className="w-full"
                 />
-                <Label htmlFor="new-growth" className="text-sm">
-                  New growth visible
-                </Label>
+                <div className="text-xs text-gray-500 flex justify-between">
+                  <span>Poor (1)</span>
+                  <span>Good (5)</span>
+                  <span>Excellent (10)</span>
+                </div>
               </div>
+            </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="flowering"
-                  checked={floweringStatus}
-                  onCheckedChange={(checked) => setFloweringStatus(checked === true)}
-                />
-                <Label htmlFor="flowering" className="text-sm">
-                  Currently flowering
-                </Label>
-              </div>
+            <div className="space-y-4">
+              <Label className="text-sm font-medium">Health Indicators</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="new-growth"
+                    checked={newGrowth}
+                    onCheckedChange={(checked) => setNewGrowth(checked === true)}
+                  />
+                  <Label htmlFor="new-growth" className="text-sm">
+                    New growth visible
+                  </Label>
+                </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="pest-issues"
-                  checked={pestIssues}
-                  onCheckedChange={(checked) => setPestIssues(checked === true)}
-                />
-                <Label htmlFor="pest-issues" className="text-sm text-orange-700">
-                  Pest issues present
-                </Label>
-              </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="flowering"
+                    checked={floweringStatus}
+                    onCheckedChange={(checked) => setFloweringStatus(checked === true)}
+                  />
+                  <Label htmlFor="flowering" className="text-sm">
+                    Currently flowering
+                  </Label>
+                </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="fruiting"
-                  checked={fruitingStatus}
-                  onCheckedChange={(checked) => setFruitingStatus(checked === true)}
-                />
-                <Label htmlFor="fruiting" className="text-sm">
-                  Producing fruit/vegetables
-                </Label>
-              </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="pest-issues"
+                    checked={pestIssues}
+                    onCheckedChange={(checked) => setPestIssues(checked === true)}
+                  />
+                  <Label htmlFor="pest-issues" className="text-sm text-orange-700">
+                    Pest issues present
+                  </Label>
+                </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="disease-signs"
-                  checked={diseaseSignsPresent}
-                  onCheckedChange={(checked) => setDiseaseSignsPresent(checked === true)}
-                />
-                <Label htmlFor="disease-signs" className="text-sm text-red-700">
-                  Disease signs present
-                </Label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="fruiting"
+                    checked={fruitingStatus}
+                    onCheckedChange={(checked) => setFruitingStatus(checked === true)}
+                  />
+                  <Label htmlFor="fruiting" className="text-sm">
+                    Producing fruit/vegetables
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="disease-signs"
+                    checked={diseaseSignsPresent}
+                    onCheckedChange={(checked) => setDiseaseSignsPresent(checked === true)}
+                  />
+                  <Label htmlFor="disease-signs" className="text-sm text-red-700">
+                    Disease signs present
+                  </Label>
+                </div>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Additional Measurements</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Custom Metrics</Label>
-            <Button type="button" variant="outline" size="sm" onClick={addCustomMetric}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Metric
-            </Button>
-          </div>
+          <Separator />
 
-          {customMetrics.map((metric, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <Input
-                placeholder="Metric name (e.g., 'stem diameter')"
-                value={metric.key}
-                onChange={(e) => updateCustomMetric(index, 'key', e.target.value)}
-                className="flex-1"
-              />
-              <select
-                value={metric.type}
-                onChange={(e) => updateCustomMetric(index, 'type', e.target.value as 'number' | 'text' | 'boolean')}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="boolean">Yes/No</option>
-              </select>
-              <Input
-                placeholder={
-                  metric.type === 'number' ? '5.2' : 
-                  metric.type === 'boolean' ? 'yes/no' : 'Value'
-                }
-                value={metric.value}
-                onChange={(e) => updateCustomMetric(index, 'value', e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => removeCustomMetric(index)}
-              >
-                <Minus className="h-4 w-4" />
+          {/* Additional Measurements */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-blue-700">Additional Measurements</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addCustomMetric}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Metric
               </Button>
             </div>
-          ))}
 
-          {customMetrics.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-4">
-              Add custom measurements like stem diameter, number of branches, soil moisture, etc.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Progress Photos (Optional)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-            <div className="text-center">
-              <Upload className="mx-auto h-12 w-12 text-gray-400" />
-              <div className="mt-4">
-                <label htmlFor="snapshot-images" className="cursor-pointer">
-                  <span className="mt-2 block text-sm font-medium text-gray-900">
-                    Upload progress photos
-                  </span>
-                  <span className="mt-1 block text-xs text-gray-500">
-                    PNG, JPG, GIF up to 10MB each (max 5 photos)
-                  </span>
-                </label>
-                <input
-                  id="snapshot-images"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="sr-only"
+            {customMetrics.map((metric, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <Input
+                  placeholder="Metric name (e.g., 'stem diameter')"
+                  value={metric.key}
+                  onChange={(e) => updateCustomMetric(index, 'key', e.target.value)}
+                  className="flex-1"
                 />
+                <select
+                  value={metric.type}
+                  onChange={(e) => updateCustomMetric(index, 'type', e.target.value as 'number' | 'text' | 'boolean')}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="text">Text</option>
+                  <option value="number">Number</option>
+                  <option value="boolean">Yes/No</option>
+                </select>
+                <Input
+                  placeholder={
+                    metric.type === 'number' ? '5.2' : 
+                    metric.type === 'boolean' ? 'yes/no' : 'Value'
+                  }
+                  value={metric.value}
+                  onChange={(e) => updateCustomMetric(index, 'value', e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => removeCustomMetric(index)}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
               </div>
-            </div>
+            ))}
+
+            {customMetrics.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                Add custom measurements like stem diameter, number of branches, soil moisture, etc.
+              </p>
+            )}
           </div>
 
-          {images.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
-              {images.map((file, index) => (
-                <div key={index} className="relative">
-                  <Image
-                    src={URL.createObjectURL(file)}
-                    alt={`Progress ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg"
-                    width={200}
-                    height={96}
+          <Separator />
+
+          {/* Photo Upload */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-blue-700">Progress Photos (Optional)</Label>
+            <div className="border-2 border-dashed border-muted rounded-lg p-6 hover:border-primary/50 transition-colors">
+              <div className="text-center">
+                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                <div className="mt-4">
+                  <label htmlFor="snapshot-images" className="cursor-pointer">
+                    <span className="mt-2 block text-sm font-medium text-foreground">
+                      Upload progress photos
+                    </span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      PNG, JPG, GIF up to 10MB each (max 5 photos)
+                    </span>
+                  </label>
+                  <input
+                    id="snapshot-images"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="sr-only"
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                  <div className="text-xs text-gray-500 mt-1 truncate">
-                    {file.name}
-                  </div>
                 </div>
-              ))}
+              </div>
             </div>
-          )}
+
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
+                {images.map((file, index) => (
+                  <div key={index} className="relative">
+                    <Image
+                      src={URL.createObjectURL(file)}
+                      alt={`Progress ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg"
+                      width={200}
+                      height={96}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <div className="text-xs text-gray-500 mt-1 truncate">
+                      {file.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

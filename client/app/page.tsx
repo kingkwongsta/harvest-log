@@ -423,111 +423,44 @@ interface DynamicEventFormProps {
 }
 
 function DynamicEventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: DynamicEventFormProps) {
-  const [selectedPlant, setSelectedPlant] = useState<string>('')
-  const [eventDate, setEventDate] = useState<Date>(new Date())
-  const [description, setDescription] = useState('')
-  const [notes, setNotes] = useState('')
-
-  const handleSubmit = (eventSpecificData: Partial<PlantEventCreateData> & { images?: File[] }) => {
+  const handleSubmit = (eventSpecificData: PlantEventCreateData & { images?: File[] }) => {
     const { images, ...eventDataWithoutImages } = eventSpecificData
     const baseEventData: PlantEventCreateData = {
       ...eventDataWithoutImages,
-      // Override with form values
-      plant_id: selectedPlant || undefined,
-      event_date: eventDate.toISOString(),
       event_type: eventType,
-      description: description || undefined,
-      notes: notes || undefined,
     }
 
     onSubmit(baseEventData, images)
   }
 
   return (
-    <div className="space-y-6">
-      {/* Common fields for all event types */}
-      <Card className="border-muted">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Event Details</CardTitle>
-          <p className="text-sm text-gray-600">Basic information about this plant event</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="plant" className="text-sm font-medium">Plant (Optional)</Label>
-              <Select value={selectedPlant} onValueChange={setSelectedPlant}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a plant..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {plants.map((plant) => (
-                    <SelectItem key={plant.id} value={plant.id}>
-                      {plant.name} {plant.variety && `(${plant.variety.name})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="event-date" className="text-sm font-medium">Event Date</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  id="event-date"
-                  type="datetime-local"
-                  value={eventDate.toISOString().slice(0, 16)}
-                  onChange={(e) => setEventDate(new Date(e.target.value))}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium">Description (Optional)</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={`Brief description of this ${eventType} event...`}
-                maxLength={500}
-              />
-            </div>
-
-            
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm font-medium">Additional Notes (Optional)</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any additional observations, conditions, or details..."
-              rows={3}
-              maxLength={2000}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Event-specific form components */}
-      <div className="mt-6">
-        {eventType === 'harvest' && (
-          <HarvestForm ref={formRefs.harvestFormRef} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-        )}
-        
-        {eventType === 'bloom' && (
-          <BloomForm ref={formRefs.bloomFormRef} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-        )}
-        
-        {eventType === 'snapshot' && (
-          <SnapshotForm ref={formRefs.snapshotFormRef} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-        )}
-      </div>
+    <div>
+      {eventType === 'harvest' && (
+        <HarvestForm 
+          ref={formRefs.harvestFormRef} 
+          plants={plants}
+          onSubmit={handleSubmit} 
+          isSubmitting={isSubmitting} 
+        />
+      )}
+      
+      {eventType === 'bloom' && (
+        <BloomForm 
+          ref={formRefs.bloomFormRef} 
+          plants={plants}
+          onSubmit={handleSubmit} 
+          isSubmitting={isSubmitting} 
+        />
+      )}
+      
+      {eventType === 'snapshot' && (
+        <SnapshotForm 
+          ref={formRefs.snapshotFormRef} 
+          plants={plants}
+          onSubmit={handleSubmit} 
+          isSubmitting={isSubmitting} 
+        />
+      )}
     </div>
   )
 }

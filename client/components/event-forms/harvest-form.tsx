@@ -7,11 +7,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Upload, X } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Separator } from '@/components/ui/separator'
+import { Upload, X, Calendar, Camera, Loader2 } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
+import { CameraCapture } from '@/components/camera/camera-capture'
+import { useImageCompression } from '@/lib/useImageCompression'
+import type { Plant } from '@/lib/api'
 
 interface HarvestFormProps {
+  plants: Plant[]
   onSubmit: (data: {
+    plant_id?: string
+    event_date: string
+    description?: string
+    notes?: string
     produce: string
     quantity: number
     unit: string
@@ -63,21 +73,41 @@ const commonProduce = [
 ]
 
 export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
-  ({ onSubmit, isSubmitting, onReset }, ref) => {
+  ({ plants, onSubmit, isSubmitting, onReset }, ref) => {
+    // Common event fields
+    const [selectedPlant, setSelectedPlant] = useState('')
+    const [eventDate, setEventDate] = useState(new Date())
+    const [description, setDescription] = useState('')
+    const [notes, setNotes] = useState('')
+    
+    // Harvest-specific fields
     const [produce, setProduce] = useState('')
     const [quantity, setQuantity] = useState('')
     const [unit, setUnit] = useState('')
     const [customUnit, setCustomUnit] = useState('')
     const [images, setImages] = useState<File[]>([])
+    const [showCamera, setShowCamera] = useState(false)
+    const [processingImages, setProcessingImages] = useState(false)
+    
+    // Image compression hook
+    const { compressImage, isCompressing, compressionProgress, compressionError } = useImageCompression()
 
     const resetForm = () => {
       console.log('🧹 HarvestForm resetForm called')
       console.log('📊 Current values before reset:', { produce, quantity, unit, images: images.length })
+      // Reset common fields
+      setSelectedPlant('')
+      setEventDate(new Date())
+      setDescription('')
+      setNotes('')
+      // Reset harvest-specific fields
       setProduce('')
       setQuantity('')
       setUnit('')
       setCustomUnit('')
       setImages([])
+      setShowCamera(false)
+      setProcessingImages(false)
       onReset?.()
       console.log('✅ HarvestForm reset completed')
     }
@@ -85,6 +115,60 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
     useImperativeHandle(ref, () => ({
       reset: resetForm
     }))
+
+    // Process and compress images
+    const processImages = async (files: File[]) => {
+      setProcessingImages(true)
+      const processedImages: File[] = []
+      
+      try {
+        for (const file of files) {
+          try {
+            const result = await compressImage(file, {
+              maxSizeMB: 1,
+              maxWidthOrHeight: 1600,
+              quality: 0.8,
+              convertToWebP: true
+            })
+            
+            // Show compression stats
+            console.log('📸 Image compressed:', {
+              original: (result.originalSize / (1024 * 1024)).toFixed(2) + 'MB',
+              compressed: (result.compressedSize / (1024 * 1024)).toFixed(2) + 'MB',
+              savings: result.compressionRatio
+            })
+            
+            processedImages.push(result.compressedFile)
+          } catch (error) {
+            console.error('Failed to compress image:', file.name, error)
+            toast({
+              title: 'Compression Error',
+              description: `Failed to compress ${file.name}. Using original file.`,
+              variant: 'destructive',
+            })
+            // Use original file if compression fails
+            processedImages.push(file)
+          }
+        }
+        
+        return processedImages
+      } finally {
+        setProcessingImages(false)
+      }
+    }
+
+    // Handle camera capture
+    const handleCameraCapture = async (file: File) => {
+      console.log('📷 Camera captured image:', {
+        name: file.name,
+        size: (file.size / (1024 * 1024)).toFixed(2) + 'MB',
+        type: file.type
+      })
+      
+      const processedImages = await processImages([file])
+      setImages(prev => [...prev, ...processedImages].slice(0, 5))
+      setShowCamera(false)
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -136,6 +220,10 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
     }
 
     onSubmit({
+      plant_id: selectedPlant || undefined,
+      event_date: eventDate.toISOString(),
+      description: description.trim() || undefined,
+      notes: notes.trim() || undefined,
       produce: produce.trim(),
       quantity: parseFloat(quantity),
       unit: finalUnit.trim(),
@@ -143,11 +231,11 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
     })
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const validFiles = files.filter(file => {
       const isImage = file.type.startsWith('image/')
-      const isValidSize = file.size <= 10 * 1024 * 1024 // 10MB
+      const isValidSize = file.size <= 50 * 1024 * 1024 // 50MB (generous limit before compression)
       
       if (!isImage) {
         toast({
@@ -161,7 +249,7 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       if (!isValidSize) {
         toast({
           title: 'File Too Large',
-          description: `${file.name} is larger than 10MB.`,
+          description: `${file.name} is larger than 50MB.`,
           variant: 'destructive',
         })
         return false
@@ -170,7 +258,13 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       return true
     })
 
-    setImages(prev => [...prev, ...validFiles].slice(0, 5)) // Limit to 5 images
+    if (validFiles.length > 0) {
+      const processedImages = await processImages(validFiles)
+      setImages(prev => [...prev, ...processedImages].slice(0, 5)) // Limit to 5 images
+    }
+    
+    // Clear the input so the same file can be selected again
+    e.target.value = ''
   }
 
   const removeImage = (index: number) => {
@@ -182,99 +276,226 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       <Card>
         <CardHeader>
           <CardTitle className="text-green-700 flex items-center">
-            🌾 Harvest Details
+            🌾 Harvest Event Details
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="produce">What did you harvest? *</Label>
-              <Input
-                id="produce"
-                value={produce}
-                onChange={(e) => setProduce(e.target.value)}
-                placeholder="e.g., Tomatoes, Cherry Tomatoes..."
-                list="produce-suggestions"
-                maxLength={100}
-                required
-              />
-              <datalist id="produce-suggestions">
-                {commonProduce.map(item => (
-                  <option key={item} value={item} />
-                ))}
-              </datalist>
-            </div>
+        <CardContent className="space-y-6">
+          {/* Event Details Section */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-green-700">Event Information</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="plant">Plant (Optional)</Label>
+                <Select value={selectedPlant} onValueChange={setSelectedPlant}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a plant..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plants.map((plant) => (
+                      <SelectItem key={plant.id} value={plant.id}>
+                        {plant.name} {plant.variety && `(${plant.variety.name})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="quantity">Quantity *</Label>
-              <Input
-                id="quantity"
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="2.5"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="unit">Unit *</Label>
-              <Select value={unit} onValueChange={setUnit} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select unit..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {commonUnits.map(unitOption => (
-                    <SelectItem key={unitOption} value={unitOption}>
-                      {unitOption}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="custom">Custom unit...</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {unit === 'custom' && (
-            <div className="space-y-2">
-              <Label htmlFor="custom-unit">Custom Unit</Label>
-              <Input
-                id="custom-unit"
-                value={customUnit}
-                onChange={(e) => setCustomUnit(e.target.value)}
-                placeholder="Enter custom unit..."
-                maxLength={50}
-                required
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Harvest Photos (Optional)</Label>
-            <div className="border-2 border-dashed border-muted rounded-lg p-6 hover:border-primary/50 transition-colors">
-              <div className="text-center">
-                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                <div className="mt-4">
-                  <label htmlFor="harvest-images" className="cursor-pointer">
-                    <span className="mt-2 block text-sm font-medium text-foreground">
-                      Upload harvest photos
-                    </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      PNG, JPG, GIF up to 10MB each (max 5 photos)
-                    </span>
-                  </label>
-                  <input
-                    id="harvest-images"
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="sr-only"
+              <div className="space-y-2">
+                <Label htmlFor="event-date">Event Date *</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    id="event-date"
+                    type="datetime-local"
+                    value={eventDate.toISOString().slice(0, 16)}
+                    onChange={(e) => setEventDate(new Date(e.target.value))}
+                    className="pl-10"
+                    required
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Input
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of this harvest event..."
+                maxLength={500}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Additional Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any additional observations, conditions, or details..."
+                rows={3}
+                maxLength={2000}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Harvest Details Section */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-green-700">Harvest Details</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="produce">What did you harvest? *</Label>
+                <Input
+                  id="produce"
+                  value={produce}
+                  onChange={(e) => setProduce(e.target.value)}
+                  placeholder="e.g., Tomatoes, Cherry Tomatoes..."
+                  list="produce-suggestions"
+                  maxLength={100}
+                  required
+                />
+                <datalist id="produce-suggestions">
+                  {commonProduce.map(item => (
+                    <option key={item} value={item} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Quantity *</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="2.5"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="unit">Unit *</Label>
+                <Select value={unit} onValueChange={setUnit} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commonUnits.map(unitOption => (
+                      <SelectItem key={unitOption} value={unitOption}>
+                        {unitOption}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Custom unit...</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {unit === 'custom' && (
+              <div className="space-y-2">
+                <Label htmlFor="custom-unit">Custom Unit</Label>
+                <Input
+                  id="custom-unit"
+                  value={customUnit}
+                  onChange={(e) => setCustomUnit(e.target.value)}
+                  placeholder="Enter custom unit..."
+                  maxLength={50}
+                  required
+                />
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Photos Section */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium text-green-700">Harvest Photos (Optional)</Label>
+            
+            {/* Photo Upload Options */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Upload from Device */}
+              <div className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors">
+                <div className="text-center">
+                  <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <div className="mt-2">
+                    <label htmlFor="harvest-images" className="cursor-pointer">
+                      <span className="block text-sm font-medium text-foreground">
+                        Upload Photos
+                      </span>
+                      <span className="block text-xs text-muted-foreground mt-1">
+                        From your device
+                      </span>
+                    </label>
+                    <input
+                      id="harvest-images"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="sr-only"
+                      disabled={processingImages || isCompressing}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Take Photo with Camera */}
+              <div className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors">
+                <div className="text-center">
+                  <Camera className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <div className="mt-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCamera(true)}
+                      disabled={processingImages || isCompressing || images.length >= 5}
+                      className="h-auto p-0 hover:bg-transparent"
+                    >
+                      <div>
+                        <span className="block text-sm font-medium text-foreground">
+                          Take Photo
+                        </span>
+                        <span className="block text-xs text-muted-foreground mt-1">
+                          Use camera
+                        </span>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Processing Indicator */}
+            {(processingImages || isCompressing) && (
+              <div className="flex items-center justify-center p-4 bg-muted/50 rounded-lg">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-sm text-muted-foreground">
+                  {isCompressing 
+                    ? `Compressing images... ${compressionProgress}%`
+                    : 'Processing images...'
+                  }
+                </span>
+              </div>
+            )}
+
+            {/* Compression Error */}
+            {compressionError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">
+                  Compression error: {compressionError}
+                </p>
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground text-center">
+              Images will be compressed to 1MB max • Up to 5 photos • WebP format for optimal web performance
             </div>
 
             {images.length > 0 && (
@@ -298,6 +519,9 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
                     <div className="text-xs text-gray-500 mt-1 truncate">
                       {file.name}
                     </div>
+                    <div className="text-xs text-green-600 mt-1">
+                      {(file.size / (1024 * 1024)).toFixed(2)}MB
+                    </div>
                   </div>
                 ))}
               </div>
@@ -307,10 +531,22 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       </Card>
 
       <div className="flex justify-end space-x-2">
-        <Button type="submit" disabled={isSubmitting} variant="harvest" size="lg">
+        <Button 
+          type="submit" 
+          disabled={isSubmitting || processingImages || isCompressing} 
+          variant="harvest" 
+          size="lg"
+        >
           {isSubmitting ? 'Logging Harvest...' : 'Log Harvest Event'}
         </Button>
       </div>
+
+      {/* Camera Modal */}
+      <CameraCapture
+        isOpen={showCamera}
+        onCapture={handleCameraCapture}
+        onClose={() => setShowCamera(false)}
+      />
     </form>
   )
 })
