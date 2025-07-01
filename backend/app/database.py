@@ -51,12 +51,17 @@ async def init_supabase() -> Client:
 async def _test_connection(client: Client) -> None:
     """Test the Supabase connection with a simple query"""
     try:
-        # Try a simple query to test the connection
-        result = client.table("harvest_logs").select("id").limit(1).execute()
+        # Try a simple query to test the connection using plant events
+        result = client.table("plant_events").select("id").limit(1).execute()
         logger.debug("Database connection test successful")
     except Exception as e:
-        logger.error(f"Database connection test failed: {e}")
-        raise DatabaseError(f"Database connection test failed: {str(e)}")
+        # Don't fail startup if tables don't exist yet - just log a warning
+        if "relation" in str(e).lower() and "does not exist" in str(e).lower():
+            logger.warning(f"Database tables not found during connection test: {e}")
+            logger.warning("This is expected if tables haven't been created yet")
+        else:
+            logger.error(f"Database connection test failed: {e}")
+            raise DatabaseError(f"Database connection test failed: {str(e)}")
 
 
 def get_supabase() -> Client:
@@ -98,80 +103,6 @@ async def close_supabase():
             logger.info("✓ Supabase client connection closed")
 
 
-async def create_harvest_logs_table():
-    """Check if harvest_logs table exists and is accessible"""
-    logger.info("Verifying harvest_logs table accessibility")
-    
-    try:
-        client = await get_supabase_async()
-        
-        # Try to fetch from table to see if it exists and is accessible
-        logger.debug("Testing harvest_logs table access")
-        result = client.table("harvest_logs").select("id").limit(1).execute()
-        logger.info("✓ harvest_logs table exists and is accessible")
-        
-    except Exception as e:
-        logger.warning(f"harvest_logs table may not exist or is inaccessible: {e}")
-        logger.info("Please ensure the harvest_logs table exists in your Supabase database")
-        
-        # Log the SQL script for reference but don't fail startup
-        sql_script = """
--- Create harvest_logs table with proper structure
-CREATE TABLE IF NOT EXISTS harvest_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    crop_name VARCHAR(100) NOT NULL,
-    quantity FLOAT NOT NULL CHECK (quantity > 0),
-    unit VARCHAR(50) NOT NULL,
-    harvest_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    location VARCHAR(200),
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create harvest_images table for image metadata
-CREATE TABLE IF NOT EXISTS harvest_images (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    harvest_log_id UUID NOT NULL REFERENCES harvest_logs(id) ON DELETE CASCADE,
-    filename VARCHAR(255) NOT NULL,
-    original_filename VARCHAR(255) NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
-    file_size INTEGER NOT NULL,
-    mime_type VARCHAR(100) NOT NULL,
-    width INTEGER,
-    height INTEGER,
-    upload_order INTEGER DEFAULT 0,
-    public_url TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create updated_at trigger function
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Create triggers for updated_at
-CREATE TRIGGER update_harvest_logs_updated_at 
-    BEFORE UPDATE ON harvest_logs 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_harvest_images_updated_at 
-    BEFORE UPDATE ON harvest_images 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_harvest_logs_crop_name ON harvest_logs(crop_name);
-CREATE INDEX IF NOT EXISTS idx_harvest_logs_harvest_date ON harvest_logs(harvest_date);
-CREATE INDEX IF NOT EXISTS idx_harvest_images_harvest_log_id ON harvest_images(harvest_log_id);
-CREATE INDEX IF NOT EXISTS idx_harvest_images_upload_order ON harvest_images(harvest_log_id, upload_order);
-        """
-        logger.debug(f"SQL schema reference:\n{sql_script}")
-
 
 # Database utility functions
 async def execute_query(query: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -191,7 +122,7 @@ async def health_check() -> Dict[str, Any]:
         client = await get_supabase_async()
         
         # Simple query to test connectivity
-        result = client.table("harvest_logs").select("id").limit(1).execute()
+        result = client.table("plant_events").select("id").limit(1).execute()
         
         return {
             "status": "healthy",
@@ -200,6 +131,15 @@ async def health_check() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Database health check failed: {e}", exc_info=True)
+        
+        # If tables don't exist, still report as healthy connection but note missing tables
+        if "relation" in str(e).lower() and "does not exist" in str(e).lower():
+            return {
+                "status": "healthy",
+                "message": "Database connection successful, but tables need to be created",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        
         return {
             "status": "unhealthy",
             "message": f"Database connection failed: {str(e)}",

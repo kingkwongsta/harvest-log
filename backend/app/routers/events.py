@@ -55,8 +55,8 @@ async def create_plant_event(
     Create a new plant event with dynamic validation.
     
     The event_type field determines which validation model is used:
-    - **harvest**: Requires produce, quantity, quality
-    - **bloom**: Requires flower_type, optional bloom_stage
+    - **harvest**: Requires produce, quantity
+    - **bloom**: Requires plant_variety
     - **snapshot**: Optional metrics for growth tracking
     
     All events support: plant_id, event_date, description, notes, location
@@ -101,13 +101,11 @@ async def create_plant_event(
         if event_type == EventType.HARVEST.value:
             event_data.update({
                 "produce": validated_data.produce,
-                "quantity": validated_data.quantity,
-                "quality": validated_data.quality
+                "quantity": validated_data.quantity
             })
         elif event_type == EventType.BLOOM.value:
             event_data.update({
-                "flower_type": validated_data.flower_type,
-                "bloom_stage": validated_data.bloom_stage
+                "plant_variety": validated_data.plant_variety
             })
         elif event_type == EventType.SNAPSHOT.value:
             event_data.update({
@@ -431,10 +429,7 @@ async def update_plant_event(
         update_data = {}
         for field, value in event_update.model_dump(exclude_unset=True).items():
             if value is not None:
-                if field == "bloom_stage" and hasattr(value, 'value'):
-                    update_data[field] = value.value
-                else:
-                    update_data[field] = value
+                update_data[field] = value
         
         if not update_data:
             raise ValidationException("No fields provided for update")

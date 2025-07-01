@@ -177,7 +177,7 @@ export interface PlantEventCreateData {
   quantity?: number;
   
   // Bloom-specific fields
-  plant_variety?: string;
+  flower_type?: string;
   
   // Snapshot-specific fields (flexible metrics)
   metrics?: Record<string, unknown>;
@@ -323,40 +323,6 @@ async function uploadRequest<T>(
   }
 }
 
-// API functions
-export const harvestLogsApi = {
-  create: async (data: HarvestLogData): Promise<ApiResponse<HarvestLogResponse>> => {
-    return apiRequest('/api/harvest-logs/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  getAll: async (): Promise<ApiResponse<HarvestLogResponse[]>> => {
-    return apiRequest('/api/harvest-logs/');
-  },
-
-  getById: async (id: string): Promise<ApiResponse<HarvestLogResponse>> => {
-    return apiRequest(`/api/harvest-logs/${id}`);
-  },
-
-  update: async (id: string, data: Partial<HarvestLogData>): Promise<ApiResponse<HarvestLogResponse>> => {
-    return apiRequest(`/api/harvest-logs/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  },
-
-  delete: async (id: string): Promise<ApiResponse<HarvestLogResponse>> => {
-    return apiRequest(`/api/harvest-logs/${id}`, {
-      method: 'DELETE',
-    });
-  },
-
-  getStats: async (): Promise<ApiResponse<HarvestStats>> => {
-    return apiRequest('/api/harvest-stats');
-  },
-};
 
 // Image API functions
 export const imagesApi = {

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Sprout, TrendingUp, Clock } from "lucide-react"
-import { eventsApi, harvestLogsApi, EventStats, plantsApi, type Plant, type PlantEventCreateData } from "@/lib/api"
+import { eventsApi, EventStats, plantsApi, type Plant, type PlantEventCreateData } from "@/lib/api"
 import { type EventType } from "@/components/event-logging-modal"
 import { HarvestForm, HarvestFormRef } from "@/components/event-forms/harvest-form"
 import { BloomForm, BloomFormRef } from "@/components/event-forms/bloom-form"
@@ -72,29 +72,9 @@ export default function HomePage() {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true)
-        // Try to get event stats first (new system)
-        try {
-          const eventResponse = await eventsApi.getStats()
-          if (eventResponse.success && eventResponse.data) {
-            setStats(eventResponse.data)
-            return
-          }
-        } catch {
-          console.log('Event stats not available, falling back to harvest stats')
-        }
-        
-        // Fallback to harvest stats (legacy system)
-        const harvestResponse = await harvestLogsApi.getStats()
-        if (harvestResponse.success && harvestResponse.data) {
-          // Convert harvest stats to event stats format
-          setStats({
-            total_events: harvestResponse.data.total_harvests,
-            this_month: harvestResponse.data.this_month,
-            this_week: harvestResponse.data.this_week,
-            harvest_events: harvestResponse.data.total_harvests,
-            bloom_events: 0,
-            snapshot_events: 0
-          })
+        const eventResponse = await eventsApi.getStats()
+        if (eventResponse.success && eventResponse.data) {
+          setStats(eventResponse.data)
         }
       } catch (error) {
         console.error('Error fetching stats:', error)

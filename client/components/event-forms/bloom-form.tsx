@@ -44,8 +44,8 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     const [notes, setNotes] = useState('')
     
     // Bloom-specific fields
-    const [plantVariety, setPlantVariety] = useState('')
-    const [customVariety, setCustomVariety] = useState('')
+    const [flowerType, setFlowerType] = useState('')
+    const [customFlowerType, setCustomFlowerType] = useState('')
     const [images, setImages] = useState<File[]>([])
     
     // Plant varieties from API
@@ -79,8 +79,8 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
       setDescription('')
       setNotes('')
       // Reset bloom-specific fields
-      setPlantVariety('')
-      setCustomVariety('')
+      setFlowerType('')
+      setCustomFlowerType('')
       setImages([])
       onReset?.()
       console.log('✅ BloomForm reset completed')
@@ -93,8 +93,8 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    const finalVariety = plantVariety === 'custom' ? customVariety : plantVariety
-    if (!finalVariety.trim()) {
+    const finalPlantVariety = flowerType === 'custom' ? customFlowerType : flowerType
+    if (!finalPlantVariety.trim()) {
       toast({
         title: 'Validation Error',
         description: 'Please specify the plant variety.',
@@ -103,7 +103,7 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
       return
     }
 
-    if (finalVariety.trim().length > 100) {
+    if (finalPlantVariety.trim().length > 100) {
       toast({
         title: 'Validation Error',
         description: 'Plant variety must be 100 characters or less.',
@@ -117,7 +117,7 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
       event_date: eventDate.toISOString(),
       description: description.trim() || undefined,
       notes: notes.trim() || undefined,
-      plant_variety: finalVariety.trim(),
+      plant_variety: finalPlantVariety.trim(),
       images: images.length > 0 ? images : undefined,
     })
   }
@@ -199,7 +199,7 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
             <Label className="text-sm font-medium text-pink-700">Plant Variety</Label>
             <div className="space-y-2">
               <Label htmlFor="plant-variety">Plant Variety *</Label>
-              <Select value={plantVariety} onValueChange={setPlantVariety} required disabled={loadingVarieties}>
+              <Select value={flowerType} onValueChange={setFlowerType} required disabled={loadingVarieties}>
                 <SelectTrigger>
                   <SelectValue placeholder={loadingVarieties ? "Loading varieties..." : "Select plant variety..."} />
                 </SelectTrigger>
@@ -214,13 +214,13 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
               </Select>
             </div>
 
-            {plantVariety === 'custom' && (
+            {flowerType === 'custom' && (
               <div className="space-y-2">
                 <Label htmlFor="custom-variety">Custom Plant Variety</Label>
                 <Input
                   id="custom-variety"
-                  value={customVariety}
-                  onChange={(e) => setCustomVariety(e.target.value)}
+                  value={customFlowerType}
+                  onChange={(e) => setCustomFlowerType(e.target.value)}
                   placeholder="Enter custom plant variety..."
                   maxLength={100}
                   required

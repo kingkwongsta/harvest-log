@@ -140,7 +140,6 @@ class HarvestEventData(BaseModel):
     """Data specific to harvest events"""
     produce: str = Field(..., min_length=1, max_length=100, description="Type of produce harvested")
     quantity: float = Field(..., gt=0, description="Quantity harvested")
-    quality: Optional[str] = Field(None, max_length=50, description="Quality rating or description")
     
     @field_validator('produce')
     @classmethod
@@ -153,34 +152,17 @@ class HarvestEventData(BaseModel):
     def validate_quantity(cls, v: Any) -> float:
         """Validate quantity value"""
         return InputValidator.validate_quantity(v)
-    
-    @field_validator('quality')
-    @classmethod
-    def validate_quality(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize quality field"""
-        if v is None:
-            return None
-        return InputSanitizer.sanitize_string(v, max_length=50)
 
 
 class BloomEventData(BaseModel):
     """Data specific to bloom events"""
-    flower_type: str = Field(..., min_length=1, max_length=100, description="Type of flower")
-    bloom_stage: Optional[str] = Field(None, max_length=50, description="Stage of bloom")
+    plant_variety: str = Field(..., min_length=1, max_length=100, description="Plant variety name")
     
-    @field_validator('flower_type')
+    @field_validator('plant_variety')
     @classmethod
-    def validate_flower_type(cls, v: str) -> str:
-        """Validate and sanitize flower type"""
+    def validate_plant_variety(cls, v: str) -> str:
+        """Validate and sanitize plant variety"""
         return InputSanitizer.sanitize_crop_name(v)
-    
-    @field_validator('bloom_stage')
-    @classmethod
-    def validate_bloom_stage(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize bloom stage"""
-        if v is None:
-            return None
-        return InputSanitizer.sanitize_string(v, max_length=50)
 
 
 class SnapshotEventData(BaseModel):
@@ -302,10 +284,8 @@ class PlantEvent(PlantEventBase):
     # Event-specific fields (nullable based on event type)
     produce: Optional[str] = Field(None, description="Type of produce harvested (harvest events only)")
     quantity: Optional[float] = Field(None, description="Quantity harvested (harvest events only)")
-    quality: Optional[str] = Field(None, description="Quality rating of harvest (harvest events only)")
     unit: Optional[str] = Field(None, description="Unit of measurement (legacy field, being phased out)")
-    flower_type: Optional[str] = Field(None, description="Type of flower (bloom events only)")
-    bloom_stage: Optional[str] = Field(None, description="Stage of bloom (bloom events only)")
+    plant_variety: Optional[str] = Field(None, description="Plant variety name (bloom events only)")
     metrics: Optional[Dict[str, Any]] = Field(None, description="Flexible metrics data (primarily snapshot events)")
     weather: Optional[WeatherData] = Field(None, description="Weather data at the time of the event")
     
