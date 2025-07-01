@@ -368,7 +368,7 @@ export function CropGardenView({ events, loading, error }: CropGardenViewProps) 
                         Best Harvest
                       </span>
                       <span className="text-foreground">
-                        {crop.bestEvent.quantity} {crop.bestEvent.unit}
+                        {crop.bestEvent.quantity}
                       </span>
                     </div>
                     
@@ -378,7 +378,7 @@ export function CropGardenView({ events, loading, error }: CropGardenViewProps) 
                         Avg Harvest
                       </span>
                       <span className="text-foreground">
-                        {Math.round(crop.averageQuantity)} {crop.bestEvent.unit}
+                        {Math.round(crop.averageQuantity)}
                       </span>
                     </div>
                   </>
@@ -432,7 +432,7 @@ export function CropGardenView({ events, loading, error }: CropGardenViewProps) 
                             </Badge>
                             {event.quantity && (
                               <Badge variant="outline" className="text-xs">
-                                {event.quantity} {event.unit}
+                                {event.quantity}
                               </Badge>
                             )}
                           </div>

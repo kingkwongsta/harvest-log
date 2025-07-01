@@ -272,9 +272,7 @@ export default function AdminPage() {
                           <div className="space-y-1">
                             <EventField label="Produce" value={event.produce} />
                             <EventField label="Quantity" value={event.quantity} />
-                            <EventField label="Unit" value={event.unit} />
-                            <EventField label="Flower Type" value={event.flower_type} />
-                            <EventField label="Bloom Stage" value={event.bloom_stage} />
+                            <EventField label="Plant Variety" value={event.plant_variety} />
                             <EventField label="Metrics" value={event.metrics} />
                           </div>
                         </div>

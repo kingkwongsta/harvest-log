@@ -135,11 +135,9 @@ export interface PlantEvent {
   // Harvest-specific fields
   produce?: string;
   quantity?: number;
-  unit?: string;
   
   // Bloom-specific fields
-  flower_type?: string;
-  bloom_stage?: BloomStage;
+  plant_variety?: string;
   
   // Flexible metrics (primarily for snapshot events)
   metrics?: Record<string, unknown>;
@@ -177,11 +175,9 @@ export interface PlantEventCreateData {
   // Harvest-specific fields
   produce?: string;
   quantity?: number;
-  unit?: string;
   
   // Bloom-specific fields
-  flower_type?: string;
-  bloom_stage?: BloomStage;
+  plant_variety?: string;
   
   // Snapshot-specific fields (flexible metrics)
   metrics?: Record<string, unknown>;

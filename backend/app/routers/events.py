@@ -15,10 +15,10 @@ from app.plant_models import (
     EventType,
     EventStats,
     EventStatsResponse,
-    Coordinates,
     get_event_create_model,
     validate_event_data
 )
+from app.weather import Coordinates
 from app.dependencies import get_supabase_client
 from app.logging_config import get_api_logger
 from app.exceptions import NotFoundError, DatabaseError, ValidationException
@@ -55,7 +55,7 @@ async def create_plant_event(
     Create a new plant event with dynamic validation.
     
     The event_type field determines which validation model is used:
-    - **harvest**: Requires produce, quantity, unit
+    - **harvest**: Requires produce, quantity, quality
     - **bloom**: Requires flower_type, optional bloom_stage
     - **snapshot**: Optional metrics for growth tracking
     
@@ -98,18 +98,18 @@ async def create_plant_event(
         }
         
         # Add event-type specific fields
-        if event_type == EventType.HARVEST:
+        if event_type == EventType.HARVEST.value:
             event_data.update({
                 "produce": validated_data.produce,
                 "quantity": validated_data.quantity,
-                "unit": validated_data.unit
+                "quality": validated_data.quality
             })
-        elif event_type == EventType.BLOOM:
+        elif event_type == EventType.BLOOM.value:
             event_data.update({
                 "flower_type": validated_data.flower_type,
-                "bloom_stage": validated_data.bloom_stage.value if validated_data.bloom_stage else None
+                "bloom_stage": validated_data.bloom_stage
             })
-        elif event_type == EventType.SNAPSHOT:
+        elif event_type == EventType.SNAPSHOT.value:
             event_data.update({
                 "metrics": validated_data.metrics
             })
@@ -147,6 +147,10 @@ async def create_plant_event(
         logger.warning(f"API: Validation error creating event: {str(e)}", 
                       extra={"request_id": request_id})
         raise HTTPException(status_code=422, detail=str(e))
+    except AttributeError as e:
+        logger.warning(f"API: Missing required field for event creation: {str(e)}", 
+                      extra={"request_id": request_id})
+        raise HTTPException(status_code=422, detail=f"Missing required field: {str(e)}")
     except Exception as e:
         logger.error(f"API: Failed to create plant event: {str(e)}", 
                     extra={"request_id": request_id}, 

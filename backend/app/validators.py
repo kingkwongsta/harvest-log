@@ -81,7 +81,19 @@ class InputSanitizer:
         
         return sanitized
     
-    
+    @staticmethod
+    def sanitize_location(location: str) -> str:
+        """Sanitize location input."""
+        if not location or not location.strip():
+            raise ValidationException("Location cannot be empty")
+        
+        sanitized = InputSanitizer.sanitize_string(location, max_length=200)
+        
+        # Allow letters, numbers, spaces, and common location characters
+        if not re.match(r'^[a-zA-Z0-9\s\-_\'\.\,\(\)\/\&]+$', sanitized):
+            raise ValidationException("Location contains invalid characters")
+        
+        return sanitized
     
     @staticmethod
     def sanitize_notes(notes: Optional[str]) -> Optional[str]:

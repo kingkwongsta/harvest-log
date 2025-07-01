@@ -32,12 +32,7 @@ class PlantCategory(str, Enum):
     OTHER = "other"
 
 
-class BloomStage(str, Enum):
-    BUD = "bud"
-    OPENING = "opening"
-    FULL_BLOOM = "full_bloom"
-    FADING = "fading"
-    SEED_SET = "seed_set"
+# BloomStage enum removed - no longer used in simplified bloom events
 
 
 # Plant Variety Models
@@ -145,7 +140,7 @@ class HarvestEventData(BaseModel):
     """Data specific to harvest events"""
     produce: str = Field(..., min_length=1, max_length=100, description="Type of produce harvested")
     quantity: float = Field(..., gt=0, description="Quantity harvested")
-    unit: str = Field(..., min_length=1, max_length=50, description="Unit of measurement")
+    quality: Optional[str] = Field(None, max_length=50, description="Quality rating or description")
     
     @field_validator('produce')
     @classmethod
@@ -159,23 +154,33 @@ class HarvestEventData(BaseModel):
         """Validate quantity value"""
         return InputValidator.validate_quantity(v)
     
-    @field_validator('unit')
+    @field_validator('quality')
     @classmethod
-    def validate_unit(cls, v: str) -> str:
-        """Validate and sanitize unit"""
-        return InputSanitizer.sanitize_unit(v)
+    def validate_quality(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize quality field"""
+        if v is None:
+            return None
+        return InputSanitizer.sanitize_string(v, max_length=50)
 
 
 class BloomEventData(BaseModel):
     """Data specific to bloom events"""
     flower_type: str = Field(..., min_length=1, max_length=100, description="Type of flower")
-    bloom_stage: BloomStage = Field(default=BloomStage.FULL_BLOOM, description="Stage of blooming")
+    bloom_stage: Optional[str] = Field(None, max_length=50, description="Stage of bloom")
     
     @field_validator('flower_type')
     @classmethod
     def validate_flower_type(cls, v: str) -> str:
         """Validate and sanitize flower type"""
         return InputSanitizer.sanitize_crop_name(v)
+    
+    @field_validator('bloom_stage')
+    @classmethod
+    def validate_bloom_stage(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize bloom stage"""
+        if v is None:
+            return None
+        return InputSanitizer.sanitize_string(v, max_length=50)
 
 
 class SnapshotEventData(BaseModel):
@@ -212,26 +217,8 @@ class SnapshotEventData(BaseModel):
         return validated_metrics
 
 
-# Weather Models
-class WeatherData(BaseModel):
-    temperature_min: float = Field(..., description="Minimum temperature for the day in Celsius")
-    temperature_max: float = Field(..., description="Maximum temperature for the day in Celsius")
-    humidity: float = Field(..., description="Relative humidity in percent")
-    weather_code: int = Field(..., description="WMO weather interpretation code")
-    wind_speed: float = Field(..., description="Wind speed in km/h")
-    precipitation: float = Field(default=0.0, description="Precipitation sum in mm")
-    
-    # Computed property for average temperature
-    @property
-    def temperature_avg(self) -> float:
-        return (self.temperature_min + self.temperature_max) / 2
-    
-    class Config:
-        from_attributes = True
-
-class Coordinates(BaseModel):
-    latitude: float = Field(..., ge=-90, le=90)
-    longitude: float = Field(..., ge=-180, le=180)
+# Import weather models from weather module to avoid duplication
+from app.weather import WeatherData, Coordinates
 
 
 # Plant Event Models
@@ -301,9 +288,7 @@ class PlantEventUpdate(BaseModel):
     # Event-specific fields (only relevant fields will be used based on event_type)
     produce: Optional[str] = Field(None, max_length=100)
     quantity: Optional[float] = Field(None, gt=0)
-    unit: Optional[str] = Field(None, max_length=50)
-    flower_type: Optional[str] = Field(None, max_length=100)
-    bloom_stage: Optional[BloomStage] = None
+    plant_variety: Optional[str] = Field(None, max_length=100)
     metrics: Optional[Dict[str, Any]] = None
 
 
@@ -317,9 +302,10 @@ class PlantEvent(PlantEventBase):
     # Event-specific fields (nullable based on event type)
     produce: Optional[str] = Field(None, description="Type of produce harvested (harvest events only)")
     quantity: Optional[float] = Field(None, description="Quantity harvested (harvest events only)")
-    unit: Optional[str] = Field(None, description="Unit of measurement (harvest events only)")
+    quality: Optional[str] = Field(None, description="Quality rating of harvest (harvest events only)")
+    unit: Optional[str] = Field(None, description="Unit of measurement (legacy field, being phased out)")
     flower_type: Optional[str] = Field(None, description="Type of flower (bloom events only)")
-    bloom_stage: Optional[BloomStage] = Field(None, description="Stage of blooming (bloom events only)")
+    bloom_stage: Optional[str] = Field(None, description="Stage of bloom (bloom events only)")
     metrics: Optional[Dict[str, Any]] = Field(None, description="Flexible metrics data (primarily snapshot events)")
     weather: Optional[WeatherData] = Field(None, description="Weather data at the time of the event")
     

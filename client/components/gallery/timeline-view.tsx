@@ -281,7 +281,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                                   variant="outline" 
                                   className="w-fit"
                                 >
-                                  {event.quantity} {event.unit}
+                                  {event.quantity}
                                 </Badge>
                               )}
                             </div>
@@ -297,7 +297,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                             {event.quantity && (
                               <div className="flex items-center text-sm text-organic">
                                 <Scale className="w-4 h-4 mr-2 text-muted-foreground" />
-                                {event.quantity} {event.unit}
+                                {event.quantity}
                               </div>
                             )}
 

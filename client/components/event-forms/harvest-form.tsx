@@ -15,18 +15,19 @@ import { CameraCapture } from '@/components/camera/camera-capture'
 import { useImageCompression } from '@/lib/useImageCompression'
 import type { Plant } from '@/lib/api'
 
+export interface HarvestFormData {
+  plant_id?: string
+  event_date: string
+  description?: string
+  notes?: string
+  produce: string
+  quantity: number
+  images?: File[]
+}
+
 interface HarvestFormProps {
   plants: Plant[]
-  onSubmit: (data: {
-    plant_id?: string
-    event_date: string
-    description?: string
-    notes?: string
-    produce: string
-    quantity: number
-    unit: string
-    images?: File[]
-  }) => void
+  onSubmit: (data: HarvestFormData) => void
   isSubmitting: boolean
   onReset?: () => void
 }
@@ -34,20 +35,6 @@ interface HarvestFormProps {
 export interface HarvestFormRef {
   reset: () => void
 }
-
-const commonUnits = [
-  'pounds',
-  'kilograms',
-  'ounces',
-  'grams',
-  'pieces',
-  'bunches',
-  'cups',
-  'liters',
-  'gallons',
-  'baskets',
-  'bags'
-]
 
 const commonProduce = [
   'Tomatoes',
@@ -72,6 +59,7 @@ const commonProduce = [
   'Berries'
 ]
 
+
 export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
   ({ plants, onSubmit, isSubmitting, onReset }, ref) => {
     // Common event fields
@@ -82,9 +70,8 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
     
     // Harvest-specific fields
     const [produce, setProduce] = useState('')
+    const [customProduce, setCustomProduce] = useState('')
     const [quantity, setQuantity] = useState('')
-    const [unit, setUnit] = useState('')
-    const [customUnit, setCustomUnit] = useState('')
     const [images, setImages] = useState<File[]>([])
     const [showCamera, setShowCamera] = useState(false)
     const [processingImages, setProcessingImages] = useState(false)
@@ -94,7 +81,7 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
 
     const resetForm = () => {
       console.log('🧹 HarvestForm resetForm called')
-      console.log('📊 Current values before reset:', { produce, quantity, unit, images: images.length })
+      console.log('📊 Current values before reset:', { produce, quantity, images: images.length })
       // Reset common fields
       setSelectedPlant('')
       setEventDate(new Date())
@@ -102,9 +89,8 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       setNotes('')
       // Reset harvest-specific fields
       setProduce('')
+      setCustomProduce('')
       setQuantity('')
-      setUnit('')
-      setCustomUnit('')
       setImages([])
       setShowCamera(false)
       setProcessingImages(false)
@@ -173,7 +159,8 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
     const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!produce.trim()) {
+    const finalProduce = produce === 'custom' ? customProduce : produce
+    if (!finalProduce.trim()) {
       toast({
         title: 'Validation Error',
         description: 'Please specify what you harvested.',
@@ -182,7 +169,7 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       return
     }
 
-    if (produce.trim().length > 100) {
+    if (finalProduce.trim().length > 100) {
       toast({
         title: 'Validation Error',
         description: 'Product name must be 100 characters or less.',
@@ -200,33 +187,13 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       return
     }
 
-    const finalUnit = unit === 'custom' ? customUnit : unit
-    if (!finalUnit.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please specify the unit of measurement.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    if (finalUnit.trim().length > 50) {
-      toast({
-        title: 'Validation Error',
-        description: 'Unit must be 50 characters or less.',
-        variant: 'destructive',
-      })
-      return
-    }
-
     onSubmit({
       plant_id: selectedPlant || undefined,
       event_date: eventDate.toISOString(),
       description: description.trim() || undefined,
       notes: notes.trim() || undefined,
-      produce: produce.trim(),
+      produce: finalProduce.trim(),
       quantity: parseFloat(quantity),
-      unit: finalUnit.trim(),
       images: images.length > 0 ? images : undefined,
     })
   }
@@ -345,23 +312,22 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
           {/* Harvest Details Section */}
           <div className="space-y-4">
             <Label className="text-sm font-medium text-green-700">Harvest Details</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="produce">What did you harvest? *</Label>
-                <Input
-                  id="produce"
-                  value={produce}
-                  onChange={(e) => setProduce(e.target.value)}
-                  placeholder="e.g., Tomatoes, Cherry Tomatoes..."
-                  list="produce-suggestions"
-                  maxLength={100}
-                  required
-                />
-                <datalist id="produce-suggestions">
-                  {commonProduce.map(item => (
-                    <option key={item} value={item} />
-                  ))}
-                </datalist>
+                <Select value={produce} onValueChange={setProduce} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select produce..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commonProduce.map(produceOption => (
+                      <SelectItem key={produceOption} value={produceOption}>
+                        {produceOption}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Custom produce...</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -377,34 +343,17 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
                   required
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="unit">Unit *</Label>
-                <Select value={unit} onValueChange={setUnit} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select unit..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {commonUnits.map(unitOption => (
-                      <SelectItem key={unitOption} value={unitOption}>
-                        {unitOption}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="custom">Custom unit...</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
-            {unit === 'custom' && (
+            {produce === 'custom' && (
               <div className="space-y-2">
-                <Label htmlFor="custom-unit">Custom Unit</Label>
+                <Label htmlFor="custom-produce">Custom Produce</Label>
                 <Input
-                  id="custom-unit"
-                  value={customUnit}
-                  onChange={(e) => setCustomUnit(e.target.value)}
-                  placeholder="Enter custom unit..."
-                  maxLength={50}
+                  id="custom-produce"
+                  value={customProduce}
+                  onChange={(e) => setCustomProduce(e.target.value)}
+                  placeholder="Enter custom produce..."
+                  maxLength={100}
                   required
                 />
               </div>

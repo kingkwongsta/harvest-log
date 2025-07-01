@@ -515,7 +515,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
                     {selectedPhoto.event.quantity && (
                       <div className="flex items-center gap-2">
                         <Scale className="w-4 h-4" />
-                        <span>{selectedPhoto.event.quantity} {selectedPhoto.event.unit}</span>
+                        <span>{selectedPhoto.event.quantity}</span>
                       </div>
                     )}
                     {selectedPhoto.event.coordinates && (

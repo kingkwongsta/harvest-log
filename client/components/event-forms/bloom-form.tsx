@@ -1,8 +1,6 @@
 'use client'
 
-import { useState, useImperativeHandle, forwardRef } from 'react'
-import Image from 'next/image'
-
+import { useState, useImperativeHandle, forwardRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,23 +8,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import { Upload, X, Plus, Minus, Calendar } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
+import { PhotoUpload } from '@/components/shared/photo-upload'
 
-import type { BloomStage, Plant } from '@/lib/api'
+import type { Plant, PlantVariety } from '@/lib/api'
+import { plantsApi } from '@/lib/api'
+
+export interface BloomFormData {
+  plant_id?: string
+  event_date: string
+  description?: string
+  notes?: string
+  plant_variety: string
+  images?: File[]
+}
 
 interface BloomFormProps {
   plants: Plant[]
-  onSubmit: (data: {
-    plant_id?: string
-    event_date: string
-    description?: string
-    notes?: string
-    flower_type: string
-    bloom_stage?: BloomStage
-    metrics?: Record<string, number | string | boolean>
-    images?: File[]
-  }) => void
+  onSubmit: (data: BloomFormData) => void
   isSubmitting: boolean
   onReset?: () => void
 }
@@ -34,30 +34,6 @@ interface BloomFormProps {
 export interface BloomFormRef {
   reset: () => void
 }
-
-const bloomStages = [
-  { value: 'bud', label: 'Bud', description: 'Flower buds forming' },
-  { value: 'opening', label: 'Opening', description: 'Buds beginning to open' },
-  { value: 'full_bloom', label: 'Full Bloom', description: 'Flowers fully open' },
-  { value: 'fading', label: 'Fading', description: 'Flowers past peak' },
-  { value: 'seed_set', label: 'Seed Set', description: 'Seeds/fruit developing' },
-]
-
-const commonFlowerTypes = [
-  'Sunflower',
-  'Marigold',
-  'Zinnia',
-  'Rose',
-  'Dahlia',
-  'Petunia',
-  'Tomato Flower',
-  'Pepper Flower',
-  'Bean Flower',
-  'Cucumber Flower',
-  'Squash Flower',
-  'Herb Flowers',
-  'Wildflowers'
-]
 
 export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
   ({ plants, onSubmit, isSubmitting, onReset }, ref) => {
@@ -68,31 +44,46 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     const [notes, setNotes] = useState('')
     
     // Bloom-specific fields
-    const [flowerType, setFlowerType] = useState('')
-    const [bloomStage, setBloomStage] = useState<BloomStage>('full_bloom')
+    const [plantVariety, setPlantVariety] = useState('')
+    const [customVariety, setCustomVariety] = useState('')
     const [images, setImages] = useState<File[]>([])
     
-    // Bloom metrics
-    const [bloomCount, setBloomCount] = useState('')
-    const [flowerSize, setFlowerSize] = useState('')
-    const [flowerColor, setFlowerColor] = useState('')
-    const [customMetrics, setCustomMetrics] = useState<{ key: string; value: string }[]>([])
+    // Plant varieties from API
+    const [plantVarieties, setPlantVarieties] = useState<PlantVariety[]>([])
+    const [loadingVarieties, setLoadingVarieties] = useState(false)
+
+    // Load plant varieties on component mount
+    useEffect(() => {
+      const loadPlantVarieties = async () => {
+        setLoadingVarieties(true)
+        try {
+          const response = await plantsApi.getVarieties()
+          if (response.success && response.data) {
+            setPlantVarieties(response.data)
+          }
+        } catch (error) {
+          console.error('Failed to load plant varieties:', error)
+        } finally {
+          setLoadingVarieties(false)
+        }
+      }
+
+      loadPlantVarieties()
+    }, [])
 
     const resetForm = () => {
+      console.log('🧹 BloomForm resetForm called')
       // Reset common fields
       setSelectedPlant('')
       setEventDate(new Date())
       setDescription('')
       setNotes('')
       // Reset bloom-specific fields
-      setFlowerType('')
-      setBloomStage('full_bloom')
+      setPlantVariety('')
+      setCustomVariety('')
       setImages([])
-      setBloomCount('')
-      setFlowerSize('')
-      setFlowerColor('')
-      setCustomMetrics([])
       onReset?.()
+      console.log('✅ BloomForm reset completed')
     }
 
     useImperativeHandle(ref, () => ({
@@ -102,108 +93,35 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!flowerType.trim()) {
+    const finalVariety = plantVariety === 'custom' ? customVariety : plantVariety
+    if (!finalVariety.trim()) {
       toast({
         title: 'Validation Error',
-        description: 'Please specify the type of flower.',
+        description: 'Please specify the plant variety.',
         variant: 'destructive',
       })
       return
     }
 
-    if (flowerType.trim().length > 100) {
+    if (finalVariety.trim().length > 100) {
       toast({
         title: 'Validation Error',
-        description: 'Flower type must be 100 characters or less.',
+        description: 'Plant variety must be 100 characters or less.',
         variant: 'destructive',
       })
       return
     }
-
-    // Build metrics object
-    const metrics: Record<string, number | string | boolean> = {}
-    
-    if (bloomCount && parseInt(bloomCount) > 0) {
-      metrics.bloom_count = parseInt(bloomCount)
-    }
-    
-    if (flowerSize && parseFloat(flowerSize) > 0) {
-      metrics.flower_size_cm = parseFloat(flowerSize)
-    }
-    
-    if (flowerColor.trim()) {
-      metrics.flower_color = flowerColor.trim()
-    }
-
-    // Add custom metrics
-    customMetrics.forEach(({ key, value }) => {
-      if (key.trim() && value.trim()) {
-        // Try to parse as number, otherwise store as string
-        const numValue = parseFloat(value)
-        metrics[key.trim().toLowerCase().replace(/\s+/g, '_')] = 
-          !isNaN(numValue) ? numValue : value.trim()
-      }
-    })
 
     onSubmit({
       plant_id: selectedPlant || undefined,
       event_date: eventDate.toISOString(),
       description: description.trim() || undefined,
       notes: notes.trim() || undefined,
-      flower_type: flowerType.trim(),
-      bloom_stage: bloomStage,
-      metrics: Object.keys(metrics).length > 0 ? metrics : undefined,
+      plant_variety: finalVariety.trim(),
       images: images.length > 0 ? images : undefined,
     })
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const validFiles = files.filter(file => {
-      const isImage = file.type.startsWith('image/')
-      const isValidSize = file.size <= 10 * 1024 * 1024 // 10MB
-      
-      if (!isImage) {
-        toast({
-          title: 'Invalid File',
-          description: `${file.name} is not an image file.`,
-          variant: 'destructive',
-        })
-        return false
-      }
-      
-      if (!isValidSize) {
-        toast({
-          title: 'File Too Large',
-          description: `${file.name} is larger than 10MB.`,
-          variant: 'destructive',
-        })
-        return false
-      }
-      
-      return true
-    })
-
-    setImages(prev => [...prev, ...validFiles].slice(0, 5)) // Limit to 5 images
-  }
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index))
-  }
-
-  const addCustomMetric = () => {
-    setCustomMetrics(prev => [...prev, { key: '', value: '' }])
-  }
-
-  const removeCustomMetric = (index: number) => {
-    setCustomMetrics(prev => prev.filter((_, i) => i !== index))
-  }
-
-  const updateCustomMetric = (index: number, field: 'key' | 'value', value: string) => {
-    setCustomMetrics(prev => prev.map((metric, i) => 
-      i === index ? { ...metric, [field]: value } : metric
-    ))
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -276,182 +194,54 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
 
           <Separator />
 
-          {/* Basic Bloom Information */}
+          {/* Plant Variety Selection */}
           <div className="space-y-4">
-            <Label className="text-sm font-medium text-pink-700">Bloom Details</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Label className="text-sm font-medium text-pink-700">Plant Variety</Label>
+            <div className="space-y-2">
+              <Label htmlFor="plant-variety">Plant Variety *</Label>
+              <Select value={plantVariety} onValueChange={setPlantVariety} required disabled={loadingVarieties}>
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingVarieties ? "Loading varieties..." : "Select plant variety..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {plantVarieties.map((variety) => (
+                    <SelectItem key={variety.id} value={variety.name}>
+                      {variety.name} - {variety.category}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom variety...</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {plantVariety === 'custom' && (
               <div className="space-y-2">
-                <Label htmlFor="flower-type">Flower Type *</Label>
+                <Label htmlFor="custom-variety">Custom Plant Variety</Label>
                 <Input
-                  id="flower-type"
-                  value={flowerType}
-                  onChange={(e) => setFlowerType(e.target.value)}
-                  placeholder="e.g., Sunflower, Tomato Flower..."
-                  list="flower-suggestions"
+                  id="custom-variety"
+                  value={customVariety}
+                  onChange={(e) => setCustomVariety(e.target.value)}
+                  placeholder="Enter custom plant variety..."
                   maxLength={100}
                   required
                 />
-                <datalist id="flower-suggestions">
-                  {commonFlowerTypes.map(type => (
-                    <option key={type} value={type} />
-                  ))}
-                </datalist>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bloom-stage">Bloom Stage</Label>
-                <Select value={bloomStage} onValueChange={(value) => setBloomStage(value as BloomStage)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bloomStages.map(stage => (
-                      <SelectItem key={stage.value} value={stage.value}>
-                        <div>
-                          <div className="font-medium">{stage.label}</div>
-                          <div className="text-xs text-gray-500">{stage.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Bloom Measurements */}
-          <div className="space-y-4">
-            <Label className="text-sm font-medium text-pink-700">Bloom Measurements (Optional)</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bloom-count">Number of Blooms</Label>
-                <Input
-                  id="bloom-count"
-                  type="number"
-                  min="1"
-                  value={bloomCount}
-                  onChange={(e) => setBloomCount(e.target.value)}
-                  placeholder="5"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="flower-size">Flower Size (cm)</Label>
-                <Input
-                  id="flower-size"
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  value={flowerSize}
-                  onChange={(e) => setFlowerSize(e.target.value)}
-                  placeholder="7.5"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="flower-color">Flower Color</Label>
-                <Input
-                  id="flower-color"
-                  value={flowerColor}
-                  onChange={(e) => setFlowerColor(e.target.value)}
-                  placeholder="Bright yellow"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Additional Measurements</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addCustomMetric}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Metric
-                </Button>
-              </div>
-
-              {customMetrics.map((metric, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <Input
-                    placeholder="Metric name"
-                    value={metric.key}
-                    onChange={(e) => updateCustomMetric(index, 'key', e.target.value)}
-                    className="flex-1"
-                  />
-                  <Input
-                    placeholder="Value"
-                    value={metric.value}
-                    onChange={(e) => updateCustomMetric(index, 'value', e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeCustomMetric(index)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Photo Upload */}
-          <div className="space-y-4">
-            <Label className="text-sm font-medium text-pink-700">Bloom Photos (Optional)</Label>
-            <div className="border-2 border-dashed border-muted rounded-lg p-6 hover:border-primary/50 transition-colors">
-              <div className="text-center">
-                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                <div className="mt-4">
-                  <label htmlFor="bloom-images" className="cursor-pointer">
-                    <span className="mt-2 block text-sm font-medium text-foreground">
-                      Upload bloom photos
-                    </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      PNG, JPG, GIF up to 10MB each (max 5 photos)
-                    </span>
-                  </label>
-                  <input
-                    id="bloom-images"
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="sr-only"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {images.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
-                {images.map((file, index) => (
-                  <div key={index} className="relative">
-                    <Image
-                      src={URL.createObjectURL(file)}
-                      alt={`Bloom ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
-                      width={200}
-                      height={96}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                    <div className="text-xs text-gray-500 mt-1 truncate">
-                      {file.name}
-                    </div>
-                  </div>
-                ))}
               </div>
             )}
           </div>
+
+          <Separator />
+
+          {/* Photo Upload Section */}
+          <PhotoUpload
+            images={images}
+            onImagesChange={setImages}
+            maxImages={5}
+            label="Bloom Photos (Optional)"
+            description="Capture or upload bloom photos"
+            themeColor="pink"
+            isProcessing={isSubmitting}
+            disabled={isSubmitting}
+          />
         </CardContent>
       </Card>
 
