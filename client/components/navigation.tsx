@@ -12,9 +12,9 @@ export function Navigation({ className = "" }: NavigationProps) {
 
   const navItems = [
     {
-      href: "/harvests",
+      href: "/gallery",
       label: "Gallery",
-      active: pathname === "/harvests"
+      active: pathname === "/gallery"
     },
     {
       href: "/admin",

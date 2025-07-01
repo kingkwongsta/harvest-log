@@ -24,7 +24,6 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
   onImagesChange,
   maxImages = 5,
   label = "Photos (Optional)",
-  description = "Capture or upload photos",
   themeColor = 'green',
   isProcessing = false,
   disabled = false

@@ -13,7 +13,6 @@ import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { toast } from '@/components/ui/use-toast'
 import { eventsApi, type Plant as ApiPlant, type PlantEventCreateData, type PlantEvent as ApiPlantEvent, type Coordinates, type WeatherData } from '@/lib/api'
 
 import { HarvestForm, HarvestFormRef } from './event-forms/harvest-form'
@@ -487,6 +486,7 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: Even
         {eventType === 'harvest' && (
           <HarvestForm 
             ref={formRefs?.harvestFormRef}
+            plants={plants}
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting} 
           />
@@ -495,6 +495,7 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: Even
         {eventType === 'bloom' && (
           <BloomForm 
             ref={formRefs?.bloomFormRef}
+            plants={plants}
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting} 
           />
@@ -503,6 +504,7 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: Even
         {eventType === 'snapshot' && (
           <SnapshotForm 
             ref={formRefs?.snapshotFormRef}
+            plants={plants}
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting} 
           />

@@ -3,12 +3,8 @@
 import type React from "react"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, Sprout, TrendingUp, Clock } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Sprout, TrendingUp, Clock } from "lucide-react"
 import { eventsApi, EventStats, plantsApi, type Plant, type PlantEventCreateData } from "@/lib/api"
 import { type EventType } from "@/components/event-logging-modal"
 import { HarvestForm, HarvestFormRef } from "@/components/event-forms/harvest-form"
@@ -214,21 +210,7 @@ export default function HomePage() {
           return
         }
       } catch {
-        console.log('Event stats not available, falling back to harvest stats')
-      }
-      
-      // Fallback to harvest stats (legacy system)
-      const harvestResponse = await harvestLogsApi.getStats()
-      if (harvestResponse.success && harvestResponse.data) {
-        // Convert harvest stats to event stats format
-        setStats({
-          total_events: harvestResponse.data.total_harvests,
-          this_month: harvestResponse.data.this_month,
-          this_week: harvestResponse.data.this_week,
-          harvest_events: harvestResponse.data.total_harvests,
-          bloom_events: 0,
-          snapshot_events: 0
-        })
+        console.log('Event stats not available, using default values')
       }
     } catch (error) {
       console.error('Error refetching stats:', error)
@@ -403,7 +385,7 @@ interface DynamicEventFormProps {
 }
 
 function DynamicEventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: DynamicEventFormProps) {
-  const handleSubmit = (eventSpecificData: PlantEventCreateData & { images?: File[] }) => {
+  const handleSubmit = (eventSpecificData: any) => {
     const { images, ...eventDataWithoutImages } = eventSpecificData
     const baseEventData: PlantEventCreateData = {
       ...eventDataWithoutImages,

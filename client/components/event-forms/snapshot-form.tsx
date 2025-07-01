@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Calendar } from 'lucide-react'
-import { toast } from '@/components/ui/use-toast'
 import { PhotoUpload } from '@/components/shared/photo-upload'
 import type { Plant } from '@/lib/api'
 
