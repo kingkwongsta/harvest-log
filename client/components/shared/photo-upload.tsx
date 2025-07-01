@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Button } from '@/components/ui/button'
 import { Upload, X, Camera, Loader2 } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { CameraCapture } from '@/components/camera/camera-capture'
@@ -143,56 +142,51 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
       {/* Photo Upload Options */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Upload from Device */}
-        <div className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors">
+        <label
+          htmlFor="photo-upload"
+          className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer block"
+        >
           <div className="text-center">
             <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
             <div className="mt-2">
-              <label htmlFor="photo-upload" className="cursor-pointer">
-                <span className="block text-sm font-medium text-foreground">
-                  Upload Photos
-                </span>
-                <span className="block text-xs text-muted-foreground mt-1">
-                  From your device
-                </span>
-              </label>
-              <input
-                id="photo-upload"
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="sr-only"
-                disabled={disabled || processingImages || isCompressing}
-              />
+              <span className="block text-sm font-medium text-foreground">
+                Upload Photos
+              </span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                From your device
+              </span>
             </div>
           </div>
-        </div>
+          <input
+            id="photo-upload"
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="sr-only"
+            disabled={disabled || processingImages || isCompressing}
+          />
+        </label>
 
         {/* Take Photo with Camera */}
-        <div className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors">
+        <button
+          type="button"
+          onClick={() => setShowCamera(true)}
+          disabled={disabled || processingImages || isCompressing || images.length >= maxImages}
+          className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <div className="text-center">
             <Camera className="mx-auto h-8 w-8 text-muted-foreground" />
             <div className="mt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCamera(true)}
-                disabled={disabled || processingImages || isCompressing || images.length >= maxImages}
-                className="h-auto p-0 hover:bg-transparent"
-              >
-                <div>
-                  <span className="block text-sm font-medium text-foreground">
-                    Take Photo
-                  </span>
-                  <span className="block text-xs text-muted-foreground mt-1">
-                    Use camera
-                  </span>
-                </div>
-              </Button>
+              <span className="block text-sm font-medium text-foreground">
+                Take Photo
+              </span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                Use camera
+              </span>
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Processing Indicator */}

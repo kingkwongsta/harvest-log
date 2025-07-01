@@ -13,7 +13,9 @@ import { Upload, X, Calendar, Camera, Loader2 } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { CameraCapture } from '@/components/camera/camera-capture'
 import { useImageCompression } from '@/lib/useImageCompression'
-import type { Plant } from '@/lib/api'
+import { LocationInput } from '@/components/location/location-input'
+import { WeatherDisplay } from '@/components/location/weather-display'
+import type { Plant, WeatherData, Coordinates } from '@/lib/api'
 
 export interface HarvestFormData {
   plant_id?: string
@@ -22,6 +24,8 @@ export interface HarvestFormData {
   notes?: string
   produce: string
   quantity: number
+  location?: string
+  coordinates?: Coordinates
   images?: File[]
 }
 
@@ -76,6 +80,11 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
     const [showCamera, setShowCamera] = useState(false)
     const [processingImages, setProcessingImages] = useState(false)
     
+    // Location and weather fields
+    const [location, setLocation] = useState('')
+    const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
+    const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
+    
     // Image compression hook
     const { compressImage, isCompressing, compressionProgress, compressionError } = useImageCompression()
 
@@ -94,6 +103,10 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       setImages([])
       setShowCamera(false)
       setProcessingImages(false)
+      // Reset location and weather fields
+      setLocation('')
+      setCoordinates(null)
+      setWeatherData(null)
       onReset?.()
       console.log('✅ HarvestForm reset completed')
     }
@@ -194,6 +207,8 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
       notes: notes.trim() || undefined,
       produce: finalProduce.trim(),
       quantity: parseFloat(quantity),
+      location: location.trim() || undefined,
+      coordinates: coordinates || undefined,
       images: images.length > 0 ? images : undefined,
     })
   }
@@ -305,6 +320,26 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
                 maxLength={2000}
               />
             </div>
+
+            {/* Location Section */}
+            <LocationInput
+              location={location}
+              onLocationChange={setLocation}
+              coordinates={coordinates}
+              onCoordinatesChange={setCoordinates}
+              onWeatherData={setWeatherData}
+              eventDate={eventDate.toISOString().split('T')[0]}
+              disabled={isSubmitting}
+              defaultLocation="Torrance, CA"
+            />
+
+            {/* Weather Display */}
+            {weatherData && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-green-700">Weather Conditions</Label>
+                <WeatherDisplay weather={weatherData} compact />
+              </div>
+            )}
           </div>
 
           <Separator />
@@ -369,56 +404,51 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
             {/* Photo Upload Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Upload from Device */}
-              <div className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors">
+              <label
+                htmlFor="harvest-images"
+                className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer block"
+              >
                 <div className="text-center">
                   <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
                   <div className="mt-2">
-                    <label htmlFor="harvest-images" className="cursor-pointer">
-                      <span className="block text-sm font-medium text-foreground">
-                        Upload Photos
-                      </span>
-                      <span className="block text-xs text-muted-foreground mt-1">
-                        From your device
-                      </span>
-                    </label>
-                    <input
-                      id="harvest-images"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="sr-only"
-                      disabled={processingImages || isCompressing}
-                    />
+                    <span className="block text-sm font-medium text-foreground">
+                      Upload Photos
+                    </span>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      From your device
+                    </span>
                   </div>
                 </div>
-              </div>
+                <input
+                  id="harvest-images"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="sr-only"
+                  disabled={processingImages || isCompressing}
+                />
+              </label>
 
               {/* Take Photo with Camera */}
-              <div className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors">
+              <button
+                type="button"
+                onClick={() => setShowCamera(true)}
+                disabled={processingImages || isCompressing || images.length >= 5}
+                className="border-2 border-dashed border-muted rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 <div className="text-center">
                   <Camera className="mx-auto h-8 w-8 text-muted-foreground" />
                   <div className="mt-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowCamera(true)}
-                      disabled={processingImages || isCompressing || images.length >= 5}
-                      className="h-auto p-0 hover:bg-transparent"
-                    >
-                      <div>
-                        <span className="block text-sm font-medium text-foreground">
-                          Take Photo
-                        </span>
-                        <span className="block text-xs text-muted-foreground mt-1">
-                          Use camera
-                        </span>
-                      </div>
-                    </Button>
+                    <span className="block text-sm font-medium text-foreground">
+                      Take Photo
+                    </span>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      Use camera
+                    </span>
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* Processing Indicator */}

@@ -1,6 +1,6 @@
 // API configuration and helper functions
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 // Log API configuration on module load
 console.log('🔧 API Configuration:', {
@@ -32,12 +32,20 @@ export interface Coordinates {
 }
 
 export interface WeatherData {
-  temperature_min: number;
-  temperature_max: number;
+  temperature_min: number; // Temperature in Fahrenheit
+  temperature_max: number; // Temperature in Fahrenheit  
   humidity: number;
   weather_code: number;
   wind_speed: number;
   precipitation: number;
+}
+
+export interface GeocodingResult {
+  city: string;
+  state?: string;
+  country: string;
+  coordinates: Coordinates;
+  display_name: string;
 }
 
 export interface HarvestImage {
@@ -170,6 +178,7 @@ export interface PlantEventCreateData {
   event_date: string;
   description?: string;
   notes?: string;
+  location?: string;
   coordinates?: Coordinates;
   
   // Harvest-specific fields
@@ -518,7 +527,19 @@ export const weatherApi = {
       params.append('event_date', eventDate);
     }
     
-    return apiRequest(`/api/weather?${params.toString()}`);
+    return apiRequest(`/api/v1/weather?${params.toString()}`);
+  },
+  
+  geocodeLocation: async (location: string): Promise<ApiResponse<GeocodingResult>> => {
+    const params = new URLSearchParams({
+      location: location,
+    });
+    
+    return apiRequest(`/api/v1/weather/geocode?${params.toString()}`);
+  },
+  
+  getDefaultLocation: async (): Promise<ApiResponse<GeocodingResult>> => {
+    return apiRequest('/api/v1/weather/default-location');
   },
 };
 

@@ -1,4 +1,4 @@
-// Shared TypeScript type definitions for the Harvest Log application
+// Shared TypeScript type definitions for the Plant Journey application
 
 // Common form interfaces
 export interface HarvestForm {

@@ -233,6 +233,14 @@ async def get_plant_events(
                 for image in event_data["images"]:
                     image["public_url"] = storage_service.get_public_url(image["file_path"])
             
+            # Reconstruct coordinates object from separate latitude/longitude fields
+            if event_data.get("latitude") is not None and event_data.get("longitude") is not None:
+                from app.weather import Coordinates
+                event_data["coordinates"] = Coordinates(
+                    latitude=event_data["latitude"],
+                    longitude=event_data["longitude"]
+                )
+            
             event = PlantEvent(**event_data)
             events.append(event)
         
@@ -600,6 +608,14 @@ async def get_plant_event_by_id(event_id: UUID, client, request_id: str) -> Opti
             from app.storage import storage_service
             for image in event_data["images"]:
                 image["public_url"] = storage_service.get_public_url(image["file_path"])
+        
+        # Reconstruct coordinates object from separate latitude/longitude fields
+        if event_data.get("latitude") is not None and event_data.get("longitude") is not None:
+            from app.weather import Coordinates
+            event_data["coordinates"] = Coordinates(
+                latitude=event_data["latitude"],
+                longitude=event_data["longitude"]
+            )
         
         return PlantEvent(**event_data)
         

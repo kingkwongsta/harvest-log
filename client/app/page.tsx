@@ -229,7 +229,7 @@ export default function HomePage() {
       <div className="bg-card border-b border-border/50">
         <div className="max-w-2xl mx-auto px-6 py-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Your Harvest Log</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Your Plant Journey</h1>
             <p className="text-organic">Track what you grow and celebrate your garden&apos;s success</p>
           </div>
         </div>
@@ -315,7 +315,7 @@ export default function HomePage() {
           />
         )}
 
-        {/* Harvest Stats */}
+        {/* Plant Journey Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
           <Card className="text-center">
             <CardContent className="pt-6">
@@ -325,7 +325,7 @@ export default function HomePage() {
               <div className="text-2xl font-bold text-foreground">
                 {isLoadingStats ? "..." : stats.total_events}
               </div>
-              <p className="text-sm text-organic">Total Harvests</p>
+                              <p className="text-sm text-organic">Total Events</p>
             </CardContent>
           </Card>
           

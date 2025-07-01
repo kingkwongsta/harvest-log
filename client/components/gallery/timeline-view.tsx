@@ -47,7 +47,7 @@ const SEASON_CONFIG = {
     color: 'bg-orange-100 border-orange-200',
     accent: 'bg-orange-500', 
     icon: '🍂',
-    theme: 'Autumn harvest'
+    theme: 'Autumn gardens'
   },
   winter: {
     color: 'bg-blue-100 border-blue-200',

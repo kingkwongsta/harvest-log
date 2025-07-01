@@ -364,7 +364,9 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: Even
       event_date: eventDate.toISOString(),
       description: description || undefined,
       notes: notes || undefined,
-      coordinates: coordinates || undefined,
+      // Use location and coordinates from the form data if provided, otherwise fall back to modal state
+      location: eventDataWithoutImages.location || location || undefined,
+      coordinates: eventDataWithoutImages.coordinates || coordinates || undefined,
       // Merge event-specific data (produce, quantity, unit, flower_type, bloom_stage, metrics)
       ...eventDataWithoutImages,
     }

@@ -10,13 +10,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Calendar } from 'lucide-react'
 import { PhotoUpload } from '@/components/shared/photo-upload'
-import type { Plant } from '@/lib/api'
+import { LocationInput } from '@/components/location/location-input'
+import { WeatherDisplay } from '@/components/location/weather-display'
+import type { Plant, Coordinates, WeatherData } from '@/lib/api'
 
 export interface SnapshotFormData {
   plant_id?: string
   event_date: string
   description?: string
   notes?: string
+  location?: string
+  coordinates?: Coordinates
   images?: File[]
 }
 
@@ -41,6 +45,11 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
     
     // Snapshot-specific fields
     const [images, setImages] = useState<File[]>([])
+    
+    // Location and weather fields
+    const [location, setLocation] = useState('')
+    const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
+    const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
 
     const resetForm = () => {
       console.log('🧹 SnapshotForm resetForm called')
@@ -51,6 +60,10 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
       setNotes('')
       // Reset snapshot-specific fields
       setImages([])
+      // Reset location and weather fields
+      setLocation('')
+      setCoordinates(null)
+      setWeatherData(null)
       onReset?.()
       console.log('✅ SnapshotForm reset completed')
     }
@@ -67,6 +80,8 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
       event_date: eventDate.toISOString(),
       description: description.trim() || undefined,
       notes: notes.trim() || undefined,
+      location: location.trim() || undefined,
+      coordinates: coordinates || undefined,
       images: images.length > 0 ? images : undefined,
     })
   }
@@ -138,6 +153,26 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
                 maxLength={2000}
               />
             </div>
+
+            {/* Location Section */}
+            <LocationInput
+              location={location}
+              onLocationChange={setLocation}
+              coordinates={coordinates}
+              onCoordinatesChange={setCoordinates}
+              onWeatherData={setWeatherData}
+              eventDate={eventDate.toISOString().split('T')[0]}
+              disabled={isSubmitting}
+              defaultLocation="Torrance, CA"
+            />
+
+            {/* Weather Display */}
+            {weatherData && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-blue-700">Weather Conditions</Label>
+                <WeatherDisplay weather={weatherData} compact />
+              </div>
+            )}
           </div>
 
           <Separator />

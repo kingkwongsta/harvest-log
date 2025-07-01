@@ -174,7 +174,7 @@ export function useCamera(isOpen: boolean, facingMode: 'user' | 'environment') {
       })
 
       // Create file from blob
-      const file = new File([blob], `harvest-photo-${Date.now()}.jpg`, {
+              const file = new File([blob], `plant-photo-${Date.now()}.jpg`, {
         type: 'image/jpeg',
         lastModified: Date.now()
       })

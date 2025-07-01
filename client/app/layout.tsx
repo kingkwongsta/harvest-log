@@ -9,8 +9,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "My Harvest Log",
-  description: "Personal garden harvest tracker",
+  title: "Plant Journey",
+  description: "Personal plant journey tracker",
 }
 
 export default function RootLayout({
@@ -28,10 +28,10 @@ export default function RootLayout({
               <div className="max-w-2xl mx-auto px-6 py-3">
                 <div className="flex items-center justify-between">
                   <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-                    <div className="w-8 h-8 harvest-gradient rounded-lg flex items-center justify-center shadow-sm">
-                      <span className="text-white text-sm font-bold">H</span>
+                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
+                      <span className="text-white text-sm font-bold">P</span>
                     </div>
-                    <h1 className="text-lg font-bold text-foreground">Harvest Log</h1>
+                    <h1 className="text-lg font-bold text-foreground">Plant Journey</h1>
                   </Link>
                   <Navigation />
                 </div>

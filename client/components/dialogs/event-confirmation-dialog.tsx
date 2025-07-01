@@ -70,10 +70,10 @@ export function EventConfirmationDialog({
 
   const getSuccessMessage = () => {
     if (eventType && imageCount && imageCount > 0) {
-      return `Your ${eventType} event has been successfully logged with ${imageCount} image${imageCount > 1 ? 's' : ''}. You can now log another event or view your harvest history.`
+      return `Your ${eventType} event has been successfully logged with ${imageCount} image${imageCount > 1 ? 's' : ''}. You can now log another event or view your plant journey.`
     }
     if (eventType) {
-      return `Your ${eventType} event has been successfully logged. You can now log another event or view your harvest history.`
+      return `Your ${eventType} event has been successfully logged. You can now log another event or view your plant journey.`
     }
     return message
   }

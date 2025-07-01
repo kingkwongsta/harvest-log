@@ -11,8 +11,10 @@ import { Separator } from '@/components/ui/separator'
 import { Calendar } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { PhotoUpload } from '@/components/shared/photo-upload'
+import { LocationInput } from '@/components/location/location-input'
+import { WeatherDisplay } from '@/components/location/weather-display'
 
-import type { Plant, PlantVariety } from '@/lib/api'
+import type { Plant, PlantVariety, Coordinates, WeatherData } from '@/lib/api'
 import { plantsApi } from '@/lib/api'
 
 export interface BloomFormData {
@@ -21,6 +23,8 @@ export interface BloomFormData {
   description?: string
   notes?: string
   plant_variety: string
+  location?: string
+  coordinates?: Coordinates
   images?: File[]
 }
 
@@ -47,6 +51,11 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     const [flowerType, setFlowerType] = useState('')
     const [customFlowerType, setCustomFlowerType] = useState('')
     const [images, setImages] = useState<File[]>([])
+    
+    // Location and weather fields
+    const [location, setLocation] = useState('')
+    const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
+    const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
     
     // Plant varieties from API
     const [plantVarieties, setPlantVarieties] = useState<PlantVariety[]>([])
@@ -82,6 +91,10 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
       setFlowerType('')
       setCustomFlowerType('')
       setImages([])
+      // Reset location and weather fields
+      setLocation('')
+      setCoordinates(null)
+      setWeatherData(null)
       onReset?.()
       console.log('✅ BloomForm reset completed')
     }
@@ -118,6 +131,8 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
       description: description.trim() || undefined,
       notes: notes.trim() || undefined,
       plant_variety: finalPlantVariety.trim(),
+      location: location.trim() || undefined,
+      coordinates: coordinates || undefined,
       images: images.length > 0 ? images : undefined,
     })
   }
@@ -190,6 +205,26 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
                 maxLength={2000}
               />
             </div>
+
+            {/* Location Section */}
+            <LocationInput
+              location={location}
+              onLocationChange={setLocation}
+              coordinates={coordinates}
+              onCoordinatesChange={setCoordinates}
+              onWeatherData={setWeatherData}
+              eventDate={eventDate.toISOString().split('T')[0]}
+              disabled={isSubmitting}
+              defaultLocation="Torrance, CA"
+            />
+
+            {/* Weather Display */}
+            {weatherData && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-pink-700">Weather Conditions</Label>
+                <WeatherDisplay weather={weatherData} compact />
+              </div>
+            )}
           </div>
 
           <Separator />

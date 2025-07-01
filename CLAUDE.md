@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Frontend (Next.js Client)
 ```bash
 cd client
-npm run dev      # Start development server on localhost:3000
+npm run dev      # Start development server with Turbopack on localhost:3000
 npm run build    # Build for production
 npm run lint     # Run ESLint code quality checks
 npm start        # Start production server
@@ -53,8 +53,8 @@ This is a modern full-stack plant journey management application with separated 
 - Image processing with Pillow
 
 **Database**: Supabase PostgreSQL with Row Level Security (RLS)
-- Schema defined in `backend/setup_supabase.sql`
-- Plant journey system with events, plants, varieties, and images
+- Schema migrations in `backend/migrations/` directory
+- Plant journey system with events, plants, varieties, and images  
 - Weather data integration with Open-Meteo API
 - Flexible JSONB storage for metrics and weather data
 - RLS policies for data protection
@@ -69,7 +69,6 @@ This is a modern full-stack plant journey management application with separated 
 - `backend/app/routers/events.py` - Unified event management (harvest, bloom, snapshot)
 - `backend/app/routers/plants.py` - Plant and variety management endpoints
 - `backend/app/routers/weather.py` - Weather data integration with Open-Meteo API
-- `backend/app/routers/harvest_logs.py` - Legacy harvest endpoints (deprecated)
 - `backend/app/routers/images.py` - Image upload and management endpoints
 - `backend/app/config.py` - Environment-based configuration
 - `backend/app/auth.py` - JWT authentication and authorization utilities
@@ -88,7 +87,6 @@ This is a modern full-stack plant journey management application with separated 
 - `client/app/page.tsx` - Homepage with plant journey overview and quick event entry
 - `client/app/admin/page.tsx` - Comprehensive admin panel for data management
 - `client/app/gallery/page.tsx` - Gallery page with 4 viewing modes for all event types
-- `client/app/photos/page.tsx` - Dedicated photo management page
 - `client/lib/api.ts` - Centralized API client for backend communication
 - `client/components/camera-capture.tsx` - Custom camera integration component
 - `client/components/event-logging-modal.tsx` - Unified event creation modal
@@ -102,6 +100,7 @@ This is a modern full-stack plant journey management application with separated 
 ### Configuration
 - `backend/.env` - Backend environment variables (Supabase credentials)
 - `client/.env.local` - Frontend environment variables (API base URL)
+- `backend/migrations/` - Database schema migration files
 - `docker-compose.yml` - Multi-service containerization setup
 
 ## Plant Journey System
@@ -276,14 +275,17 @@ The application automatically fetches and stores weather data for all events usi
 **Weather Data Structure**:
 ```json
 {
-  "temperature_2m": 22.5,
-  "relative_humidity_2m": 65,
+  "temperature_min": 72.5,
+  "temperature_max": 78.8,
+  "humidity": 65,
   "precipitation": 0.0,
-  "wind_speed_10m": 8.2,
-  "surface_pressure": 1013.2,
+  "wind_speed": 8.2,
+  "weather_code": 3,
   "weather_description": "Partly cloudy"
 }
 ```
+
+Note: All temperature values are automatically converted from Celsius to Fahrenheit in the API response.
 
 **API Integration** (`backend/app/routers/weather.py`):
 - `GET /api/v1/weather/` - Fetch weather data for specific date and coordinates
@@ -332,7 +334,6 @@ The application includes a comprehensive gallery system for viewing and managing
    - Interactive data visualization components with event filtering
 
 **Additional Photo Management**:
-- **Photos Page** (`client/app/photos/page.tsx`) - Dedicated photo management interface
 - **Image Lightbox** - Full-screen viewing with keyboard navigation
 - **Favorite System** - Mark and filter favorite photos from any event type
 - **Metadata Display** - Image details, event context, weather data, and technical info
@@ -345,6 +346,24 @@ The application includes a comprehensive gallery system for viewing and managing
 - Advanced search and filter functionality across all modes
 - Navigation accessible from main dashboard and event pages
 - Weather data integration in photo context and analytics
+
+## Database Migrations
+
+The application uses SQL migration files to manage database schema changes:
+
+**Migration Files** (in `backend/migrations/`):
+- `setup_plant_journey.sql` - Core plant journey system schema
+- `migrate_to_plant_journey.sql` - Migration from harvest-only to plant journey system
+- `add_location_coordinates.sql` - GPS coordinate support for events
+- `add_weather_column.sql` - Weather data integration
+- `comprehensive_forms_migration.sql` - Event form enhancements
+- `fix_coordinates_migration.sql` - Coordinate data fixes
+
+**Running Migrations**:
+- Apply migration files manually in Supabase SQL editor
+- Use `backend/run_migration.py` script for automated migration execution
+- Always backup database before running major migrations
+- Test migrations on development environment first
 
 ## Testing Strategy
 
