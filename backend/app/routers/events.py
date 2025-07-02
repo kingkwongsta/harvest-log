@@ -104,8 +104,44 @@ async def create_plant_event(
                 "quantity": validated_data.quantity
             })
         elif event_type == EventType.BLOOM.value:
-            # No additional fields required for bloom events - using plant_id instead
-            pass
+            # For bloom events, we need to set the plant_variety field
+            variety_name = None
+            
+            # First, check if plant_variety_id was provided from the form
+            if hasattr(validated_data, 'plant_variety_id') and validated_data.plant_variety_id:
+                try:
+                    variety_query = client.table("plant_varieties").select("name").eq("id", str(validated_data.plant_variety_id)).execute()
+                    if variety_query.data and len(variety_query.data) > 0:
+                        variety_name = variety_query.data[0].get("name")
+                        logger.info(f"Using selected plant variety: {variety_name}", extra={"request_id": request_id})
+                except Exception as e:
+                    logger.warning(f"Failed to fetch selected plant variety: {str(e)}", 
+                                  extra={"request_id": request_id})
+            
+            # If no variety from form selection, fall back to plant's associated variety
+            if not variety_name:
+                try:
+                    plant_query = client.table("plants").select("*, variety:plant_varieties(name)").eq("id", str(validated_data.plant_id)).execute()
+                    if plant_query.data and len(plant_query.data) > 0:
+                        plant = plant_query.data[0]
+                        variety_name = plant.get("variety", {}).get("name") if plant.get("variety") else None
+                        if variety_name:
+                            logger.info(f"Using plant's associated variety: {variety_name}", extra={"request_id": request_id})
+                        else:
+                            # Fallback to plant name if no variety is available
+                            variety_name = plant.get("name", "Unknown")
+                            logger.info(f"Using plant name as variety fallback: {variety_name}", extra={"request_id": request_id})
+                    else:
+                        # Fallback if plant not found
+                        variety_name = "Unknown"
+                        logger.warning("Plant not found, using 'Unknown' as variety", extra={"request_id": request_id})
+                except Exception as e:
+                    logger.warning(f"Failed to fetch plant variety for bloom event: {str(e)}", 
+                                  extra={"request_id": request_id})
+                    variety_name = "Unknown"
+            
+            # Set the plant_variety field for database constraint
+            event_data["plant_variety"] = variety_name
         elif event_type == EventType.SNAPSHOT.value:
             event_data.update({
                 "metrics": validated_data.metrics

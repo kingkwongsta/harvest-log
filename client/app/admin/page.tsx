@@ -99,7 +99,13 @@ export default function AdminPage() {
   })
 
   const toggleEventExpansion = (eventId: string) => {
+    const isExpanding = expandedEvent !== eventId
     setExpandedEvent(expandedEvent === eventId ? null : eventId)
+    
+    if (isExpanding) {
+      const event = events.find(e => e.id === eventId)
+      console.log('Expanding event with images data:', event?.images)
+    }
   }
 
   const handleDeleteClick = (event: PlantEvent) => {
@@ -121,11 +127,26 @@ export default function AdminPage() {
         setDeleteDialogOpen(false)
         setEventToDelete(null)
         setDeleteConfirmationNumber("")
+        toast({
+          title: 'Success',
+          description: 'Event deleted successfully!',
+        })
       } else {
         console.error('Failed to delete event:', response.message)
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to delete event',
+          variant: 'destructive',
+        })
       }
     } catch (error) {
       console.error('Error deleting event:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete event'
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
     } finally {
       setIsDeleting(false)
     }
@@ -545,21 +566,56 @@ export default function AdminPage() {
                         </div>
                       </div>
                       
-                      {event.images && event.images.length > 0 && (
-                        <div className="mt-4">
-                          <h4 className="font-semibold mb-2">Images ({event.images.length})</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="mt-4">
+                        <h4 className="font-semibold mb-2">
+                          Images ({event.images?.length || 0})
+                        </h4>
+                        {event.images && event.images.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {event.images.map((image) => (
-                              <div key={image.id} className="bg-gray-50 p-2 rounded text-sm">
-                                <div className="font-medium">{image.original_filename}</div>
-                                <div className="text-gray-600">
-                                  {image.width}x{image.height} • {(image.file_size / 1024).toFixed(1)}KB • {image.mime_type}
+                              <div key={image.id} className="bg-gray-50 p-3 rounded-lg border">
+                                {image.public_url && (
+                                  <div className="mb-2">
+                                    <img
+                                      src={image.public_url}
+                                      alt={image.original_filename || 'Event image'}
+                                      className="w-full h-48 object-cover rounded-md border"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        console.error('Failed to load image:', image.public_url);
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                <div className="text-sm space-y-1">
+                                  <div className="font-medium text-gray-900 truncate" title={image.original_filename}>
+                                    {image.original_filename}
+                                  </div>
+                                  <div className="text-gray-600">
+                                    {image.width && image.height && `${image.width}x${image.height} • `}
+                                    {(image.file_size / 1024).toFixed(1)}KB
+                                  </div>
+                                  <div className="text-gray-500 text-xs">
+                                    {image.mime_type}
+                                  </div>
                                 </div>
                               </div>
                             ))}
                           </div>
-                        </div>
-                      )}
+                        ) : (
+                          <div className="bg-gray-50 p-4 rounded-lg border border-dashed">
+                            <p className="text-gray-500 text-sm">
+                              No images found for this event.
+                              {event.images === undefined && ' (Images data not loaded from API)'}
+                              {event.images && event.images.length === 0 && ' (Images array is empty)'}
+                            </p>
+                            <div className="text-xs text-gray-400 mt-2">
+                              Debug: images = {JSON.stringify(event.images)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       
                       <div className="mt-4">
                         <h4 className="font-semibold mb-2">System Data</h4>

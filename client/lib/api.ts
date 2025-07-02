@@ -146,7 +146,8 @@ export interface PlantEvent {
   produce?: string;
   quantity?: number;
   
-  // Bloom-specific fields - plant_variety removed, using plant_id instead
+  // Bloom-specific fields
+  plant_variety?: string;
   
   // Flexible metrics (primarily for snapshot events)
   metrics?: Record<string, unknown>;
@@ -187,7 +188,7 @@ export interface PlantEventCreateData {
   quantity?: number;
   
   // Bloom-specific fields
-  flower_type?: string;
+  plant_variety_id?: string;
   
   // Snapshot-specific fields (flexible metrics)
   metrics?: Record<string, unknown>;

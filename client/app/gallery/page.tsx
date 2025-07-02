@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Search, Filter, Eye, Grid, Calendar, BarChart3 } from "lucide-react"
+import { Search, Filter, Eye, Grid, Calendar, BarChart3, Camera, Upload } from "lucide-react"
 
 // Import gallery view components
 import { CropGardenView } from "@/components/gallery/crop-garden-view"
@@ -39,13 +39,24 @@ export default function GalleryPage() {
     try {
       setLoading(true)
       setError(null)
+      console.log('🔍 Loading events from API...')
       const response = await eventsApi.getAll()
+      console.log('📊 API Response:', response)
+      
       if (response.success && response.data) {
+        console.log(`✅ Loaded ${response.data.length} events`)
+        console.log('📋 Events with image counts:', response.data.map(e => ({
+          id: e.id,
+          type: e.event_type,
+          images: e.images?.length || 0,
+          produce: e.produce || e.plant_variety || 'Unknown'
+        })))
         setEvents(response.data)
       } else {
         setError(response.message || 'Failed to load events')
       }
     } catch (err) {
+      console.error('❌ Error loading events:', err)
       setError(err instanceof Error ? err.message : 'Failed to load events')
     } finally {
       setLoading(false)
@@ -91,6 +102,10 @@ export default function GalleryPage() {
       case 'dashboard': return 'Analytics'
     }
   }
+
+  // Count events with images
+  const eventsWithImages = filteredEvents.filter(event => event.images && event.images.length > 0)
+  const totalImages = filteredEvents.reduce((sum, event) => sum + (event.images?.length || 0), 0)
 
   return (
     <div className="min-h-screen bg-background">
@@ -172,60 +187,86 @@ export default function GalleryPage() {
         {!loading && !error && (
           <>
             {/* Results Summary */}
-            <div className="mb-6">
+            <div className="mb-6 space-y-2">
               <p className="text-sm text-organic">
                 Showing {filteredEvents.length} of {events.length} events
                 {searchTerm && ` matching "${searchTerm}"`}
                 {eventTypeFilter !== "all" && ` • ${eventTypeFilter} events only`}
               </p>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Camera className="w-4 h-4" />
+                  <span>{eventsWithImages.length} events with photos</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Upload className="w-4 h-4" />
+                  <span>{totalImages} total images</span>
+                </div>
+              </div>
             </div>
 
-            {/* Gallery Views */}
-            <div className="space-y-6">
-              {activeView === 'timeline' && (
-                <TimelineView events={filteredEvents} loading={loading} error={error} />
-              )}
-              
-              {activeView === 'garden' && (
-                <CropGardenView events={filteredEvents} loading={loading} error={error} />
-              )}
-              
-              {activeView === 'mosaic' && (
-                <PhotoMosaicView events={filteredEvents} loading={loading} error={error} />
-              )}
-              
-              {activeView === 'dashboard' && (
-                <DashboardView events={filteredEvents} loading={loading} error={error} />
-              )}
-            </div>
-
-            {filteredEvents.length === 0 && !loading && (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Eye className="w-8 h-8 text-muted-foreground" />
+            {/* Empty State */}
+            {filteredEvents.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="max-w-md mx-auto">
+                  <div className="text-gray-400 mb-4">
+                    <Calendar className="w-16 h-16 mx-auto" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No Events Found</h3>
-                  <p className="text-organic">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Events Found</h3>
+                  <p className="text-organic mb-4">
                     {searchTerm || eventTypeFilter !== "all" 
-                      ? "Try adjusting your search or filters"
-                      : "Start logging plant events to see them in the gallery"
+                      ? "Try adjusting your search terms or filters."
+                      : "Start by creating your first plant event to see it here."
                     }
                   </p>
-                  {(searchTerm || eventTypeFilter !== "all") && (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setSearchTerm("")
-                        setEventTypeFilter("all")
-                      }}
-                      className="mt-4"
-                    >
-                      Clear Filters
-                    </Button>
+                  <Button 
+                    onClick={() => window.location.href = '/'}
+                    variant="outline"
+                  >
+                    Create First Event
+                  </Button>
+                </div>
+              </div>
+            ) : totalImages === 0 ? (
+              <div className="text-center py-12">
+                <div className="max-w-md mx-auto">
+                  <div className="text-gray-400 mb-4">
+                    <Camera className="w-16 h-16 mx-auto" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Photos Yet</h3>
+                  <p className="text-organic mb-4">
+                    You have {filteredEvents.length} events, but no photos uploaded yet. 
+                    Add some photos to your events to create a beautiful gallery!
+                  </p>
+                  <Button 
+                    onClick={() => window.location.href = '/'}
+                    variant="outline"
+                  >
+                    Add Photos to Events
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Gallery Views */}
+                <div className="space-y-6">
+                  {activeView === 'timeline' && (
+                    <TimelineView events={filteredEvents} loading={loading} error={error} />
                   )}
-                </CardContent>
-              </Card>
+                  
+                  {activeView === 'garden' && (
+                    <CropGardenView events={filteredEvents} loading={loading} error={error} />
+                  )}
+                  
+                  {activeView === 'mosaic' && (
+                    <PhotoMosaicView events={filteredEvents} loading={loading} error={error} />
+                  )}
+                  
+                  {activeView === 'dashboard' && (
+                    <DashboardView events={filteredEvents} loading={loading} error={error} />
+                  )}
+                </div>
+              </>
             )}
           </>
         )}

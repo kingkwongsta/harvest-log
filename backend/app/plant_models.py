@@ -181,7 +181,16 @@ class HarvestEventData(BaseModel):
 
 class BloomEventData(BaseModel):
     """Data specific to bloom events"""
-    pass  # No specific data required - using plant_id instead of plant_variety
+    plant_variety: Optional[str] = Field(None, max_length=100, description="Plant variety name (auto-populated from plant)")
+    plant_variety_id: Optional[UUID] = Field(None, description="Optional plant variety ID from form selection")
+    
+    @field_validator('plant_variety')
+    @classmethod
+    def validate_plant_variety(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize plant variety"""
+        if v is None:
+            return None
+        return InputSanitizer.sanitize_string(v, max_length=100)
 
 
 class SnapshotEventData(BaseModel):
@@ -289,6 +298,7 @@ class PlantEventUpdate(BaseModel):
     # Event-specific fields (only relevant fields will be used based on event_type)
     produce: Optional[str] = Field(None, max_length=100)
     quantity: Optional[float] = Field(None, gt=0)
+    plant_variety: Optional[str] = Field(None, max_length=100)
     metrics: Optional[Dict[str, Any]] = None
 
 
@@ -303,6 +313,7 @@ class PlantEvent(PlantEventBase):
     produce: Optional[str] = Field(None, description="Type of produce harvested (harvest events only)")
     quantity: Optional[float] = Field(None, description="Quantity harvested (harvest events only)")
     unit: Optional[str] = Field(None, description="Unit of measurement (legacy field, being phased out)")
+    plant_variety: Optional[str] = Field(None, description="Plant variety name (bloom events only)")
     metrics: Optional[Dict[str, Any]] = Field(None, description="Flexible metrics data (primarily snapshot events)")
     weather: Optional[WeatherData] = Field(None, description="Weather data at the time of the event")
     
