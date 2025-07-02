@@ -41,7 +41,7 @@ export const useImageCompression = () => {
       maxWidthOrHeight: 1600,
       quality: 0.7,
       useWebWorker: true,
-      convertToWebP: true, // Enable WebP for better compression and web performance
+      convertToWebP: false, // Temporarily disable WebP to debug upload issues
       ...options,
     };
 
@@ -57,7 +57,18 @@ export const useImageCompression = () => {
         },
       };
 
-      const compressedFile = await imageCompression(file, compressionOptions);
+      const compressedBlob = await imageCompression(file, compressionOptions);
+      
+      // Convert the compressed Blob back to a proper File object
+      // This ensures it has the proper metadata (name, lastModified, etc.)
+      const compressedFile = new File(
+        [compressedBlob], 
+        file.name, 
+        { 
+          type: compressedBlob.type,
+          lastModified: file.lastModified 
+        }
+      );
       
       // Calculate compression ratio
       const compressionRatio = ((file.size - compressedFile.size) / file.size * 100).toFixed(1);

@@ -127,7 +127,7 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
               maxSizeMB: 1,
               maxWidthOrHeight: 1600,
               quality: 0.8,
-              convertToWebP: true
+              convertToWebP: false
             })
             
             // Show compression stats

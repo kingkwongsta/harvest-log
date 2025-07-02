@@ -546,8 +546,27 @@ export const eventsApi = {
 
   // Upload images for events
   uploadImages: async (eventId: string, files: File[]): Promise<MultipleImageUploadResponse> => {
+    console.log('🔍 Debug: uploadImages called with:', {
+      eventId,
+      fileCount: files.length,
+      files: files.map(f => ({
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        lastModified: f.lastModified,
+        constructor: f.constructor.name
+      }))
+    });
+    
     const formData = new FormData();
-    files.forEach((file) => {
+    files.forEach((file, index) => {
+      console.log(`🔍 Debug: Adding file ${index}:`, {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        isInstanceOfFile: file instanceof File,
+        isInstanceOfBlob: file instanceof Blob
+      });
       formData.append('files', file);
     });
     

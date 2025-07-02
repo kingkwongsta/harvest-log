@@ -131,6 +131,16 @@ export default function HomePage() {
         
         // Upload images if any were provided
         if (images && images.length > 0) {
+          console.log('🔍 Debug: About to upload images:', {
+            eventId: createdEvent.id,
+            imageCount: images.length,
+            images: images.map(img => ({
+              name: img.name,
+              size: img.size,
+              type: img.type,
+              constructor: img.constructor.name
+            }))
+          });
           try {
             const imageResponse = await eventsApi.uploadImages(createdEvent.id, images)
             if (!imageResponse.success) {
