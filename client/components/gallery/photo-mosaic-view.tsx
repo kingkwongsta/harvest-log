@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import type { PlantEvent, EventImage } from "@/lib/api"
+import { cleanImageUrl } from "@/lib/utils"
 
 interface PhotoMosaicViewProps {
   events: PlantEvent[]
@@ -298,7 +299,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
                   style={{ aspectRatio: photo.aspectRatio }}
                 >
                   <Image
-                    src={photo.image.public_url || "/placeholder.svg"}
+                    src={cleanImageUrl(photo.image.public_url)}
                     alt={`${photo.event.plant?.variety?.name || photo.event.produce || 'Plant'} ${photo.event.event_type}`}
                     width={400}
                     height={400 / photo.aspectRatio}
@@ -364,7 +365,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
               className={`border-2 ${cropColors[photo.event.plant?.variety?.name || photo.event.produce || 'Unknown Plant']} ${eventTypeColors[photo.event.event_type]} rounded-lg overflow-hidden aspect-square`}
             >
               <Image
-                src={photo.image.public_url || "/placeholder.svg"}
+                src={cleanImageUrl(photo.image.public_url)}
                 alt={`${photo.event.plant?.variety?.name || photo.event.produce || 'Plant'} ${photo.event.event_type}`}
                 width={300}
                 height={300}
@@ -461,7 +462,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
           {/* Image */}
           <div className="relative max-w-4xl max-h-full p-4">
             <Image
-              src={selectedPhoto.image.public_url || "/placeholder.svg"}
+              src={cleanImageUrl(selectedPhoto.image.public_url)}
               alt={`${selectedPhoto.event.plant?.variety?.name || selectedPhoto.event.produce || 'Plant'} ${selectedPhoto.event.event_type}`}
               width={800}
               height={600}

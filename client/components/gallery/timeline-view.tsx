@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import type { PlantEvent } from "@/lib/api"
+import { cleanImageUrl } from "@/lib/utils"
 
 interface TimelineViewProps {
   events: PlantEvent[]
@@ -217,7 +218,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                           <div className="lg:w-1/3 relative">
                             <div className="aspect-square lg:aspect-[4/3] relative overflow-hidden">
                               <Image
-                                src={event.images[0].public_url || "/placeholder.svg"}
+                                src={cleanImageUrl(event.images[0].public_url)}
                                 alt={`${event.plant?.variety?.name || event.produce || 'Plant'} ${event.event_type}`}
                                 fill
                                 className="object-cover hover:scale-105 transition-transform duration-300"
@@ -240,7 +241,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                                 variant="ghost"
                                 size="sm"
                                 className="absolute bottom-2 right-2 bg-white/80 hover:bg-white"
-                                onClick={() => setSelectedImage(event.images![0].public_url!)}
+                                onClick={() => setSelectedImage(cleanImageUrl(event.images![0].public_url))}
                               >
                                 <Expand className="w-4 h-4" />
                               </Button>
@@ -341,11 +342,11 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                                   <div 
                                     key={image.id}
                                     className="flex-shrink-0 relative cursor-pointer group"
-                                    onClick={() => setSelectedImage(image.public_url!)}
+                                    onClick={() => setSelectedImage(cleanImageUrl(image.public_url))}
                                   >
                                     <div className="w-16 h-16 relative overflow-hidden rounded-lg border-2 border-white/50">
                                       <Image
-                                        src={image.public_url || "/placeholder.svg"}
+                                        src={cleanImageUrl(image.public_url)}
                                         alt={`${event.plant?.variety?.name || event.produce || 'Plant'} photo ${index + 2}`}
                                         fill
                                         className="object-cover group-hover:scale-110 transition-transform duration-200"

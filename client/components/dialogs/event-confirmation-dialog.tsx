@@ -31,16 +31,6 @@ export function EventConfirmationDialog({
   imageCount,
   onClose
 }: EventConfirmationDialogProps) {
-  
-  // Debug logging
-  console.log('🎨 EventConfirmationDialog render:', { 
-    open, 
-    type, 
-    eventType, 
-    message: message?.substring(0, 50) + '...',
-    imageCount 
-  })
-  
   const handleClose = () => {
     onClose?.()
     onOpenChange(false)

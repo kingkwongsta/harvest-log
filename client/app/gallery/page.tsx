@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { eventsApi, type PlantEvent } from "@/lib/api"
+import { cleanImageUrl } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -51,6 +52,18 @@ export default function GalleryPage() {
           images: e.images?.length || 0,
           produce: e.produce || e.plant_variety || 'Unknown'
         })))
+        
+        // Debug: Log actual image URLs to see if they have trailing ? characters
+        response.data.forEach(event => {
+          if (event.images && event.images.length > 0) {
+            console.log(`🖼️ Event ${event.id} images:`)
+            event.images.forEach((img, idx) => {
+              console.log(`  Image ${idx}: "${img.public_url}"`)
+              console.log(`  Cleaned: "${cleanImageUrl(img.public_url)}"`)
+            })
+          }
+        })
+        
         setEvents(response.data)
       } else {
         setError(response.message || 'Failed to load events')

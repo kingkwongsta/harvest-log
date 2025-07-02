@@ -25,6 +25,21 @@ class StorageService:
         self.bucket_name = settings.supabase_storage_bucket
         self._ensure_bucket_exists()
     
+    def _clean_public_url(self, url: str) -> str:
+        """Clean up public URL by removing trailing query parameters that cause Next.js Image issues"""
+        if not url:
+            return url
+        
+        # Remove trailing ? and empty query parameters
+        cleaned_url = url.rstrip('?')
+        
+        # Remove empty query parameters (e.g., "?&" or "?")
+        if cleaned_url.endswith('?'):
+            cleaned_url = cleaned_url[:-1]
+        
+        print(f"🔧 Cleaned URL: {url} -> {cleaned_url}")
+        return cleaned_url
+    
     def _ensure_bucket_exists(self):
         """Ensure the storage bucket exists"""
         try:
@@ -191,7 +206,9 @@ class StorageService:
             
             # Get public URL
             try:
-                public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(filename)
+                raw_public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(filename)
+                public_url = self._clean_public_url(raw_public_url)
+                print(f"✅ Generated public URL: {public_url}")
             except Exception as url_error:
                 print(f"Warning: Could not get public URL: {url_error}")
                 public_url = ""
@@ -230,8 +247,9 @@ class StorageService:
     def get_public_url(self, file_path: str) -> str:
         """Get public URL for a file"""
         try:
-            public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(file_path)
-            return public_url if isinstance(public_url, str) else ""
+            raw_public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(file_path)
+            public_url = self._clean_public_url(raw_public_url) if isinstance(raw_public_url, str) else ""
+            return public_url
         except Exception as e:
             print(f"Error getting public URL: {e}")
             return ""

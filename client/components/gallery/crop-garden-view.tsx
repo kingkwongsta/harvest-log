@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import type { PlantEvent } from "@/lib/api"
+import { cleanImageUrl } from "@/lib/utils"
 
 interface CropGardenViewProps {
   events: PlantEvent[]
@@ -134,7 +135,7 @@ export function CropGardenView({ events, loading, error }: CropGardenViewProps) 
     const trend = calculateTrend(cropEvents)
     
     const images = cropEvents
-      .flatMap(e => e.images?.map(img => img.public_url) || [])
+      .flatMap(e => e.images?.map(img => cleanImageUrl(img.public_url)) || [])
       .filter(Boolean) as string[]
     
     const eventCounts = {
@@ -311,10 +312,10 @@ export function CropGardenView({ events, loading, error }: CropGardenViewProps) 
                       <div 
                         key={index}
                         className="aspect-square relative overflow-hidden rounded-lg cursor-pointer group/img"
-                        onClick={() => setSelectedImage(imageUrl)}
+                        onClick={() => setSelectedImage(cleanImageUrl(imageUrl))}
                       >
                         <Image
-                          src={imageUrl || "/placeholder.svg"}
+                          src={cleanImageUrl(imageUrl)}
                           alt={`${crop.name} harvest`}
                           fill
                           className="object-cover group-hover/img:scale-110 transition-transform duration-200"

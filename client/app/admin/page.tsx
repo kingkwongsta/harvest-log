@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { eventsApi, plantsApi, PlantEvent, Plant, PlantVariety } from "@/lib/api"
+import { cleanImageUrl } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -119,10 +120,12 @@ export default function AdminPage() {
       return
     }
 
+    console.log('🗑️ [ADMIN] Starting event deletion:', { eventId: eventToDelete.id, eventType: eventToDelete.event_type })
     setIsDeleting(true)
     try {
       const response = await eventsApi.delete(eventToDelete.id)
       if (response.success) {
+        console.log('✅ [ADMIN] Event deleted successfully:', { eventId: eventToDelete.id, eventType: eventToDelete.event_type })
         setEvents(prev => prev.filter(e => e.id !== eventToDelete.id))
         setDeleteDialogOpen(false)
         setEventToDelete(null)
@@ -132,7 +135,7 @@ export default function AdminPage() {
           description: 'Event deleted successfully!',
         })
       } else {
-        console.error('Failed to delete event:', response.message)
+        console.error('❌ [ADMIN] Failed to delete event:', { eventId: eventToDelete.id, error: response.message })
         toast({
           title: 'Error',
           description: response.message || 'Failed to delete event',
@@ -140,7 +143,7 @@ export default function AdminPage() {
         })
       }
     } catch (error) {
-      console.error('Error deleting event:', error)
+      console.error('❌ [ADMIN] Error deleting event:', { eventId: eventToDelete.id, error })
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete event'
       toast({
         title: 'Error',
@@ -160,10 +163,12 @@ export default function AdminPage() {
 
   // Plant management functions
   const handleAddPlant = async (data: PlantFormData) => {
+    console.log('🌱 [ADMIN] Starting plant creation:', { plantData: data })
     setIsPlantSubmitting(true)
     try {
       const response = await plantsApi.createPlant(data)
       if (response.success) {
+        console.log('✅ [ADMIN] Plant created successfully:', { plantId: response.data?.id, name: response.data?.name })
         setPlants(prev => [...prev, response.data!])
         setAddPlantDialogOpen(false)
         toast({
@@ -171,6 +176,7 @@ export default function AdminPage() {
           description: 'Plant created successfully!',
         })
       } else {
+        console.error('❌ [ADMIN] Failed to create plant:', { data, error: response.message })
         toast({
           title: 'Error',
           description: response.message || 'Failed to create plant',
@@ -178,7 +184,7 @@ export default function AdminPage() {
         })
       }
     } catch (error) {
-      console.error('Error creating plant:', error)
+      console.error('❌ [ADMIN] Error creating plant:', { data, error })
       const errorMessage = error instanceof Error ? error.message : 'Failed to create plant'
       toast({
         title: 'Error',
@@ -193,10 +199,12 @@ export default function AdminPage() {
   const handleEditPlant = async (data: PlantFormData) => {
     if (!plantToEdit) return
     
+    console.log('✏️ [ADMIN] Starting plant edit:', { plantId: plantToEdit.id, plantName: plantToEdit.name, updateData: data })
     setIsPlantSubmitting(true)
     try {
       const response = await plantsApi.updatePlant(plantToEdit.id, data)
       if (response.success) {
+        console.log('✅ [ADMIN] Plant updated successfully:', { plantId: plantToEdit.id, updatedName: response.data?.name })
         setPlants(prev => prev.map(p => p.id === plantToEdit.id ? response.data! : p))
         setEditPlantDialogOpen(false)
         setPlantToEdit(null)
@@ -205,6 +213,7 @@ export default function AdminPage() {
           description: 'Plant updated successfully!',
         })
       } else {
+        console.error('❌ [ADMIN] Failed to update plant:', { plantId: plantToEdit.id, data, error: response.message })
         toast({
           title: 'Error',
           description: response.message || 'Failed to update plant',
@@ -212,7 +221,7 @@ export default function AdminPage() {
         })
       }
     } catch (error) {
-      console.error('Error updating plant:', error)
+      console.error('❌ [ADMIN] Error updating plant:', { plantId: plantToEdit.id, data, error })
       toast({
         title: 'Error',
         description: 'Failed to update plant',
@@ -226,10 +235,12 @@ export default function AdminPage() {
   const handleDeletePlant = async () => {
     if (!plantToDelete) return
     
+    console.log('🗑️ [ADMIN] Starting plant deletion:', { plantId: plantToDelete.id, plantName: plantToDelete.name })
     setIsDeletingPlant(true)
     try {
       const response = await plantsApi.deletePlant(plantToDelete.id)
       if (response.success) {
+        console.log('✅ [ADMIN] Plant deleted successfully:', { plantId: plantToDelete.id, plantName: plantToDelete.name })
         setPlants(prev => prev.filter(p => p.id !== plantToDelete.id))
         setDeletePlantDialogOpen(false)
         setPlantToDelete(null)
@@ -238,6 +249,7 @@ export default function AdminPage() {
           description: 'Plant deleted successfully!',
         })
       } else {
+        console.error('❌ [ADMIN] Failed to delete plant:', { plantId: plantToDelete.id, error: response.message })
         toast({
           title: 'Error',
           description: response.message || 'Failed to delete plant',
@@ -245,7 +257,7 @@ export default function AdminPage() {
         })
       }
     } catch (error) {
-      console.error('Error deleting plant:', error)
+      console.error('❌ [ADMIN] Error deleting plant:', { plantId: plantToDelete.id, error })
       toast({
         title: 'Error',
         description: 'Failed to delete plant',
@@ -276,10 +288,12 @@ export default function AdminPage() {
 
   // Plant variety management functions
   const handleAddVariety = async (data: PlantVarietyFormData) => {
+    console.log('🌿 [ADMIN] Starting plant variety creation:', { varietyData: data })
     setIsVarietySubmitting(true)
     try {
       const response = await plantsApi.createVariety(data)
       if (response.success) {
+        console.log('✅ [ADMIN] Plant variety created successfully:', { varietyId: response.data?.id, varietyName: response.data?.name })
         setVarieties(prev => [...prev, response.data!])
         setAddVarietyDialogOpen(false)
         toast({
@@ -287,6 +301,7 @@ export default function AdminPage() {
           description: 'Plant variety created successfully!',
         })
       } else {
+        console.error('❌ [ADMIN] Failed to create plant variety:', { data, error: response.message })
         toast({
           title: 'Error',
           description: response.message || 'Failed to create plant variety',
@@ -294,7 +309,7 @@ export default function AdminPage() {
         })
       }
     } catch (error) {
-      console.error('Error creating plant variety:', error)
+      console.error('❌ [ADMIN] Error creating plant variety:', { data, error })
       const errorMessage = error instanceof Error ? error.message : 'Failed to create plant variety'
       toast({
         title: 'Error',
@@ -309,10 +324,12 @@ export default function AdminPage() {
   const handleEditVariety = async (data: PlantVarietyFormData) => {
     if (!varietyToEdit) return
     
+    console.log('✏️ [ADMIN] Starting plant variety edit:', { varietyId: varietyToEdit.id, varietyName: varietyToEdit.name, updateData: data })
     setIsVarietySubmitting(true)
     try {
       const response = await plantsApi.updateVariety(varietyToEdit.id, data)
       if (response.success) {
+        console.log('✅ [ADMIN] Plant variety updated successfully:', { varietyId: varietyToEdit.id, updatedName: response.data?.name })
         setVarieties(prev => prev.map(v => v.id === varietyToEdit.id ? response.data! : v))
         setEditVarietyDialogOpen(false)
         setVarietyToEdit(null)
@@ -321,6 +338,7 @@ export default function AdminPage() {
           description: 'Plant variety updated successfully!',
         })
       } else {
+        console.error('❌ [ADMIN] Failed to update plant variety:', { varietyId: varietyToEdit.id, data, error: response.message })
         toast({
           title: 'Error',
           description: response.message || 'Failed to update plant variety',
@@ -328,7 +346,7 @@ export default function AdminPage() {
         })
       }
     } catch (error) {
-      console.error('Error updating plant variety:', error)
+      console.error('❌ [ADMIN] Error updating plant variety:', { varietyId: varietyToEdit.id, data, error })
       toast({
         title: 'Error',
         description: 'Failed to update plant variety',
@@ -342,10 +360,12 @@ export default function AdminPage() {
   const handleDeleteVariety = async () => {
     if (!varietyToDelete) return
     
+    console.log('🗑️ [ADMIN] Starting plant variety deletion:', { varietyId: varietyToDelete.id, varietyName: varietyToDelete.name })
     setIsDeletingVariety(true)
     try {
       const response = await plantsApi.deleteVariety(varietyToDelete.id)
       if (response.success) {
+        console.log('✅ [ADMIN] Plant variety deleted successfully:', { varietyId: varietyToDelete.id, varietyName: varietyToDelete.name })
         setVarieties(prev => prev.filter(v => v.id !== varietyToDelete.id))
         setDeleteVarietyDialogOpen(false)
         setVarietyToDelete(null)
@@ -354,6 +374,7 @@ export default function AdminPage() {
           description: 'Plant variety deleted successfully!',
         })
       } else {
+        console.error('❌ [ADMIN] Failed to delete plant variety:', { varietyId: varietyToDelete.id, error: response.message })
         toast({
           title: 'Error',
           description: response.message || 'Failed to delete plant variety',
@@ -361,7 +382,7 @@ export default function AdminPage() {
         })
       }
     } catch (error) {
-      console.error('Error deleting plant variety:', error)
+      console.error('❌ [ADMIN] Error deleting plant variety:', { varietyId: varietyToDelete.id, error })
       toast({
         title: 'Error',
         description: 'Failed to delete plant variety',
@@ -577,12 +598,12 @@ export default function AdminPage() {
                                 {image.public_url && (
                                   <div className="mb-2">
                                     <img
-                                      src={image.public_url}
+                                      src={cleanImageUrl(image.public_url)}
                                       alt={image.original_filename || 'Event image'}
                                       className="w-full h-48 object-cover rounded-md border"
                                       loading="lazy"
                                       onError={(e) => {
-                                        console.error('Failed to load image:', image.public_url);
+                                        console.error('Failed to load image:', cleanImageUrl(image.public_url));
                                         e.currentTarget.style.display = 'none';
                                       }}
                                     />

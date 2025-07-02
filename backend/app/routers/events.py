@@ -227,12 +227,8 @@ async def get_plant_events(
                        "offset": offset
                    })
         
-        # Build query with filters
-        query = client.table("plant_events").select("""
-            *,
-            plant:plants(id, name, variety:plant_varieties(id, name, category)),
-            images:event_images(*)
-        """)
+        # Build query with filters - Use simple query and fetch images separately
+        query = client.table("plant_events").select("*")
         
         # Apply filters
         if plant_id:
@@ -259,9 +255,20 @@ async def get_plant_events(
         
         result = query.execute()
         
-        # Convert to PlantEvent models
+        # Convert to PlantEvent models and fetch related data
         events = []
         for event_data in result.data:
+            # Fetch images for this event
+            images_result = client.table("event_images").select("*").eq("event_id", event_data["id"]).execute()
+            event_data["images"] = images_result.data or []
+            
+            # Fetch plant data if plant_id exists
+            if event_data.get("plant_id"):
+                plant_result = client.table("plants").select("id, name, variety_id, planted_date, status, notes").eq("id", event_data["plant_id"]).execute()
+                event_data["plant"] = plant_result.data[0] if plant_result.data else None
+            else:
+                event_data["plant"] = None
+            
             # Add public URLs to images
             if event_data.get("images"):
                 from app.storage import storage_service
@@ -624,19 +631,24 @@ async def get_plant_event_by_id(event_id: UUID, client, request_id: str) -> Opti
                         "record_id": str(event_id)
                     })
         
-        result = client.table("plant_events").select("""
-            *,
-            plant:plants(
-                id, name, variety_id, planted_date, location, status, notes,
-                variety:plant_varieties(id, name, category, description)
-            ),
-            images:event_images(*)
-        """).eq("id", str(event_id)).execute()
+        # Fetch event data first
+        result = client.table("plant_events").select("*").eq("id", str(event_id)).execute()
         
         if not result.data:
             return None
         
         event_data = result.data[0]
+        
+        # Fetch images for this event
+        images_result = client.table("event_images").select("*").eq("event_id", str(event_id)).execute()
+        event_data["images"] = images_result.data or []
+        
+        # Fetch plant data if plant_id exists
+        if event_data.get("plant_id"):
+            plant_result = client.table("plants").select("id, name, variety_id, planted_date, status, notes").eq("id", event_data["plant_id"]).execute()
+            event_data["plant"] = plant_result.data[0] if plant_result.data else None
+        else:
+            event_data["plant"] = None
         
         # Add public URLs to images
         if event_data.get("images"):
