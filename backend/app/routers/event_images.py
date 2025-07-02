@@ -304,28 +304,48 @@ async def upload_multiple_event_images(
                     "public_url": file_info["public_url"]
                 }
                 
-                result = supabase.table("event_images").insert(image_data).execute()
+                print(f"💾 Attempting to save image metadata: {image_data}")
                 
-                if result.data:
-                    uploaded_images.append(result.data[0])
-                    logger.info(f"API: Successfully uploaded and saved image {file.filename}", 
-                               extra={
-                                   "request_id": request_id,
-                                   "record_id": result.data[0]["id"],
-                                   "file_name": file.filename,
-                                   "file_size": file_size
-                               })
-                else:
+                try:
+                    result = supabase.table("event_images").insert(image_data).execute()
+                    print(f"📊 Database insert result: {result}")
+                    
+                    if result.data:
+                        uploaded_images.append(result.data[0])
+                        logger.info(f"API: Successfully uploaded and saved image {file.filename}", 
+                                   extra={
+                                       "request_id": request_id,
+                                       "record_id": result.data[0]["id"],
+                                       "file_name": file.filename,
+                                       "file_size": file_size
+                                   })
+                        print(f"✅ Successfully saved image metadata for {file.filename}")
+                    else:
+                        # Clean up uploaded file if database insert fails
+                        await storage_service.delete_image(file_info["file_path"])
+                        failed_uploads.append({"filename": file.filename, "error": "Failed to save metadata - no data returned"})
+                        logger.error(f"API: Failed to save metadata for {file.filename} - no data returned", 
+                                   extra={
+                                       "request_id": request_id,
+                                       "file_name": file.filename,
+                                       "table": "event_images",
+                                       "db_operation": "insert"
+                                   })
+                        print(f"❌ No data returned from database insert for {file.filename}")
+                        
+                except Exception as db_error:
                     # Clean up uploaded file if database insert fails
                     await storage_service.delete_image(file_info["file_path"])
-                    failed_uploads.append({"filename": file.filename, "error": "Failed to save metadata"})
-                    logger.error(f"API: Failed to save metadata for {file.filename}", 
+                    error_msg = f"Database insert failed: {str(db_error)}"
+                    failed_uploads.append({"filename": file.filename, "error": error_msg})
+                    logger.error(f"API: Database insert error for {file.filename}: {db_error}", 
                                extra={
                                    "request_id": request_id,
                                    "file_name": file.filename,
                                    "table": "event_images",
                                    "db_operation": "insert"
-                               })
+                               }, exc_info=True)
+                    print(f"❌ Database insert exception for {file.filename}: {db_error}")
                     
             except Exception as e:
                 logger.error(f"API: Error processing file {file.filename}: {str(e)}", 
