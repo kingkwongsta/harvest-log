@@ -166,7 +166,6 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
                       <SelectValue placeholder={varietiesLoading ? "Loading varieties..." : "Select a plant variety..."} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None selected</SelectItem>
                       {plantVarieties.map((variety) => (
                         <SelectItem key={variety.id} value={variety.id}>
                           {variety.name} ({variety.category})
