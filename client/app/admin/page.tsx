@@ -10,6 +10,12 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { formatDistanceToNow } from "date-fns"
+import { Plus, Edit, Trash2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { PlantAddDialog } from "@/components/admin/plant-add-dialog"
+import { PlantEditDialog } from "@/components/admin/plant-edit-dialog"
+import { PlantDeleteDialog } from "@/components/admin/plant-delete-dialog"
+import type { PlantFormData } from "@/components/admin/plant-form"
 
 
 export default function AdminPage() {
@@ -25,6 +31,15 @@ export default function AdminPage() {
   const [eventToDelete, setEventToDelete] = useState<PlantEvent | null>(null)
   const [deleteConfirmationNumber, setDeleteConfirmationNumber] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
+  
+  // Plant management state
+  const [addPlantDialogOpen, setAddPlantDialogOpen] = useState(false)
+  const [editPlantDialogOpen, setEditPlantDialogOpen] = useState(false)
+  const [deletePlantDialogOpen, setDeletePlantDialogOpen] = useState(false)
+  const [plantToEdit, setPlantToEdit] = useState<Plant | null>(null)
+  const [plantToDelete, setPlantToDelete] = useState<Plant | null>(null)
+  const [isPlantSubmitting, setIsPlantSubmitting] = useState(false)
+  const [isDeletingPlant, setIsDeletingPlant] = useState(false)
   
 
   useEffect(() => {
@@ -107,6 +122,121 @@ export default function AdminPage() {
     setDeleteDialogOpen(false)
     setEventToDelete(null)
     setDeleteConfirmationNumber("")
+  }
+
+  // Plant management functions
+  const handleAddPlant = async (data: PlantFormData) => {
+    setIsPlantSubmitting(true)
+    try {
+      const response = await plantsApi.createPlant(data)
+      if (response.success) {
+        setPlants(prev => [...prev, response.data!])
+        setAddPlantDialogOpen(false)
+        toast({
+          title: 'Success',
+          description: 'Plant created successfully!',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to create plant',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error creating plant:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create plant',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPlantSubmitting(false)
+    }
+  }
+
+  const handleEditPlant = async (data: PlantFormData) => {
+    if (!plantToEdit) return
+    
+    setIsPlantSubmitting(true)
+    try {
+      const response = await plantsApi.updatePlant(plantToEdit.id, data)
+      if (response.success) {
+        setPlants(prev => prev.map(p => p.id === plantToEdit.id ? response.data! : p))
+        setEditPlantDialogOpen(false)
+        setPlantToEdit(null)
+        toast({
+          title: 'Success',
+          description: 'Plant updated successfully!',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to update plant',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error updating plant:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update plant',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsPlantSubmitting(false)
+    }
+  }
+
+  const handleDeletePlant = async () => {
+    if (!plantToDelete) return
+    
+    setIsDeletingPlant(true)
+    try {
+      const response = await plantsApi.deletePlant(plantToDelete.id)
+      if (response.success) {
+        setPlants(prev => prev.filter(p => p.id !== plantToDelete.id))
+        setDeletePlantDialogOpen(false)
+        setPlantToDelete(null)
+        toast({
+          title: 'Success',
+          description: 'Plant deleted successfully!',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to delete plant',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting plant:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete plant',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeletingPlant(false)
+    }
+  }
+
+  const handleEditPlantClick = (plant: Plant) => {
+    setPlantToEdit(plant)
+    setEditPlantDialogOpen(true)
+  }
+
+  const handleDeletePlantClick = (plant: Plant) => {
+    setPlantToDelete(plant)
+    setDeletePlantDialogOpen(true)
+  }
+
+  const handleClosePlantDialogs = () => {
+    setAddPlantDialogOpen(false)
+    setEditPlantDialogOpen(false)
+    setDeletePlantDialogOpen(false)
+    setPlantToEdit(null)
+    setPlantToDelete(null)
   }
 
   
@@ -326,15 +456,57 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="plants" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Plant Management</CardTitle>
+                  <CardDescription>Manage all plants in your garden</CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setAddPlantDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Plant
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+
           <div className="grid gap-4">
             {plants.map((plant) => (
               <Card key={plant.id}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {plant.name}
-                    <Badge variant="outline">{plant.status}</Badge>
-                  </CardTitle>
-                  <CardDescription>Plant ID: {plant.id}</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        {plant.name}
+                        <Badge variant="outline">{plant.status}</Badge>
+                      </CardTitle>
+                      <CardDescription>Plant ID: {plant.id}</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditPlantClick(plant)}
+                        className="flex items-center gap-1"
+                      >
+                        <Edit className="h-3 w-3" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeletePlantClick(plant)}
+                        className="flex items-center gap-1"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -351,6 +523,14 @@ export default function AdminPage() {
               </Card>
             ))}
           </div>
+
+          {plants.length === 0 && (
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-gray-500">No plants found. Add your first plant to get started!</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="varieties" className="space-y-4">
@@ -438,6 +618,32 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Plant Management Dialogs */}
+      <PlantAddDialog
+        isOpen={addPlantDialogOpen}
+        onClose={handleClosePlantDialogs}
+        varieties={varieties}
+        onSubmit={handleAddPlant}
+        isSubmitting={isPlantSubmitting}
+      />
+
+      <PlantEditDialog
+        isOpen={editPlantDialogOpen}
+        onClose={handleClosePlantDialogs}
+        plant={plantToEdit}
+        varieties={varieties}
+        onSubmit={handleEditPlant}
+        isSubmitting={isPlantSubmitting}
+      />
+
+      <PlantDeleteDialog
+        isOpen={deletePlantDialogOpen}
+        onClose={handleClosePlantDialogs}
+        plant={plantToDelete}
+        onConfirm={handleDeletePlant}
+        isDeleting={isDeletingPlant}
+      />
     </div>
   )
 }
