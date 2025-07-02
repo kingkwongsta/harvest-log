@@ -31,16 +31,6 @@ export function EventConfirmationDialog({
   imageCount,
   onClose
 }: EventConfirmationDialogProps) {
-  
-  // Debug logging
-  console.log('🎨 EventConfirmationDialog render:', { 
-    open, 
-    type, 
-    eventType, 
-    message: message?.substring(0, 50) + '...',
-    imageCount 
-  })
-  
   const handleClose = () => {
     onClose?.()
     onOpenChange(false)
@@ -70,10 +60,10 @@ export function EventConfirmationDialog({
 
   const getSuccessMessage = () => {
     if (eventType && imageCount && imageCount > 0) {
-      return `Your ${eventType} event has been successfully logged with ${imageCount} image${imageCount > 1 ? 's' : ''}. You can now log another event or view your harvest history.`
+      return `Your ${eventType} event has been successfully logged with ${imageCount} image${imageCount > 1 ? 's' : ''}. You can now log another event or view your plant journey.`
     }
     if (eventType) {
-      return `Your ${eventType} event has been successfully logged. You can now log another event or view your harvest history.`
+      return `Your ${eventType} event has been successfully logged. You can now log another event or view your plant journey.`
     }
     return message
   }

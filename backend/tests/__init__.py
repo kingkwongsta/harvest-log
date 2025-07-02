@@ -1,5 +1,5 @@
 """
-Test package for the Harvest Log API backend.
+Test package for the Plant Journey API backend.
 
 This package contains all tests organized by category:
 - unit/: Unit tests for individual components and functions
@@ -16,7 +16,6 @@ Running Tests:
 - All tests: python -m pytest tests/
 - Unit tests only: python -m pytest tests/unit/
 - Integration tests: python -m pytest tests/integration/
-- Specific test: python -m pytest tests/unit/test_harvest_logs.py
 
 Manual Testing:
 - API endpoints: python tests/integration/test_api_endpoints.py

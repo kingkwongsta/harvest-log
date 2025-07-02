@@ -9,8 +9,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from app.config import settings
-from app.routers import harvest_logs, images, events, plants, weather
-from app.database import init_supabase, create_harvest_logs_table, close_supabase, health_check as db_health_check
+from app.routers import events, plants, weather, event_images
+from app.database import init_supabase, close_supabase, health_check as db_health_check
 from app.logging_config import setup_logging, get_app_logger
 from app.middleware import LoggingMiddleware, PerformanceMiddleware
 from app.dependencies import get_supabase_client
@@ -48,9 +48,7 @@ async def lifespan(app: FastAPI):
             supabase_client = await init_supabase()
             logger.info("✓ Supabase connection initialized")
             
-            # Verify database table accessibility
-            await create_harvest_logs_table()
-            logger.info("✓ Database tables verified")
+            logger.info("✓ Supabase connection verified")
             
         except Exception as e:
             logger.error(f"⚠ Supabase initialization failed: {e}", exc_info=True)
@@ -80,7 +78,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="A comprehensive API for managing harvest logs and garden data",
+    description="A comprehensive API for managing plant journey and garden data",
     contact={
         "name": "Harvest Log API",
         "email": "support@harvestlog.com",
@@ -91,12 +89,8 @@ app = FastAPI(
     },
     openapi_tags=[
         {
-            "name": "harvest-logs",
-            "description": "Legacy operations for managing harvest log entries",
-        },
-        {
-            "name": "images",
-            "description": "Operations for managing harvest images with Supabase Storage",
+            "name": "event-images",
+            "description": "Unified operations for managing event images (harvest, bloom, snapshot)",
         },
         {
             "name": "plants",
@@ -140,8 +134,7 @@ app.add_exception_handler(ValidationError, pydantic_validation_exception_handler
 app.add_exception_handler(Exception, general_exception_handler)
 
 # Include routers
-app.include_router(harvest_logs.router)
-app.include_router(images.router)
+app.include_router(event_images.router)    # Unified event image endpoints
 app.include_router(plants.router)
 app.include_router(events.router)
 app.include_router(weather.router)
@@ -229,109 +222,4 @@ async def health_check(request: Request):
         raise DatabaseError("Detailed health check failed")
 
 
-@app.get(
-    "/api/harvest-stats",
-    tags=["harvest-logs"],
-    summary="Get harvest statistics",
-    description="Get statistics about harvests including total, this month, and this week counts."
-)
-async def get_harvest_stats(
-    request: Request,
-    client = Depends(get_supabase_client)
-):
-    """
-    Get harvest statistics.
-    
-    Returns statistics including:
-    - Total harvest count
-    - This month's harvest count  
-    - This week's harvest count
-    """
-    request_id = getattr(request.state, 'request_id', 'unknown')
-    
-    try:
-        logger.info("API: Retrieving harvest statistics", extra={"request_id": request_id})
-        
-        # Try to get from cache first
-        cached_stats = await cache_manager.get_harvest_stats()
-        if cached_stats:
-            logger.debug("API: Returning cached harvest statistics", extra={"request_id": request_id})
-            return {
-                "success": True,
-                "message": "Harvest statistics retrieved successfully (cached)",
-                "data": cached_stats
-            }
-        
-        # Get current date info
-        now = datetime.now()
-        
-        # Start of current month
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
-        # Start of current week (Monday)
-        days_since_monday = now.weekday()
-        week_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_since_monday)
-        
-        logger.debug("API: Querying total harvest count", 
-                    extra={
-                        "request_id": request_id,
-                        "table": "harvest_logs",
-                        "db_operation": "count"
-                    })
-        
-        # Query total count
-        total_response = client.table('harvest_logs').select('id', count='exact').execute()
-        total_count = total_response.count or 0
-        
-        logger.debug("API: Querying monthly harvest count", 
-                    extra={
-                        "request_id": request_id,
-                        "table": "harvest_logs",
-                        "db_operation": "count",
-                        "filter": f"harvest_date >= {month_start.isoformat()}"
-                    })
-        
-        # Query this month count
-        month_response = client.table('harvest_logs').select('id', count='exact').gte('harvest_date', month_start.isoformat()).execute()
-        month_count = month_response.count or 0
-        
-        logger.debug("API: Querying weekly harvest count", 
-                    extra={
-                        "request_id": request_id,
-                        "table": "harvest_logs",
-                        "db_operation": "count",
-                        "filter": f"harvest_date >= {week_start.isoformat()}"
-                    })
-        
-        # Query this week count
-        week_response = client.table('harvest_logs').select('id', count='exact').gte('harvest_date', week_start.isoformat()).execute()
-        week_count = week_response.count or 0
-        
-        stats = {
-            "total_harvests": total_count,
-            "this_month": month_count,
-            "this_week": week_count
-        }
-        
-        logger.info(f"API: Successfully retrieved harvest stats", 
-                   extra={
-                       "request_id": request_id,
-                       "total_harvests": total_count,
-                       "this_month": month_count,
-                       "this_week": week_count
-                   })
-        
-        # Cache the stats for 3 minutes
-        await cache_manager.set_harvest_stats(stats, ttl=180)
-        
-        return {
-            "success": True,
-            "message": "Harvest statistics retrieved successfully",
-            "data": stats
-        }
-        
-    except Exception as e:
-        logger.error(f"API: Failed to retrieve harvest stats: {str(e)}", 
-                    extra={"request_id": request_id}, 
-                    exc_info=True)
-        raise DatabaseError(f"Failed to retrieve harvest statistics: {str(e)}") 
+ 

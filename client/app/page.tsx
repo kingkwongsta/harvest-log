@@ -3,13 +3,9 @@
 import type React from "react"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, Sprout, TrendingUp, Clock } from "lucide-react"
-import { eventsApi, harvestLogsApi, EventStats, plantsApi, type Plant, type PlantEventCreateData } from "@/lib/api"
+import { Card, CardContent } from "@/components/ui/card"
+import { Sprout, TrendingUp, Clock } from "lucide-react"
+import { eventsApi, EventStats, plantsApi, type Plant, type PlantEventCreateData } from "@/lib/api"
 import { type EventType } from "@/components/event-logging-modal"
 import { HarvestForm, HarvestFormRef } from "@/components/event-forms/harvest-form"
 import { BloomForm, BloomFormRef } from "@/components/event-forms/bloom-form"
@@ -72,29 +68,9 @@ export default function HomePage() {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true)
-        // Try to get event stats first (new system)
-        try {
-          const eventResponse = await eventsApi.getStats()
-          if (eventResponse.success && eventResponse.data) {
-            setStats(eventResponse.data)
-            return
-          }
-        } catch {
-          console.log('Event stats not available, falling back to harvest stats')
-        }
-        
-        // Fallback to harvest stats (legacy system)
-        const harvestResponse = await harvestLogsApi.getStats()
-        if (harvestResponse.success && harvestResponse.data) {
-          // Convert harvest stats to event stats format
-          setStats({
-            total_events: harvestResponse.data.total_harvests,
-            this_month: harvestResponse.data.this_month,
-            this_week: harvestResponse.data.this_week,
-            harvest_events: harvestResponse.data.total_harvests,
-            bloom_events: 0,
-            snapshot_events: 0
-          })
+        const eventResponse = await eventsApi.getStats()
+        if (eventResponse.success && eventResponse.data) {
+          setStats(eventResponse.data)
         }
       } catch (error) {
         console.error('Error fetching stats:', error)
@@ -155,6 +131,16 @@ export default function HomePage() {
         
         // Upload images if any were provided
         if (images && images.length > 0) {
+          console.log('🔍 Debug: About to upload images:', {
+            eventId: createdEvent.id,
+            imageCount: images.length,
+            images: images.map(img => ({
+              name: img.name,
+              size: img.size,
+              type: img.type,
+              constructor: img.constructor.name
+            }))
+          });
           try {
             const imageResponse = await eventsApi.uploadImages(createdEvent.id, images)
             if (!imageResponse.success) {
@@ -234,21 +220,7 @@ export default function HomePage() {
           return
         }
       } catch {
-        console.log('Event stats not available, falling back to harvest stats')
-      }
-      
-      // Fallback to harvest stats (legacy system)
-      const harvestResponse = await harvestLogsApi.getStats()
-      if (harvestResponse.success && harvestResponse.data) {
-        // Convert harvest stats to event stats format
-        setStats({
-          total_events: harvestResponse.data.total_harvests,
-          this_month: harvestResponse.data.this_month,
-          this_week: harvestResponse.data.this_week,
-          harvest_events: harvestResponse.data.total_harvests,
-          bloom_events: 0,
-          snapshot_events: 0
-        })
+        console.log('Event stats not available, using default values')
       }
     } catch (error) {
       console.error('Error refetching stats:', error)
@@ -267,7 +239,7 @@ export default function HomePage() {
       <div className="bg-card border-b border-border/50">
         <div className="max-w-2xl mx-auto px-6 py-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Your Harvest Log</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Your Plant Journey</h1>
             <p className="text-organic">Track what you grow and celebrate your garden&apos;s success</p>
           </div>
         </div>
@@ -353,7 +325,7 @@ export default function HomePage() {
           />
         )}
 
-        {/* Harvest Stats */}
+        {/* Plant Journey Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
           <Card className="text-center">
             <CardContent className="pt-6">
@@ -363,7 +335,7 @@ export default function HomePage() {
               <div className="text-2xl font-bold text-foreground">
                 {isLoadingStats ? "..." : stats.total_events}
               </div>
-              <p className="text-sm text-organic">Total Harvests</p>
+                              <p className="text-sm text-organic">Total Events</p>
             </CardContent>
           </Card>
           
@@ -423,7 +395,7 @@ interface DynamicEventFormProps {
 }
 
 function DynamicEventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: DynamicEventFormProps) {
-  const handleSubmit = (eventSpecificData: PlantEventCreateData & { images?: File[] }) => {
+  const handleSubmit = (eventSpecificData: any) => {
     const { images, ...eventDataWithoutImages } = eventSpecificData
     const baseEventData: PlantEventCreateData = {
       ...eventDataWithoutImages,

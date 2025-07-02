@@ -1,16 +1,17 @@
 """
-Image upload and management API endpoints
+Unified event image upload and management API endpoints
+Supports all event types: harvest, bloom, snapshot
 """
 
-from fastapi import APIRouter, UploadFile, File, Form, Depends, Request
+from fastapi import APIRouter, UploadFile, File, Form, Depends, Request, HTTPException
 from typing import List, Optional
 from uuid import UUID
 
-from app.models import (
-    FileUploadResponse, 
-    HarvestImage, 
-    HarvestImageCreate,
-    ErrorResponse
+from app.plant_models import (
+    EventImage, 
+    EventImageCreate,
+    EventImageResponse,
+    EventType
 )
 from app.storage import storage_service
 from app.database import get_supabase
@@ -22,41 +23,44 @@ from app.validators import DataSanitizer
 # Set up proper structured logging
 logger = get_api_logger()
 
-router = APIRouter(prefix="/api/images", tags=["images"])
+router = APIRouter(prefix="/api/images", tags=["event-images"])
 
 
-@router.post("/upload/{harvest_log_id}", response_model=FileUploadResponse)
-async def upload_harvest_image(
-    harvest_log_id: UUID,
+@router.post("/upload/{event_id}", response_model=EventImageResponse)
+async def upload_event_image(
+    event_id: UUID,
     request: Request,
     file: UploadFile = File(...),
     upload_order: int = Form(0),
     supabase=Depends(get_db)
 ):
     """
-    Upload an image for a harvest log to Supabase Storage
+    Upload a single image for any event type (harvest, bloom, snapshot)
     """
     request_id = getattr(request.state, 'request_id', 'unknown')
     
     try:
-        logger.info(f"API: Starting image upload for harvest log {harvest_log_id}", 
+        logger.info(f"API: Starting image upload for event {event_id}", 
                    extra={
                        "request_id": request_id,
-                       "harvest_log_id": str(harvest_log_id),
+                       "event_id": str(event_id),
                        "file_name": file.filename,
                        "content_type": file.content_type,
                        "upload_order": upload_order
                    })
         
-        # Verify harvest log exists
-        logger.debug(f"API: Verifying harvest log {harvest_log_id} exists", 
-                    extra={"request_id": request_id, "record_id": str(harvest_log_id)})
+        # Verify event exists and get event type
+        logger.debug(f"API: Verifying event {event_id} exists", 
+                    extra={"request_id": request_id, "record_id": str(event_id)})
         
-        harvest_check = supabase.table("harvest_logs").select("id").eq("id", str(harvest_log_id)).execute()
-        if not harvest_check.data:
-            logger.warning(f"API: Harvest log not found: {harvest_log_id}", 
-                          extra={"request_id": request_id, "record_id": str(harvest_log_id)})
-            raise NotFoundError("Harvest log", str(harvest_log_id))
+        event_check = supabase.table("plant_events").select("id, event_type").eq("id", str(event_id)).execute()
+        if not event_check.data:
+            logger.warning(f"API: Event not found: {event_id}", 
+                          extra={"request_id": request_id, "record_id": str(event_id)})
+            raise NotFoundError("Event", str(event_id))
+        
+        event_data = event_check.data[0]
+        event_type = event_data.get("event_type", "event")
         
         # Read and validate file content
         file_content = await file.read()
@@ -78,29 +82,27 @@ async def upload_harvest_image(
                    extra={
                        "request_id": request_id,
                        "file_size": file_size,
-                       "file_name": file.filename
+                       "file_name": file.filename,
+                       "event_type": event_type
                    })
         
         # Upload to Supabase Storage using validated data
-        success, message, file_info = await storage_service.upload_image(
+        success, message, file_info = await storage_service.upload_event_image(
             file_content=validated_data['file_content'],
             original_filename=validated_data['filename'],
-            harvest_log_id=str(harvest_log_id)
+            event_id=str(event_id),
+            event_type=event_type
         )
         
         if not success:
             logger.error(f"API: Storage upload failed: {message}", 
                         extra={
                             "request_id": request_id,
-                            "harvest_log_id": str(harvest_log_id),
+                            "event_id": str(event_id),
                             "file_name": file.filename,
                             "error": message
                         })
-            return FileUploadResponse(
-                success=False,
-                message=message,
-                data=None
-            )
+            raise StorageError(message)
         
         logger.info(f"API: File uploaded to storage successfully: {file_info['file_path']}", 
                    extra={
@@ -109,9 +111,9 @@ async def upload_harvest_image(
                        "storage_filename": file_info["filename"]
                    })
         
-        # Save image metadata to database
+        # Save image metadata to database using EventImage model
         image_data = {
-            "harvest_log_id": str(harvest_log_id),
+            "event_id": str(event_id),
             "filename": file_info["filename"],
             "original_filename": file_info["original_filename"],
             "file_path": file_info["file_path"],
@@ -126,33 +128,29 @@ async def upload_harvest_image(
         logger.debug("API: Saving image metadata to database", 
                     extra={
                         "request_id": request_id,
-                        "table": "harvest_images",
+                        "table": "event_images",
                         "db_operation": "insert"
                     })
         
-        result = supabase.table("harvest_images").insert(image_data).execute()
+        result = supabase.table("event_images").insert(image_data).execute()
         
         if not result.data:
             logger.error("API: Failed to save image metadata to database", 
                         extra={
                             "request_id": request_id,
-                            "table": "harvest_images",
+                            "table": "event_images",
                             "db_operation": "insert",
-                            "harvest_log_id": str(harvest_log_id)
+                            "event_id": str(event_id)
                         })
             # If database insert fails, clean up uploaded file
             await storage_service.delete_image(file_info["file_path"])
-            return FileUploadResponse(
-                success=False,
-                message="Failed to save image metadata",
-                data=None
-            )
+            raise DatabaseError("Failed to save image metadata")
         
         # Create response with the saved image data
         saved_image = result.data[0]
-        harvest_image = HarvestImage(
+        event_image = EventImage(
             id=saved_image["id"],
-            harvest_log_id=saved_image["harvest_log_id"],
+            event_id=saved_image["event_id"],
             filename=saved_image["filename"],
             original_filename=saved_image["original_filename"],
             file_path=saved_image["file_path"],
@@ -170,56 +168,59 @@ async def upload_harvest_image(
                    extra={
                        "request_id": request_id,
                        "record_id": saved_image["id"],
-                       "harvest_log_id": str(harvest_log_id),
+                       "event_id": str(event_id),
                        "file_name": file_info["filename"],
                        "file_size": file_info["file_size"]
                    })
         
-        return FileUploadResponse(
+        return EventImageResponse(
             success=True,
             message="Image uploaded successfully",
-            data=harvest_image
+            data=event_image
         )
         
-    except (NotFoundError, StorageError):
+    except (NotFoundError, StorageError, DatabaseError, ValidationException):
         raise
     except Exception as e:
         logger.error(f"API: Failed to upload image: {str(e)}", 
                     extra={
                         "request_id": request_id,
-                        "harvest_log_id": str(harvest_log_id),
+                        "event_id": str(event_id),
                         "file_name": file.filename if file else "unknown"
                     }, 
                     exc_info=True)
         raise StorageError(f"Failed to upload image: {str(e)}")
 
 
-@router.post("/upload-multiple/{harvest_log_id}")
-async def upload_multiple_harvest_images(
-    harvest_log_id: UUID,
+@router.post("/upload-multiple/{event_id}")
+async def upload_multiple_event_images(
+    event_id: UUID,
     request: Request,
     files: List[UploadFile] = File(...),
     supabase=Depends(get_db)
 ):
     """
-    Upload multiple images for a harvest log
+    Upload multiple images for any event type (harvest, bloom, snapshot)
     """
     request_id = getattr(request.state, 'request_id', 'unknown')
     
     try:
-        logger.info(f"API: Starting multiple image upload for harvest log {harvest_log_id}", 
+        logger.info(f"API: Starting multiple image upload for event {event_id}", 
                    extra={
                        "request_id": request_id,
-                       "harvest_log_id": str(harvest_log_id),
+                       "event_id": str(event_id),
                        "file_count": len(files)
                    })
         
-        # Verify harvest log exists
-        harvest_check = supabase.table("harvest_logs").select("id").eq("id", str(harvest_log_id)).execute()
-        if not harvest_check.data:
-            logger.warning(f"API: Harvest log not found for multiple upload: {harvest_log_id}", 
-                          extra={"request_id": request_id, "record_id": str(harvest_log_id)})
-            raise NotFoundError("Harvest log", str(harvest_log_id))
+        # Verify event exists and get event type
+        event_check = supabase.table("plant_events").select("id, event_type").eq("id", str(event_id)).execute()
+        if not event_check.data:
+            logger.warning(f"API: Event not found for multiple upload: {event_id}", 
+                          extra={"request_id": request_id, "record_id": str(event_id)})
+            raise NotFoundError("Event", str(event_id))
+        
+        event_data = event_check.data[0]
+        event_type = event_data.get("event_type", "event")
         
         # Limit to 5 files
         if len(files) > 5:
@@ -268,13 +269,14 @@ async def upload_multiple_harvest_images(
                 print(f"🔄 Processing file {i+1}/{len(files)}: {file.filename}")
                 print(f"   Content type: {file.content_type}")
                 print(f"   Size: {file_size} bytes")
-                print(f"   First 16 bytes: {file_content[:16].hex() if len(file_content) >= 16 else 'N/A'}")
+                print(f"   Event type: {event_type}")
                 
                 # Upload to Supabase Storage using validated data
-                success, message, file_info = await storage_service.upload_image(
+                success, message, file_info = await storage_service.upload_event_image(
                     file_content=validated_data['file_content'],
                     original_filename=validated_data['filename'],
-                    harvest_log_id=str(harvest_log_id)
+                    event_id=str(event_id),
+                    event_type=event_type
                 )
                 
                 if not success:
@@ -285,18 +287,12 @@ async def upload_multiple_harvest_images(
                                      "error": message,
                                      "file_index": i
                                  })
-                    # Add detailed logging for debugging
-                    print(f"🚨 UPLOAD FAILURE DEBUG:")
-                    print(f"   File: {file.filename}")
-                    print(f"   Content Type: {file.content_type}")
-                    print(f"   Size: {len(file_content)} bytes")
-                    print(f"   Error: {message}")
                     failed_uploads.append({"filename": file.filename, "error": message})
                     continue
                 
-                # Save image metadata to database
+                # Save image metadata to database using EventImage model
                 image_data = {
-                    "harvest_log_id": str(harvest_log_id),
+                    "event_id": str(event_id),
                     "filename": file_info["filename"],
                     "original_filename": file_info["original_filename"],
                     "file_path": file_info["file_path"],
@@ -308,28 +304,48 @@ async def upload_multiple_harvest_images(
                     "public_url": file_info["public_url"]
                 }
                 
-                result = supabase.table("harvest_images").insert(image_data).execute()
+                print(f"💾 Attempting to save image metadata: {image_data}")
                 
-                if result.data:
-                    uploaded_images.append(result.data[0])
-                    logger.info(f"API: Successfully uploaded and saved image {file.filename}", 
-                               extra={
-                                   "request_id": request_id,
-                                   "record_id": result.data[0]["id"],
-                                   "file_name": file.filename,
-                                   "file_size": file_size
-                               })
-                else:
+                try:
+                    result = supabase.table("event_images").insert(image_data).execute()
+                    print(f"📊 Database insert result: {result}")
+                    
+                    if result.data:
+                        uploaded_images.append(result.data[0])
+                        logger.info(f"API: Successfully uploaded and saved image {file.filename}", 
+                                   extra={
+                                       "request_id": request_id,
+                                       "record_id": result.data[0]["id"],
+                                       "file_name": file.filename,
+                                       "file_size": file_size
+                                   })
+                        print(f"✅ Successfully saved image metadata for {file.filename}")
+                    else:
+                        # Clean up uploaded file if database insert fails
+                        await storage_service.delete_image(file_info["file_path"])
+                        failed_uploads.append({"filename": file.filename, "error": "Failed to save metadata - no data returned"})
+                        logger.error(f"API: Failed to save metadata for {file.filename} - no data returned", 
+                                   extra={
+                                       "request_id": request_id,
+                                       "file_name": file.filename,
+                                       "table": "event_images",
+                                       "db_operation": "insert"
+                                   })
+                        print(f"❌ No data returned from database insert for {file.filename}")
+                        
+                except Exception as db_error:
                     # Clean up uploaded file if database insert fails
                     await storage_service.delete_image(file_info["file_path"])
-                    failed_uploads.append({"filename": file.filename, "error": "Failed to save metadata"})
-                    logger.error(f"API: Failed to save metadata for {file.filename}", 
+                    error_msg = f"Database insert failed: {str(db_error)}"
+                    failed_uploads.append({"filename": file.filename, "error": error_msg})
+                    logger.error(f"API: Database insert error for {file.filename}: {db_error}", 
                                extra={
                                    "request_id": request_id,
                                    "file_name": file.filename,
-                                   "table": "harvest_images",
+                                   "table": "event_images",
                                    "db_operation": "insert"
-                               })
+                               }, exc_info=True)
+                    print(f"❌ Database insert exception for {file.filename}: {db_error}")
                     
             except Exception as e:
                 logger.error(f"API: Error processing file {file.filename}: {str(e)}", 
@@ -344,7 +360,7 @@ async def upload_multiple_harvest_images(
         logger.info(f"API: Multiple upload completed - {len(uploaded_images)} success, {len(failed_uploads)} failed", 
                    extra={
                        "request_id": request_id,
-                       "harvest_log_id": str(harvest_log_id),
+                       "event_id": str(event_id),
                        "total_uploaded": len(uploaded_images),
                        "total_failed": len(failed_uploads)
                    })
@@ -366,40 +382,40 @@ async def upload_multiple_harvest_images(
         logger.error(f"API: Failed multiple image upload: {str(e)}", 
                     extra={
                         "request_id": request_id,
-                        "harvest_log_id": str(harvest_log_id)
+                        "event_id": str(event_id)
                     }, 
                     exc_info=True)
         raise StorageError(f"Failed multiple image upload: {str(e)}")
 
 
-@router.get("/harvest/{harvest_log_id}")
-async def get_harvest_images(
-    harvest_log_id: UUID,
+@router.get("/event/{event_id}")
+async def get_event_images(
+    event_id: UUID,
     request: Request,
     supabase=Depends(get_db)
 ):
     """
-    Get all images for a specific harvest log
+    Get all images for a specific event (any event type)
     """
     request_id = getattr(request.state, 'request_id', 'unknown')
     
     try:
-        logger.info(f"API: Retrieving images for harvest log {harvest_log_id}", 
+        logger.info(f"API: Retrieving images for event {event_id}", 
                    extra={
                        "request_id": request_id,
-                       "harvest_log_id": str(harvest_log_id),
-                       "table": "harvest_images",
+                       "event_id": str(event_id),
+                       "table": "event_images",
                        "db_operation": "select"
                    })
         
-        result = supabase.table("harvest_images").select("*").eq("harvest_log_id", str(harvest_log_id)).order("upload_order").execute()
+        result = supabase.table("event_images").select("*").eq("event_id", str(event_id)).order("upload_order").execute()
         
         images = result.data or []
         
-        logger.info(f"API: Retrieved {len(images)} images for harvest log {harvest_log_id}", 
+        logger.info(f"API: Retrieved {len(images)} images for event {event_id}", 
                    extra={
                        "request_id": request_id,
-                       "harvest_log_id": str(harvest_log_id),
+                       "event_id": str(event_id),
                        "image_count": len(images)
                    })
         
@@ -410,37 +426,37 @@ async def get_harvest_images(
         }
         
     except Exception as e:
-        logger.error(f"API: Failed to retrieve images for harvest log {harvest_log_id}: {str(e)}", 
+        logger.error(f"API: Failed to retrieve images for event {event_id}: {str(e)}", 
                     extra={
                         "request_id": request_id,
-                        "harvest_log_id": str(harvest_log_id)
+                        "event_id": str(event_id)
                     }, 
                     exc_info=True)
         raise DatabaseError(f"Failed to retrieve images: {str(e)}")
 
 
 @router.delete("/{image_id}")
-async def delete_harvest_image(
+async def delete_event_image(
     image_id: UUID,
     request: Request,
     supabase=Depends(get_db)
 ):
     """
-    Delete a harvest image
+    Delete an event image (any event type)
     """
     request_id = getattr(request.state, 'request_id', 'unknown')
     
     try:
-        logger.info(f"API: Deleting harvest image {image_id}", 
+        logger.info(f"API: Deleting event image {image_id}", 
                    extra={
                        "request_id": request_id,
                        "record_id": str(image_id),
-                       "table": "harvest_images",
+                       "table": "event_images",
                        "db_operation": "delete"
                    })
         
         # Get image info first
-        image_result = supabase.table("harvest_images").select("*").eq("id", str(image_id)).execute()
+        image_result = supabase.table("event_images").select("*").eq("id", str(image_id)).execute()
         
         if not image_result.data:
             logger.warning(f"API: Image not found for deletion: {image_id}", 
@@ -460,18 +476,18 @@ async def delete_harvest_image(
             await storage_service.delete_image(file_path)
         
         # Delete from database
-        delete_result = supabase.table("harvest_images").delete().eq("id", str(image_id)).execute()
+        delete_result = supabase.table("event_images").delete().eq("id", str(image_id)).execute()
         
         if not delete_result.data:
             logger.error(f"API: Failed to delete image from database: {image_id}", 
                         extra={
                             "request_id": request_id,
                             "record_id": str(image_id),
-                            "table": "harvest_images"
+                            "table": "event_images"
                         })
             raise DatabaseError("Failed to delete image from database")
         
-        logger.info(f"API: Successfully deleted harvest image {image_id}", 
+        logger.info(f"API: Successfully deleted event image {image_id}", 
                    extra={
                        "request_id": request_id,
                        "record_id": str(image_id),
@@ -487,10 +503,10 @@ async def delete_harvest_image(
     except (NotFoundError, DatabaseError):
         raise
     except Exception as e:
-        logger.error(f"API: Failed to delete harvest image {image_id}: {str(e)}", 
+        logger.error(f"API: Failed to delete event image {image_id}: {str(e)}", 
                     extra={
                         "request_id": request_id,
                         "record_id": str(image_id)
                     }, 
                     exc_info=True)
-        raise StorageError(f"Failed to delete image: {str(e)}") 
+        raise StorageError(f"Failed to delete image: {str(e)}")

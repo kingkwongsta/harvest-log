@@ -22,14 +22,10 @@ import {
 import { 
   TrendingUp, 
   TrendingDown, 
-  Scale,
   Camera,
   Award,
   Target,
-  Activity,
-  Leaf,
-  Flower,
-  Eye
+  Activity
 } from "lucide-react"
 import type { PlantEvent } from "@/lib/api"
 

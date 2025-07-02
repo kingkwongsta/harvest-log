@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     allowed_image_types: List[str] = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/bmp", "image/tiff"]
     max_filename_length: int = 255
     
+    # Storage Configuration
+    supabase_storage_bucket: str = "event-images"
+    
     # Pagination Configuration
     default_page_size: int = 20
     max_page_size: int = 100

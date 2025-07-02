@@ -9,9 +9,13 @@ from app.logging_config import get_api_logger
 
 logger = get_api_logger()
 
+def celsius_to_fahrenheit(celsius: float) -> float:
+    """Convert temperature from Celsius to Fahrenheit"""
+    return (celsius * 9/5) + 32
+
 class WeatherData(BaseModel):
-    temperature_min: float = Field(..., description="Minimum temperature for the day in Celsius")
-    temperature_max: float = Field(..., description="Maximum temperature for the day in Celsius")
+    temperature_min: float = Field(..., description="Minimum temperature for the day in Fahrenheit")
+    temperature_max: float = Field(..., description="Maximum temperature for the day in Fahrenheit")
     humidity: float = Field(..., description="Relative humidity in percent")
     weather_code: int = Field(..., description="WMO weather interpretation code")
     wind_speed: float = Field(..., description="Wind speed in km/h")
@@ -46,23 +50,32 @@ async def get_weather_data(coords: Coordinates, event_date: Optional[date] = Non
     
     # Determine if we need historical or forecast data
     today = date.today()
-    if event_date <= today:
-        # Use historical/archive API for past dates (including today)
-        url = "https://api.open-meteo.com/v1/forecast"
+    if event_date < today:
+        # Use historical/archive API for past dates
+        url = "https://archive-api.open-meteo.com/v1/archive"
     else:
-        # Use forecast API for future dates
+        # Use forecast API for current and future dates
         url = "https://api.open-meteo.com/v1/forecast"
     
+    # Base parameters for both APIs
     params = {
         "latitude": coords.latitude,
         "longitude": coords.longitude,
         "daily": "temperature_2m_min,temperature_2m_max,precipitation_sum,weathercode",
-        "current_weather": "true",  # Still need for wind speed
         "hourly": "relativehumidity_2m",
         "start_date": event_date.isoformat(),
         "end_date": event_date.isoformat(),
         "timezone": "auto"
     }
+    
+    # Add current weather for forecast API (not available in historical API)
+    if event_date >= today:
+        params["current_weather"] = "true"
+        # Also add wind speed to hourly data for current/future dates
+        params["hourly"] += ",windspeed_10m"
+    else:
+        # For historical data, get wind speed from hourly data
+        params["hourly"] += ",windspeed_10m"
 
     try:
         async with httpx.AsyncClient() as client:
@@ -77,9 +90,6 @@ async def get_weather_data(coords: Coordinates, event_date: Optional[date] = Non
                 logger.warning("No daily weather data in Open-Meteo response")
                 return None
             
-            # Get current weather for wind speed
-            current = data.get("current_weather", {})
-            
             # Extract daily values (first index since we're querying single date)
             temperature_min_list = daily_data.get("temperature_2m_min", [])
             temperature_max_list = daily_data.get("temperature_2m_max", [])
@@ -90,14 +100,22 @@ async def get_weather_data(coords: Coordinates, event_date: Optional[date] = Non
                 logger.warning("Missing required daily weather data")
                 return None
             
-            # Get current hour's humidity from hourly data
+            # Get wind speed and humidity from hourly or current data
             current_humidity = 50.0  # Default fallback
+            wind_speed = 0.0  # Default fallback
+            
+            # Get current weather for wind speed (forecast API only)
+            current = data.get("current_weather", {})
+            if current:
+                wind_speed = current.get("windspeed", 0.0)
+            
+            # Process hourly data for humidity and wind speed (if current weather not available)
             hourly_data = data.get("hourly", {})
             if hourly_data:
                 time_points = hourly_data.get("time", [])
                 humidity_points = hourly_data.get("relativehumidity_2m", [])
+                windspeed_points = hourly_data.get("windspeed_10m", [])
                 
-                # Find closest time point to now for humidity
                 if time_points and humidity_points:
                     try:
                         # Use middle of day humidity as approximation
@@ -106,12 +124,22 @@ async def get_weather_data(coords: Coordinates, event_date: Optional[date] = Non
                             current_humidity = humidity_points[mid_index]
                     except (IndexError, ValueError):
                         pass
+                
+                # Use hourly wind speed if current weather not available (historical data)
+                if not current and windspeed_points:
+                    try:
+                        # Use middle of day wind speed as approximation
+                        mid_index = len(windspeed_points) // 2
+                        if mid_index < len(windspeed_points):
+                            wind_speed = windspeed_points[mid_index]
+                    except (IndexError, ValueError):
+                        pass
 
             weather_data = WeatherData(
-                temperature_min=temperature_min_list[0],
-                temperature_max=temperature_max_list[0],
+                temperature_min=celsius_to_fahrenheit(temperature_min_list[0]),
+                temperature_max=celsius_to_fahrenheit(temperature_max_list[0]),
                 weather_code=weather_code_list[0],
-                wind_speed=current.get("windspeed", 0.0),
+                wind_speed=wind_speed,
                 humidity=current_humidity,
                 precipitation=precipitation_list[0] if precipitation_list else 0.0
             )

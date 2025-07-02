@@ -218,57 +218,6 @@ class CacheManager:
     def __init__(self, cache: InMemoryCache):
         self.cache = cache
     
-    async def get_harvest_logs_list(self, filters: Dict[str, Any]) -> Optional[List[Dict]]:
-        """Get cached harvest logs list."""
-        key = f"harvest_logs:list:{cache_key(**filters)}"
-        return await self.cache.get(key)
-    
-    async def set_harvest_logs_list(self, filters: Dict[str, Any], data: List[Dict], ttl: int = 300) -> None:
-        """Cache harvest logs list."""
-        key = f"harvest_logs:list:{cache_key(**filters)}"
-        await self.cache.set(key, data, ttl)
-    
-    async def get_harvest_log(self, log_id: str) -> Optional[Dict]:
-        """Get cached individual harvest log."""
-        key = f"harvest_log:{log_id}"
-        return await self.cache.get(key)
-    
-    async def set_harvest_log(self, log_id: str, data: Dict, ttl: int = 600) -> None:
-        """Cache individual harvest log."""
-        key = f"harvest_log:{log_id}"
-        await self.cache.set(key, data, ttl)
-    
-    async def invalidate_harvest_log(self, log_id: str) -> None:
-        """Invalidate cached harvest log."""
-        await self.cache.delete(f"harvest_log:{log_id}")
-        # Also invalidate list caches (simplified - in production you'd track dependencies)
-        await self.invalidate_harvest_logs_lists()
-    
-    async def invalidate_harvest_logs_lists(self) -> None:
-        """Invalidate all cached harvest logs lists."""
-        # In a production system, you'd track which list caches exist
-        # For now, we'll clear all entries starting with the prefix
-        keys_to_delete = []
-        async with self.cache._lock:
-            for key in self.cache._cache.keys():
-                if key.startswith("harvest_logs:list:"):
-                    keys_to_delete.append(key)
-        
-        for key in keys_to_delete:
-            await self.cache.delete(key)
-    
-    async def get_harvest_stats(self) -> Optional[Dict]:
-        """Get cached harvest statistics."""
-        return await self.cache.get("harvest_stats")
-    
-    async def set_harvest_stats(self, data: Dict, ttl: int = 180) -> None:
-        """Cache harvest statistics."""
-        await self.cache.set("harvest_stats", data, ttl)
-    
-    async def invalidate_harvest_stats(self) -> None:
-        """Invalidate cached harvest statistics."""
-        await self.cache.delete("harvest_stats")
-    
     # Plant events cache methods
     async def get_plant_event(self, event_id: str) -> Optional[Dict]:
         """Get cached individual plant event."""

@@ -22,28 +22,66 @@ class StorageService:
             settings.supabase_url,
             settings.supabase_service_key or settings.supabase_anon_key
         )
-        self.bucket_name = "harvest-images"
+        self.bucket_name = settings.supabase_storage_bucket
         self._ensure_bucket_exists()
+    
+    def _clean_public_url(self, url: str) -> str:
+        """Clean up public URL by removing trailing query parameters that cause Next.js Image issues"""
+        if not url:
+            return url
+        
+        # Remove trailing ? and empty query parameters
+        cleaned_url = url.rstrip('?')
+        
+        # Remove empty query parameters (e.g., "?&" or "?")
+        if cleaned_url.endswith('?'):
+            cleaned_url = cleaned_url[:-1]
+        
+        print(f"🔧 Cleaned URL: {url} -> {cleaned_url}")
+        return cleaned_url
     
     def _ensure_bucket_exists(self):
         """Ensure the storage bucket exists"""
         try:
+            print(f"🔍 Checking if bucket '{self.bucket_name}' exists...")
+            
             # List buckets to check if our bucket exists
             buckets = self.supabase.storage.list_buckets()
+            print(f"📦 Found {len(buckets)} buckets total")
+            
             bucket_exists = any(bucket.name == self.bucket_name if hasattr(bucket, 'name') else bucket.get('name') == self.bucket_name for bucket in buckets)
             
-            if not bucket_exists:
-                print(f"Creating bucket: {self.bucket_name}")
-                result = self.supabase.storage.create_bucket(
-                    self.bucket_name, 
-                    {'public': True}
-                )
-                print(f"Bucket creation result: {result}")
+            if bucket_exists:
+                print(f"✅ Bucket '{self.bucket_name}' already exists")
+                return
+            
+            print(f"⚠️ Bucket '{self.bucket_name}' does not exist, attempting to create...")
+            
+            # Try to create the bucket
+            result = self.supabase.storage.create_bucket(
+                self.bucket_name, 
+                options={'public': True}
+            )
+            
+            print(f"✅ Bucket '{self.bucket_name}' created successfully: {result}")
+            
         except Exception as e:
-            print(f"Warning: Could not verify/create bucket: {e}")
+            error_msg = f"❌ Could not verify/create bucket '{self.bucket_name}': {str(e)}"
+            print(error_msg)
+            
+            # Check if it's a permissions error
+            if "insufficient_privilege" in str(e).lower() or "unauthorized" in str(e).lower():
+                print("💡 SOLUTION: You need to manually create the bucket in Supabase Dashboard:")
+                print(f"   1. Go to your Supabase project dashboard")
+                print(f"   2. Navigate to Storage")
+                print(f"   3. Create a new bucket named: {self.bucket_name}")
+                print(f"   4. Make sure the bucket is set to 'Public' for image access")
+            
+            # Don't raise the exception to prevent app startup failure
+            # The upload will show a clearer error message
     
-    def _generate_filename(self, original_filename: str, harvest_log_id: str) -> str:
-        """Generate a unique filename for storage"""
+    def _generate_filename(self, original_filename: str, event_id: str, event_type: str = "event") -> str:
+        """Generate a unique filename for storage with event organization"""
         # Get file extension
         _, ext = os.path.splitext(original_filename)
         
@@ -51,7 +89,9 @@ class StorageService:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
         
-        return f"{harvest_log_id}/{timestamp}_{unique_id}{ext}"
+        # Organize by event type and event ID
+        return f"{event_type}/{event_id}/{timestamp}_{unique_id}{ext}"
+    
     
     def _detect_mime_from_content(self, file_content: bytes) -> Optional[str]:
         """Detect MIME type from file content using magic bytes"""
@@ -118,20 +158,21 @@ class StorageService:
         print(f"✅ File validation passed: {filename} ({mime_type})")
         return True, "Valid file", mime_type
     
-    async def upload_image(
+    async def upload_event_image(
         self, 
         file_content: bytes, 
         original_filename: str, 
-        harvest_log_id: str
+        event_id: str,
+        event_type: str = "event"
     ) -> Tuple[bool, str, Optional[dict]]:
         """
-        Upload an image to Supabase Storage
+        Upload an image for an event to Supabase Storage (unified method)
         
         Returns:
             Tuple[bool, str, Optional[dict]]: (success, message, file_info)
         """
         try:
-            print(f"🔄 Starting upload process for: {original_filename}")
+            print(f"🔄 Starting event image upload for: {original_filename} (Event: {event_id}, Type: {event_type})")
             
             # Validate file
             is_valid, message, mime_type = self._validate_file(file_content, original_filename)
@@ -139,8 +180,8 @@ class StorageService:
                 print(f"❌ Upload failed at validation: {message}")
                 return False, message, None
             
-            # Generate unique filename
-            filename = self._generate_filename(original_filename, harvest_log_id)
+            # Generate unique filename with event organization
+            filename = self._generate_filename(original_filename, event_id, event_type)
             
             # Get image dimensions
             width, height = self._get_image_dimensions(file_content, mime_type)
@@ -165,7 +206,9 @@ class StorageService:
             
             # Get public URL
             try:
-                public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(filename)
+                raw_public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(filename)
+                public_url = self._clean_public_url(raw_public_url)
+                print(f"✅ Generated public URL: {public_url}")
             except Exception as url_error:
                 print(f"Warning: Could not get public URL: {url_error}")
                 public_url = ""
@@ -187,6 +230,7 @@ class StorageService:
         except Exception as e:
             return False, f"Upload error: {str(e)}", None
     
+    
     async def delete_image(self, file_path: str) -> Tuple[bool, str]:
         """Delete an image from Supabase Storage"""
         try:
@@ -203,8 +247,9 @@ class StorageService:
     def get_public_url(self, file_path: str) -> str:
         """Get public URL for a file"""
         try:
-            public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(file_path)
-            return public_url if isinstance(public_url, str) else ""
+            raw_public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(file_path)
+            public_url = self._clean_public_url(raw_public_url) if isinstance(raw_public_url, str) else ""
+            return public_url
         except Exception as e:
             print(f"Error getting public URL: {e}")
             return ""

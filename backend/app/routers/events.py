@@ -15,6 +15,7 @@ from app.plant_models import (
     EventType,
     EventStats,
     EventStatsResponse,
+    ErrorResponse,
     get_event_create_model,
     validate_event_data
 )
@@ -22,7 +23,6 @@ from app.weather import Coordinates
 from app.dependencies import get_supabase_client
 from app.logging_config import get_api_logger
 from app.exceptions import NotFoundError, DatabaseError, ValidationException
-from app.models import ErrorResponse
 from app.weather import get_weather_data
 from app.storage import storage_service
 from app.cache import cache_manager
@@ -55,8 +55,8 @@ async def create_plant_event(
     Create a new plant event with dynamic validation.
     
     The event_type field determines which validation model is used:
-    - **harvest**: Requires produce, quantity, quality
-    - **bloom**: Requires flower_type, optional bloom_stage
+    - **harvest**: Requires produce, quantity
+    - **bloom**: Requires plant_id (no additional fields)
     - **snapshot**: Optional metrics for growth tracking
     
     All events support: plant_id, event_date, description, notes, location
@@ -101,14 +101,47 @@ async def create_plant_event(
         if event_type == EventType.HARVEST.value:
             event_data.update({
                 "produce": validated_data.produce,
-                "quantity": validated_data.quantity,
-                "quality": validated_data.quality
+                "quantity": validated_data.quantity
             })
         elif event_type == EventType.BLOOM.value:
-            event_data.update({
-                "flower_type": validated_data.flower_type,
-                "bloom_stage": validated_data.bloom_stage
-            })
+            # For bloom events, we need to set the plant_variety field
+            variety_name = None
+            
+            # First, check if plant_variety_id was provided from the form
+            if hasattr(validated_data, 'plant_variety_id') and validated_data.plant_variety_id:
+                try:
+                    variety_query = client.table("plant_varieties").select("name").eq("id", str(validated_data.plant_variety_id)).execute()
+                    if variety_query.data and len(variety_query.data) > 0:
+                        variety_name = variety_query.data[0].get("name")
+                        logger.info(f"Using selected plant variety: {variety_name}", extra={"request_id": request_id})
+                except Exception as e:
+                    logger.warning(f"Failed to fetch selected plant variety: {str(e)}", 
+                                  extra={"request_id": request_id})
+            
+            # If no variety from form selection, fall back to plant's associated variety
+            if not variety_name:
+                try:
+                    plant_query = client.table("plants").select("*, variety:plant_varieties(name)").eq("id", str(validated_data.plant_id)).execute()
+                    if plant_query.data and len(plant_query.data) > 0:
+                        plant = plant_query.data[0]
+                        variety_name = plant.get("variety", {}).get("name") if plant.get("variety") else None
+                        if variety_name:
+                            logger.info(f"Using plant's associated variety: {variety_name}", extra={"request_id": request_id})
+                        else:
+                            # Fallback to plant name if no variety is available
+                            variety_name = plant.get("name", "Unknown")
+                            logger.info(f"Using plant name as variety fallback: {variety_name}", extra={"request_id": request_id})
+                    else:
+                        # Fallback if plant not found
+                        variety_name = "Unknown"
+                        logger.warning("Plant not found, using 'Unknown' as variety", extra={"request_id": request_id})
+                except Exception as e:
+                    logger.warning(f"Failed to fetch plant variety for bloom event: {str(e)}", 
+                                  extra={"request_id": request_id})
+                    variety_name = "Unknown"
+            
+            # Set the plant_variety field for database constraint
+            event_data["plant_variety"] = variety_name
         elif event_type == EventType.SNAPSHOT.value:
             event_data.update({
                 "metrics": validated_data.metrics
@@ -194,12 +227,8 @@ async def get_plant_events(
                        "offset": offset
                    })
         
-        # Build query with filters
-        query = client.table("plant_events").select("""
-            *,
-            plant:plants(id, name, variety:plant_varieties(id, name, category)),
-            images:event_images(*)
-        """)
+        # Build query with filters - Use simple query and fetch images separately
+        query = client.table("plant_events").select("*")
         
         # Apply filters
         if plant_id:
@@ -226,14 +255,33 @@ async def get_plant_events(
         
         result = query.execute()
         
-        # Convert to PlantEvent models
+        # Convert to PlantEvent models and fetch related data
         events = []
         for event_data in result.data:
+            # Fetch images for this event
+            images_result = client.table("event_images").select("*").eq("event_id", event_data["id"]).execute()
+            event_data["images"] = images_result.data or []
+            
+            # Fetch plant data if plant_id exists
+            if event_data.get("plant_id"):
+                plant_result = client.table("plants").select("id, name, variety_id, planted_date, status, notes").eq("id", event_data["plant_id"]).execute()
+                event_data["plant"] = plant_result.data[0] if plant_result.data else None
+            else:
+                event_data["plant"] = None
+            
             # Add public URLs to images
             if event_data.get("images"):
                 from app.storage import storage_service
                 for image in event_data["images"]:
                     image["public_url"] = storage_service.get_public_url(image["file_path"])
+            
+            # Reconstruct coordinates object from separate latitude/longitude fields
+            if event_data.get("latitude") is not None and event_data.get("longitude") is not None:
+                from app.weather import Coordinates
+                event_data["coordinates"] = Coordinates(
+                    latitude=event_data["latitude"],
+                    longitude=event_data["longitude"]
+                )
             
             event = PlantEvent(**event_data)
             events.append(event)
@@ -431,10 +479,7 @@ async def update_plant_event(
         update_data = {}
         for field, value in event_update.model_dump(exclude_unset=True).items():
             if value is not None:
-                if field == "bloom_stage" and hasattr(value, 'value'):
-                    update_data[field] = value.value
-                else:
-                    update_data[field] = value
+                update_data[field] = value
         
         if not update_data:
             raise ValidationException("No fields provided for update")
@@ -586,25 +631,38 @@ async def get_plant_event_by_id(event_id: UUID, client, request_id: str) -> Opti
                         "record_id": str(event_id)
                     })
         
-        result = client.table("plant_events").select("""
-            *,
-            plant:plants(
-                id, name, variety_id, planted_date, location, status, notes,
-                variety:plant_varieties(id, name, category, description)
-            ),
-            images:event_images(*)
-        """).eq("id", str(event_id)).execute()
+        # Fetch event data first
+        result = client.table("plant_events").select("*").eq("id", str(event_id)).execute()
         
         if not result.data:
             return None
         
         event_data = result.data[0]
         
+        # Fetch images for this event
+        images_result = client.table("event_images").select("*").eq("event_id", str(event_id)).execute()
+        event_data["images"] = images_result.data or []
+        
+        # Fetch plant data if plant_id exists
+        if event_data.get("plant_id"):
+            plant_result = client.table("plants").select("id, name, variety_id, planted_date, status, notes").eq("id", event_data["plant_id"]).execute()
+            event_data["plant"] = plant_result.data[0] if plant_result.data else None
+        else:
+            event_data["plant"] = None
+        
         # Add public URLs to images
         if event_data.get("images"):
             from app.storage import storage_service
             for image in event_data["images"]:
                 image["public_url"] = storage_service.get_public_url(image["file_path"])
+        
+        # Reconstruct coordinates object from separate latitude/longitude fields
+        if event_data.get("latitude") is not None and event_data.get("longitude") is not None:
+            from app.weather import Coordinates
+            event_data["coordinates"] = Coordinates(
+                latitude=event_data["latitude"],
+                longitude=event_data["longitude"]
+            )
         
         return PlantEvent(**event_data)
         
@@ -615,32 +673,3 @@ async def get_plant_event_by_id(event_id: UUID, client, request_id: str) -> Opti
         raise DatabaseError(f"Failed to fetch plant event: {str(e)}")
 
 
-# Backward compatibility endpoints
-@router.get(
-    "/harvest-logs",
-    response_model=PlantEventListResponse,
-    summary="Get harvest events (compatibility)",
-    description="Backward compatibility endpoint - returns only harvest events in legacy format.",
-    deprecated=True
-)
-async def get_harvest_events_compat(
-    request: Request,
-    client = Depends(get_supabase_client)
-) -> PlantEventListResponse:
-    """Backward compatibility endpoint for harvest logs"""
-    request_id = getattr(request.state, 'request_id', 'unknown')
-    
-    logger.info("API: Using legacy harvest-logs endpoint", 
-               extra={"request_id": request_id, "deprecated": True})
-    
-    # Call the main events endpoint with harvest filter
-    return await get_plant_events(
-        request=request,
-        plant_id=None,
-        event_type=EventType.HARVEST,
-        date_from=None,
-        date_to=None,
-        limit=50,
-        offset=0,
-        client=client
-    )
