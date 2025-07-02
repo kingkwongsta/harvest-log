@@ -15,6 +15,7 @@ from app.plant_models import (
     EventType,
     EventStats,
     EventStatsResponse,
+    ErrorResponse,
     get_event_create_model,
     validate_event_data
 )
@@ -22,7 +23,6 @@ from app.weather import Coordinates
 from app.dependencies import get_supabase_client
 from app.logging_config import get_api_logger
 from app.exceptions import NotFoundError, DatabaseError, ValidationException
-from app.models import ErrorResponse
 from app.weather import get_weather_data
 from app.storage import storage_service
 from app.cache import cache_manager
@@ -625,32 +625,3 @@ async def get_plant_event_by_id(event_id: UUID, client, request_id: str) -> Opti
         raise DatabaseError(f"Failed to fetch plant event: {str(e)}")
 
 
-# Backward compatibility endpoints
-@router.get(
-    "/harvest-logs",
-    response_model=PlantEventListResponse,
-    summary="Get harvest events (compatibility)",
-    description="Backward compatibility endpoint - returns only harvest events in legacy format.",
-    deprecated=True
-)
-async def get_harvest_events_compat(
-    request: Request,
-    client = Depends(get_supabase_client)
-) -> PlantEventListResponse:
-    """Backward compatibility endpoint for harvest logs"""
-    request_id = getattr(request.state, 'request_id', 'unknown')
-    
-    logger.info("API: Using legacy harvest-logs endpoint", 
-               extra={"request_id": request_id, "deprecated": True})
-    
-    # Call the main events endpoint with harvest filter
-    return await get_plant_events(
-        request=request,
-        plant_id=None,
-        event_type=EventType.HARVEST,
-        date_from=None,
-        date_to=None,
-        limit=50,
-        offset=0,
-        client=client
-    )

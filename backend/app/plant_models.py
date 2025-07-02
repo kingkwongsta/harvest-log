@@ -475,6 +475,13 @@ class EventStatsResponse(BaseModel):
     data: Optional[EventStats] = Field(None, description="The event statistics data")
 
 
+class ErrorResponse(BaseModel):
+    """Error response model"""
+    success: bool = Field(default=False, description="Always false for errors")
+    message: str = Field(..., description="Error message")
+    detail: Optional[str] = Field(None, description="Detailed error information")
+
+
 # Helper functions for dynamic model selection
 def get_event_create_model(event_type: str):
     """Get the appropriate event creation model based on event type"""

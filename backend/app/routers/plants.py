@@ -22,7 +22,7 @@ from app.plant_models import (
 from app.dependencies import get_supabase_client
 from app.logging_config import get_api_logger
 from app.exceptions import NotFoundError, DatabaseError, ValidationException
-from app.models import ErrorResponse
+from app.plant_models import ErrorResponse
 
 logger = get_api_logger()
 

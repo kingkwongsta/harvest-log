@@ -6,7 +6,7 @@ from app.weather import get_weather_data, Coordinates
 from app.plant_models import WeatherData
 from app.geocoding import geocode_location, get_default_location, GeocodingResult
 from app.logging_config import get_api_logger
-from app.models import ErrorResponse
+from app.plant_models import ErrorResponse
 
 logger = get_api_logger()
 
