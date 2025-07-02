@@ -61,9 +61,20 @@ class InputSanitizer:
         
         sanitized = InputSanitizer.sanitize_string(crop_name, max_length=100)
         
-        # Only allow letters, numbers, spaces, hyphens, and common punctuation (including HTML entities)
-        if not re.match(r'^[a-zA-Z0-9\s\-_\'\.\&\,\(\);]+$', sanitized):
-            raise ValidationException("Crop name contains invalid characters")
+        # Check for dangerous HTML entities (but allow common ones like apostrophes)
+        dangerous_entities = re.search(r'&(lt|gt);', sanitized)
+        if dangerous_entities:
+            raise ValidationException("Plant name contains HTML entities or dangerous characters")
+        
+        # Allow letters, numbers, spaces, common punctuation, and HTML entities for quotes/apostrophes
+        if not re.match(r'^[a-zA-Z0-9\s\-_\'\.\&\,\(\);:/+"#x;]+$', sanitized):
+            # Find which characters are invalid
+            invalid_chars = set(char for char in sanitized if not re.match(r'[a-zA-Z0-9\s\-_\'\.\&\,\(\);:/+"#x;]', char))
+            if invalid_chars:
+                invalid_str = ''.join(sorted(invalid_chars))
+                raise ValidationException(f"Plant name contains invalid characters: {invalid_str}. Allowed: letters, numbers, spaces, and punctuation (- _ ' . & , ( ) ; : / + \")")
+            else:
+                raise ValidationException("Plant name contains invalid characters. Allowed: letters, numbers, spaces, and punctuation (- _ ' . & , ( ) ; : / + \")")
         
         return sanitized
     

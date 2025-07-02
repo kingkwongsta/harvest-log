@@ -22,28 +22,51 @@ class StorageService:
             settings.supabase_url,
             settings.supabase_service_key or settings.supabase_anon_key
         )
-        self.bucket_name = "harvest-images"
+        self.bucket_name = settings.supabase_storage_bucket
         self._ensure_bucket_exists()
     
     def _ensure_bucket_exists(self):
         """Ensure the storage bucket exists"""
         try:
+            print(f"🔍 Checking if bucket '{self.bucket_name}' exists...")
+            
             # List buckets to check if our bucket exists
             buckets = self.supabase.storage.list_buckets()
+            print(f"📦 Found {len(buckets)} buckets total")
+            
             bucket_exists = any(bucket.name == self.bucket_name if hasattr(bucket, 'name') else bucket.get('name') == self.bucket_name for bucket in buckets)
             
-            if not bucket_exists:
-                print(f"Creating bucket: {self.bucket_name}")
-                result = self.supabase.storage.create_bucket(
-                    self.bucket_name, 
-                    {'public': True}
-                )
-                print(f"Bucket creation result: {result}")
+            if bucket_exists:
+                print(f"✅ Bucket '{self.bucket_name}' already exists")
+                return
+            
+            print(f"⚠️ Bucket '{self.bucket_name}' does not exist, attempting to create...")
+            
+            # Try to create the bucket
+            result = self.supabase.storage.create_bucket(
+                self.bucket_name, 
+                options={'public': True}
+            )
+            
+            print(f"✅ Bucket '{self.bucket_name}' created successfully: {result}")
+            
         except Exception as e:
-            print(f"Warning: Could not verify/create bucket: {e}")
+            error_msg = f"❌ Could not verify/create bucket '{self.bucket_name}': {str(e)}"
+            print(error_msg)
+            
+            # Check if it's a permissions error
+            if "insufficient_privilege" in str(e).lower() or "unauthorized" in str(e).lower():
+                print("💡 SOLUTION: You need to manually create the bucket in Supabase Dashboard:")
+                print(f"   1. Go to your Supabase project dashboard")
+                print(f"   2. Navigate to Storage")
+                print(f"   3. Create a new bucket named: {self.bucket_name}")
+                print(f"   4. Make sure the bucket is set to 'Public' for image access")
+            
+            # Don't raise the exception to prevent app startup failure
+            # The upload will show a clearer error message
     
-    def _generate_filename(self, original_filename: str, harvest_log_id: str) -> str:
-        """Generate a unique filename for storage"""
+    def _generate_filename(self, original_filename: str, event_id: str, event_type: str = "event") -> str:
+        """Generate a unique filename for storage with event organization"""
         # Get file extension
         _, ext = os.path.splitext(original_filename)
         
@@ -51,7 +74,15 @@ class StorageService:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
         
-        return f"{harvest_log_id}/{timestamp}_{unique_id}{ext}"
+        # Organize by event type and event ID
+        return f"{event_type}/{event_id}/{timestamp}_{unique_id}{ext}"
+    
+    def _generate_legacy_filename(self, original_filename: str, harvest_log_id: str) -> str:
+        """Generate filename for legacy harvest support"""
+        _, ext = os.path.splitext(original_filename)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = str(uuid.uuid4())[:8]
+        return f"harvest/{harvest_log_id}/{timestamp}_{unique_id}{ext}"
     
     def _detect_mime_from_content(self, file_content: bytes) -> Optional[str]:
         """Detect MIME type from file content using magic bytes"""
@@ -118,20 +149,21 @@ class StorageService:
         print(f"✅ File validation passed: {filename} ({mime_type})")
         return True, "Valid file", mime_type
     
-    async def upload_image(
+    async def upload_event_image(
         self, 
         file_content: bytes, 
         original_filename: str, 
-        harvest_log_id: str
+        event_id: str,
+        event_type: str = "event"
     ) -> Tuple[bool, str, Optional[dict]]:
         """
-        Upload an image to Supabase Storage
+        Upload an image for an event to Supabase Storage (unified method)
         
         Returns:
             Tuple[bool, str, Optional[dict]]: (success, message, file_info)
         """
         try:
-            print(f"🔄 Starting upload process for: {original_filename}")
+            print(f"🔄 Starting event image upload for: {original_filename} (Event: {event_id}, Type: {event_type})")
             
             # Validate file
             is_valid, message, mime_type = self._validate_file(file_content, original_filename)
@@ -139,8 +171,77 @@ class StorageService:
                 print(f"❌ Upload failed at validation: {message}")
                 return False, message, None
             
-            # Generate unique filename
-            filename = self._generate_filename(original_filename, harvest_log_id)
+            # Generate unique filename with event organization
+            filename = self._generate_filename(original_filename, event_id, event_type)
+            
+            # Get image dimensions
+            width, height = self._get_image_dimensions(file_content, mime_type)
+            
+            # Upload to Supabase Storage with proper content-type
+            try:
+                response = self.supabase.storage.from_(self.bucket_name).upload(
+                    path=filename,
+                    file=file_content,
+                    file_options={
+                        "content-type": mime_type,
+                        "cache-control": "3600"
+                    }
+                )
+                
+                # Check if upload was successful
+                if not response or response.status_code != 200:
+                    return False, f"Upload failed with status: {response.status_code if response else 'No response'}", None
+                    
+            except Exception as upload_error:
+                return False, f"Upload error: {str(upload_error)}", None
+            
+            # Get public URL
+            try:
+                public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(filename)
+            except Exception as url_error:
+                print(f"Warning: Could not get public URL: {url_error}")
+                public_url = ""
+            
+            # Prepare file info
+            file_info = {
+                'filename': filename,
+                'original_filename': original_filename,
+                'file_path': filename,
+                'file_size': len(file_content),
+                'mime_type': mime_type,
+                'width': width,
+                'height': height,
+                'public_url': public_url
+            }
+            
+            return True, "File uploaded successfully", file_info
+            
+        except Exception as e:
+            return False, f"Upload error: {str(e)}", None
+    
+    async def upload_image(
+        self, 
+        file_content: bytes, 
+        original_filename: str, 
+        harvest_log_id: str
+    ) -> Tuple[bool, str, Optional[dict]]:
+        """
+        Upload an image to Supabase Storage (legacy method for backward compatibility)
+        
+        Returns:
+            Tuple[bool, str, Optional[dict]]: (success, message, file_info)
+        """
+        try:
+            print(f"🔄 Starting legacy upload process for: {original_filename}")
+            
+            # Validate file
+            is_valid, message, mime_type = self._validate_file(file_content, original_filename)
+            if not is_valid:
+                print(f"❌ Upload failed at validation: {message}")
+                return False, message, None
+            
+            # Generate unique filename using legacy structure
+            filename = self._generate_legacy_filename(original_filename, harvest_log_id)
             
             # Get image dimensions
             width, height = self._get_image_dimensions(file_content, mime_type)

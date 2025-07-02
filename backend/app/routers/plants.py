@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, Request, Query
+from fastapi import APIRouter, Depends, status, Request, Query, HTTPException
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
@@ -9,12 +9,12 @@ from app.plant_models import (
     PlantUpdate,
     PlantResponse,
     PlantListResponse,
+    PlantEventListResponse,
     PlantVariety,
     PlantVarietyCreate,
     PlantVarietyUpdate,
     PlantVarietyResponse,
     PlantVarietyListResponse,
-    PlantEventListResponse,
     PlantStatus,
     PlantCategory,
     EventType
@@ -42,7 +42,7 @@ router = APIRouter(
     response_model=PlantVarietyResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create plant variety",
-    description="Create a new plant variety in the catalog."
+    description="Create a new plant variety."
 )
 async def create_plant_variety(
     variety_data: PlantVarietyCreate,
@@ -52,13 +52,13 @@ async def create_plant_variety(
     """
     Create a new plant variety.
     
-    - **name**: Name of the plant variety (required, unique)
-    - **category**: Category (vegetable, fruit, flower, herb, tree, shrub, other)
-    - **description**: Optional description of the variety
-    - **growing_season**: Typical growing season
-    - **harvest_time_days**: Days from planting to harvest
-    - **typical_yield**: Expected yield per plant
-    - **care_instructions**: Growing and care instructions
+    - **name**: Name of the plant variety (required)
+    - **category**: Category of the plant variety (required)
+    - **description**: Description of the plant variety (optional)
+    - **growing_season**: Growing season for this variety (optional)
+    - **harvest_time_days**: Typical days to harvest (optional)
+    - **typical_yield**: Typical yield expectations (optional)
+    - **care_instructions**: Care instructions (optional)
     """
     request_id = getattr(request.state, 'request_id', 'unknown')
     
@@ -70,7 +70,7 @@ async def create_plant_variety(
         variety_dict = variety_data.model_dump()
         variety_dict["category"] = variety_data.category.value
         
-        logger.debug("API: Inserting variety into database", 
+        logger.debug("API: Inserting plant variety into database", 
                     extra={
                         "request_id": request_id,
                         "table": "plant_varieties",
@@ -82,6 +82,7 @@ async def create_plant_variety(
         if not result.data:
             raise DatabaseError("Failed to create plant variety")
         
+        # Convert to PlantVariety model
         variety = PlantVariety(**result.data[0])
         
         logger.info(f"API: Successfully created plant variety with ID {variety.id}", 
@@ -108,8 +109,7 @@ async def create_plant_variety(
 )
 async def get_plant_varieties(
     request: Request,
-    category: Optional[PlantCategory] = Query(None, description="Filter by category"),
-    search: Optional[str] = Query(None, description="Search in variety names"),
+    category: Optional[PlantCategory] = Query(None, description="Filter by plant category"),
     limit: int = Query(default=50, ge=1, le=100, description="Number of varieties to return"),
     offset: int = Query(default=0, ge=0, description="Number of varieties to skip"),
     client = Depends(get_supabase_client)
@@ -118,7 +118,6 @@ async def get_plant_varieties(
     Get plant varieties with optional filtering.
     
     - **category**: Filter by plant category
-    - **search**: Search in variety names
     - **limit/offset**: Pagination parameters
     """
     request_id = getattr(request.state, 'request_id', 'unknown')
@@ -128,25 +127,21 @@ async def get_plant_varieties(
                    extra={
                        "request_id": request_id,
                        "category": category.value if category else None,
-                       "search": search,
                        "limit": limit,
                        "offset": offset
                    })
         
-        # Build query
+        # Build query for plant varieties
         query = client.table("plant_varieties").select("*")
         
         # Apply filters
         if category:
             query = query.eq("category", category.value)
         
-        if search:
-            query = query.ilike("name", f"%{search}%")
-        
         # Apply pagination and ordering
         query = query.order("name").range(offset, offset + limit - 1)
         
-        logger.debug("API: Executing varieties query", 
+        logger.debug("API: Executing plant varieties query", 
                     extra={
                         "request_id": request_id,
                         "table": "plant_varieties",
@@ -196,13 +191,11 @@ async def get_plant_variety(
         result = client.table("plant_varieties").select("*").eq("id", str(variety_id)).execute()
         
         if not result.data:
-            logger.warning(f"API: Plant variety not found: {variety_id}", 
-                          extra={"request_id": request_id, "record_id": str(variety_id)})
-            raise NotFoundError("Plant variety", str(variety_id))
+            raise NotFoundError(f"Plant variety with ID {variety_id} not found")
         
         variety = PlantVariety(**result.data[0])
         
-        logger.info(f"API: Successfully retrieved plant variety {variety_id}", 
+        logger.info(f"API: Successfully retrieved plant variety {variety.name}", 
                    extra={"request_id": request_id, "record_id": str(variety_id)})
         
         return PlantVarietyResponse(
@@ -214,10 +207,128 @@ async def get_plant_variety(
     except NotFoundError:
         raise
     except Exception as e:
-        logger.error(f"API: Failed to retrieve plant variety {variety_id}: {str(e)}", 
-                    extra={"request_id": request_id, "record_id": str(variety_id)}, 
+        logger.error(f"API: Failed to retrieve plant variety: {str(e)}", 
+                    extra={"request_id": request_id}, 
                     exc_info=True)
         raise DatabaseError(f"Failed to retrieve plant variety: {str(e)}")
+
+
+@router.put(
+    "/varieties/{variety_id}",
+    response_model=PlantVarietyResponse,
+    summary="Update plant variety",
+    description="Update an existing plant variety with new information."
+)
+async def update_plant_variety(
+    variety_id: UUID,
+    variety_update: PlantVarietyUpdate,
+    request: Request,
+    client = Depends(get_supabase_client)
+) -> PlantVarietyResponse:
+    """Update an existing plant variety."""
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"API: Updating plant variety with ID {variety_id}", 
+                   extra={"request_id": request_id, "record_id": str(variety_id)})
+        
+        # Check if variety exists
+        existing = client.table("plant_varieties").select("*").eq("id", str(variety_id)).execute()
+        if not existing.data:
+            raise NotFoundError(f"Plant variety with ID {variety_id} not found")
+        
+        # Prepare update data
+        update_dict = variety_update.model_dump(exclude_unset=True)
+        if 'category' in update_dict and update_dict['category']:
+            update_dict['category'] = update_dict['category'].value
+        
+        if not update_dict:
+            # No fields to update
+            variety = PlantVariety(**existing.data[0])
+            return PlantVarietyResponse(
+                success=True,
+                message="No changes to update",
+                data=variety
+            )
+        
+        # Update the variety
+        result = client.table("plant_varieties").update(update_dict).eq("id", str(variety_id)).execute()
+        
+        if not result.data:
+            raise DatabaseError("Failed to update plant variety")
+        
+        variety = PlantVariety(**result.data[0])
+        
+        logger.info(f"API: Successfully updated plant variety {variety.name}", 
+                   extra={"request_id": request_id, "record_id": str(variety_id)})
+        
+        return PlantVarietyResponse(
+            success=True,
+            message="Plant variety updated successfully",
+            data=variety
+        )
+        
+    except NotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"API: Failed to update plant variety: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to update plant variety: {str(e)}")
+
+
+@router.delete(
+    "/varieties/{variety_id}",
+    response_model=PlantVarietyResponse,
+    summary="Delete plant variety",
+    description="Delete a plant variety entry permanently."
+)
+async def delete_plant_variety(
+    variety_id: UUID,
+    request: Request,
+    client = Depends(get_supabase_client)
+) -> PlantVarietyResponse:
+    """Delete a plant variety permanently."""
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"API: Deleting plant variety with ID {variety_id}", 
+                   extra={"request_id": request_id, "record_id": str(variety_id)})
+        
+        # Check if variety exists and get its data before deletion
+        existing = client.table("plant_varieties").select("*").eq("id", str(variety_id)).execute()
+        if not existing.data:
+            raise NotFoundError(f"Plant variety with ID {variety_id} not found")
+        
+        # Check if any plants are using this variety
+        plants_using_variety = client.table("plants").select("id").eq("variety_id", str(variety_id)).execute()
+        if plants_using_variety.data:
+            raise ValidationException(f"Cannot delete plant variety: {len(plants_using_variety.data)} plants are using this variety")
+        
+        # Delete the variety
+        result = client.table("plant_varieties").delete().eq("id", str(variety_id)).execute()
+        
+        if not result.data:
+            raise DatabaseError("Failed to delete plant variety")
+        
+        variety = PlantVariety(**existing.data[0])
+        
+        logger.info(f"API: Successfully deleted plant variety {variety.name}", 
+                   extra={"request_id": request_id, "record_id": str(variety_id)})
+        
+        return PlantVarietyResponse(
+            success=True,
+            message=f"Plant variety '{variety.name}' deleted successfully",
+            data=variety
+        )
+        
+    except (NotFoundError, ValidationException):
+        raise
+    except Exception as e:
+        logger.error(f"API: Failed to delete plant variety: {str(e)}", 
+                    extra={"request_id": request_id}, 
+                    exc_info=True)
+        raise DatabaseError(f"Failed to delete plant variety: {str(e)}")
 
 
 # Plant endpoints
@@ -252,6 +363,10 @@ async def create_plant(
         # Convert to database format
         plant_dict = plant_data.model_dump()
         plant_dict["status"] = plant_data.status.value
+        
+        # Convert UUID fields to strings for JSON serialization
+        if plant_dict.get("variety_id"):
+            plant_dict["variety_id"] = str(plant_dict["variety_id"])
         
         logger.debug("API: Inserting plant into database", 
                     extra={
@@ -319,11 +434,8 @@ async def get_plants(
                        "offset": offset
                    })
         
-        # Build query with variety information
-        query = client.table("plants").select("""
-            *,
-            variety:plant_varieties(id, name, category, description)
-        """)
+        # Build query for plants
+        query = client.table("plants").select("*")
         
         # Apply filters
         if status:
@@ -499,6 +611,9 @@ async def update_plant(
             if value is not None:
                 if field == "status" and hasattr(value, 'value'):
                     update_data[field] = value.value
+                elif field == "variety_id" and isinstance(value, UUID):
+                    # Convert UUID to string for JSON serialization
+                    update_data[field] = str(value)
                 else:
                     update_data[field] = value
         
@@ -622,10 +737,7 @@ async def get_plant_by_id(plant_id: UUID, client, request_id: str) -> Optional[P
                         "record_id": str(plant_id)
                     })
         
-        result = client.table("plants").select("""
-            *,
-            variety:plant_varieties(id, name, category, description, growing_season, harvest_time_days, typical_yield, care_instructions)
-        """).eq("id", str(plant_id)).execute()
+        result = client.table("plants").select("*").eq("id", str(plant_id)).execute()
         
         if not result.data:
             return None

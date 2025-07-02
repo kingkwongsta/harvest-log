@@ -56,7 +56,7 @@ async def create_plant_event(
     
     The event_type field determines which validation model is used:
     - **harvest**: Requires produce, quantity
-    - **bloom**: Requires plant_variety
+    - **bloom**: Requires plant_id (no additional fields)
     - **snapshot**: Optional metrics for growth tracking
     
     All events support: plant_id, event_date, description, notes, location
@@ -104,9 +104,8 @@ async def create_plant_event(
                 "quantity": validated_data.quantity
             })
         elif event_type == EventType.BLOOM.value:
-            event_data.update({
-                "plant_variety": validated_data.plant_variety
-            })
+            # No additional fields required for bloom events - using plant_id instead
+            pass
         elif event_type == EventType.SNAPSHOT.value:
             event_data.update({
                 "metrics": validated_data.metrics

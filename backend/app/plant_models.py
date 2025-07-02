@@ -39,12 +39,12 @@ class PlantCategory(str, Enum):
 class PlantVarietyBase(BaseModel):
     """Base model for plant variety data"""
     name: str = Field(..., min_length=1, max_length=100, description="Name of the plant variety")
-    category: PlantCategory = Field(..., description="Category of the plant")
-    description: Optional[str] = Field(None, max_length=2000, description="Description of the variety")
-    growing_season: Optional[str] = Field(None, max_length=50, description="Typical growing season")
-    harvest_time_days: Optional[int] = Field(None, gt=0, le=365, description="Days from planting to harvest")
-    typical_yield: Optional[str] = Field(None, max_length=100, description="Expected yield per plant")
-    care_instructions: Optional[str] = Field(None, max_length=2000, description="Care and growing instructions")
+    category: PlantCategory = Field(..., description="Category of the plant variety")
+    description: Optional[str] = Field(None, max_length=2000, description="Description of the plant variety")
+    growing_season: Optional[str] = Field(None, max_length=50, description="Growing season for this variety")
+    harvest_time_days: Optional[int] = Field(None, gt=0, description="Typical days to harvest")
+    typical_yield: Optional[str] = Field(None, max_length=100, description="Typical yield expectations")
+    care_instructions: Optional[str] = Field(None, max_length=2000, description="Care instructions")
     
     @field_validator('name')
     @classmethod
@@ -59,6 +59,15 @@ class PlantVarietyBase(BaseModel):
         if v is None:
             return None
         return InputSanitizer.sanitize_notes(v)
+    
+    @field_validator('growing_season', 'typical_yield')
+    @classmethod
+    def validate_optional_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize optional string fields"""
+        if v is None:
+            return None
+        # Basic sanitization for these fields
+        return InputSanitizer.sanitize_string(v, max_length=100)
 
 
 class PlantVarietyCreate(PlantVarietyBase):
@@ -72,9 +81,25 @@ class PlantVarietyUpdate(BaseModel):
     category: Optional[PlantCategory] = None
     description: Optional[str] = Field(None, max_length=2000)
     growing_season: Optional[str] = Field(None, max_length=50)
-    harvest_time_days: Optional[int] = Field(None, gt=0, le=365)
+    harvest_time_days: Optional[int] = Field(None, gt=0)
     typical_yield: Optional[str] = Field(None, max_length=100)
     care_instructions: Optional[str] = Field(None, max_length=2000)
+    
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize variety name"""
+        if v is None:
+            return None
+        return InputSanitizer.sanitize_crop_name(v)
+    
+    @field_validator('description', 'care_instructions')
+    @classmethod
+    def validate_text_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize text fields"""
+        if v is None:
+            return None
+        return InputSanitizer.sanitize_notes(v)
 
 
 class PlantVariety(PlantVarietyBase):
@@ -131,7 +156,7 @@ class Plant(PlantBase):
     id: UUID = Field(default_factory=uuid4, description="Unique identifier for the plant")
     created_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the plant was created")
     updated_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the plant was last updated")
-    variety: Optional[PlantVariety] = Field(None, description="Associated plant variety")
+    variety: Optional[Any] = Field(None, description="Associated plant variety (legacy field)")
     events: List['PlantEvent'] = Field(default_factory=list, description="Events associated with this plant")
 
 
@@ -156,13 +181,7 @@ class HarvestEventData(BaseModel):
 
 class BloomEventData(BaseModel):
     """Data specific to bloom events"""
-    plant_variety: str = Field(..., min_length=1, max_length=100, description="Plant variety name")
-    
-    @field_validator('plant_variety')
-    @classmethod
-    def validate_plant_variety(cls, v: str) -> str:
-        """Validate and sanitize plant variety"""
-        return InputSanitizer.sanitize_crop_name(v)
+    pass  # No specific data required - using plant_id instead of plant_variety
 
 
 class SnapshotEventData(BaseModel):
@@ -270,7 +289,6 @@ class PlantEventUpdate(BaseModel):
     # Event-specific fields (only relevant fields will be used based on event_type)
     produce: Optional[str] = Field(None, max_length=100)
     quantity: Optional[float] = Field(None, gt=0)
-    plant_variety: Optional[str] = Field(None, max_length=100)
     metrics: Optional[Dict[str, Any]] = None
 
 
@@ -285,7 +303,6 @@ class PlantEvent(PlantEventBase):
     produce: Optional[str] = Field(None, description="Type of produce harvested (harvest events only)")
     quantity: Optional[float] = Field(None, description="Quantity harvested (harvest events only)")
     unit: Optional[str] = Field(None, description="Unit of measurement (legacy field, being phased out)")
-    plant_variety: Optional[str] = Field(None, description="Plant variety name (bloom events only)")
     metrics: Optional[Dict[str, Any]] = Field(None, description="Flexible metrics data (primarily snapshot events)")
     weather: Optional[WeatherData] = Field(None, description="Weather data at the time of the event")
     
@@ -389,7 +406,6 @@ class EventImage(EventImageBase):
     public_url: Optional[str] = Field(default=None, description="Public URL for accessing the image")
 
 
-# Response Models
 class PlantVarietyResponse(BaseModel):
     """Response model for plant variety operations"""
     success: bool = Field(..., description="Whether the operation was successful")

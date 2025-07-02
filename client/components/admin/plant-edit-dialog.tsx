@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { PlantForm, PlantFormData } from './plant-form'
 import type { Plant, PlantVariety } from '@/lib/api'
 
@@ -30,6 +30,9 @@ export const PlantEditDialog = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Plant</DialogTitle>
+          <DialogDescription>
+            Update the details of your plant. Make changes to track its current status and information.
+          </DialogDescription>
         </DialogHeader>
         {plant && (
           <PlantForm

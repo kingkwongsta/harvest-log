@@ -15,7 +15,11 @@ import { toast } from "@/components/ui/use-toast"
 import { PlantAddDialog } from "@/components/admin/plant-add-dialog"
 import { PlantEditDialog } from "@/components/admin/plant-edit-dialog"
 import { PlantDeleteDialog } from "@/components/admin/plant-delete-dialog"
+import { PlantVarietyAddDialog } from "@/components/admin/plant-variety-add-dialog"
+import { PlantVarietyEditDialog } from "@/components/admin/plant-variety-edit-dialog"
+import { PlantVarietyDeleteDialog } from "@/components/admin/plant-variety-delete-dialog"
 import type { PlantFormData } from "@/components/admin/plant-form"
+import type { PlantVarietyFormData } from "@/components/admin/plant-variety-form"
 
 
 export default function AdminPage() {
@@ -40,6 +44,15 @@ export default function AdminPage() {
   const [plantToDelete, setPlantToDelete] = useState<Plant | null>(null)
   const [isPlantSubmitting, setIsPlantSubmitting] = useState(false)
   const [isDeletingPlant, setIsDeletingPlant] = useState(false)
+
+  // Plant variety management state
+  const [addVarietyDialogOpen, setAddVarietyDialogOpen] = useState(false)
+  const [editVarietyDialogOpen, setEditVarietyDialogOpen] = useState(false)
+  const [deleteVarietyDialogOpen, setDeleteVarietyDialogOpen] = useState(false)
+  const [varietyToEdit, setVarietyToEdit] = useState<PlantVariety | null>(null)
+  const [varietyToDelete, setVarietyToDelete] = useState<PlantVariety | null>(null)
+  const [isVarietySubmitting, setIsVarietySubmitting] = useState(false)
+  const [isDeletingVariety, setIsDeletingVariety] = useState(false)
   
 
   useEffect(() => {
@@ -145,9 +158,10 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error('Error creating plant:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create plant'
       toast({
         title: 'Error',
-        description: 'Failed to create plant',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {
@@ -237,6 +251,122 @@ export default function AdminPage() {
     setDeletePlantDialogOpen(false)
     setPlantToEdit(null)
     setPlantToDelete(null)
+  }
+
+  // Plant variety management functions
+  const handleAddVariety = async (data: PlantVarietyFormData) => {
+    setIsVarietySubmitting(true)
+    try {
+      const response = await plantsApi.createVariety(data)
+      if (response.success) {
+        setVarieties(prev => [...prev, response.data!])
+        setAddVarietyDialogOpen(false)
+        toast({
+          title: 'Success',
+          description: 'Plant variety created successfully!',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to create plant variety',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error creating plant variety:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create plant variety'
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsVarietySubmitting(false)
+    }
+  }
+
+  const handleEditVariety = async (data: PlantVarietyFormData) => {
+    if (!varietyToEdit) return
+    
+    setIsVarietySubmitting(true)
+    try {
+      const response = await plantsApi.updateVariety(varietyToEdit.id, data)
+      if (response.success) {
+        setVarieties(prev => prev.map(v => v.id === varietyToEdit.id ? response.data! : v))
+        setEditVarietyDialogOpen(false)
+        setVarietyToEdit(null)
+        toast({
+          title: 'Success',
+          description: 'Plant variety updated successfully!',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to update plant variety',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error updating plant variety:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update plant variety',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsVarietySubmitting(false)
+    }
+  }
+
+  const handleDeleteVariety = async () => {
+    if (!varietyToDelete) return
+    
+    setIsDeletingVariety(true)
+    try {
+      const response = await plantsApi.deleteVariety(varietyToDelete.id)
+      if (response.success) {
+        setVarieties(prev => prev.filter(v => v.id !== varietyToDelete.id))
+        setDeleteVarietyDialogOpen(false)
+        setVarietyToDelete(null)
+        toast({
+          title: 'Success',
+          description: 'Plant variety deleted successfully!',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to delete plant variety',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting plant variety:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete plant variety',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeletingVariety(false)
+    }
+  }
+
+  const handleEditVarietyClick = (variety: PlantVariety) => {
+    setVarietyToEdit(variety)
+    setEditVarietyDialogOpen(true)
+  }
+
+  const handleDeleteVarietyClick = (variety: PlantVariety) => {
+    setVarietyToDelete(variety)
+    setDeleteVarietyDialogOpen(true)
+  }
+
+  const handleCloseVarietyDialogs = () => {
+    setAddVarietyDialogOpen(false)
+    setEditVarietyDialogOpen(false)
+    setDeleteVarietyDialogOpen(false)
+    setVarietyToEdit(null)
+    setVarietyToDelete(null)
   }
 
   
@@ -402,7 +532,7 @@ export default function AdminPage() {
                           <div className="space-y-1">
                             <EventField label="Produce" value={event.produce} />
                             <EventField label="Quantity" value={event.quantity} />
-                            <EventField label="Plant Variety" value={event.plant_variety} />
+                            {/* Plant Variety field removed - using Plant field instead */}
                             <EventField label="Metrics" value={event.metrics} />
                           </div>
                         </div>
@@ -534,21 +664,64 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="varieties" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Plant Variety Management</CardTitle>
+                  <CardDescription>Manage all plant varieties in your system</CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setAddVarietyDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Variety
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+
           <div className="grid gap-4">
             {varieties.map((variety) => (
               <Card key={variety.id}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {variety.name}
-                    <Badge variant="secondary">{variety.category}</Badge>
-                  </CardTitle>
-                  <CardDescription>Variety ID: {variety.id}</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        {variety.name}
+                        <Badge variant="outline">{variety.category}</Badge>
+                      </CardTitle>
+                      <CardDescription>Variety ID: {variety.id}</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditVarietyClick(variety)}
+                        className="flex items-center gap-1"
+                      >
+                        <Edit className="h-3 w-3" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteVarietyClick(variety)}
+                        className="flex items-center gap-1"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
+                    <EventField label="Category" value={variety.category} />
                     <EventField label="Description" value={variety.description} />
                     <EventField label="Growing Season" value={variety.growing_season} />
-                    <EventField label="Harvest Time (days)" value={variety.harvest_time_days} />
+                    <EventField label="Days to Harvest" value={variety.harvest_time_days} />
                     <EventField label="Typical Yield" value={variety.typical_yield} />
                     <EventField label="Care Instructions" value={variety.care_instructions} />
                     <EventField label="Created At" value={variety.created_at} />
@@ -558,6 +731,14 @@ export default function AdminPage() {
               </Card>
             ))}
           </div>
+
+          {varieties.length === 0 && (
+            <Card>
+              <CardContent className="text-center py-8">
+                <p className="text-gray-500">No plant varieties found. Add your first variety to get started!</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -643,6 +824,30 @@ export default function AdminPage() {
         plant={plantToDelete}
         onConfirm={handleDeletePlant}
         isDeleting={isDeletingPlant}
+      />
+
+      {/* Plant Variety Management Dialogs */}
+      <PlantVarietyAddDialog
+        open={addVarietyDialogOpen}
+        onOpenChange={handleCloseVarietyDialogs}
+        onSubmit={handleAddVariety}
+        isSubmitting={isVarietySubmitting}
+      />
+
+      <PlantVarietyEditDialog
+        open={editVarietyDialogOpen}
+        onOpenChange={handleCloseVarietyDialogs}
+        variety={varietyToEdit}
+        onSubmit={handleEditVariety}
+        isSubmitting={isVarietySubmitting}
+      />
+
+      <PlantVarietyDeleteDialog
+        open={deleteVarietyDialogOpen}
+        onOpenChange={handleCloseVarietyDialogs}
+        variety={varietyToDelete}
+        onConfirm={handleDeleteVariety}
+        isDeleting={isDeletingVariety}
       />
     </div>
   )

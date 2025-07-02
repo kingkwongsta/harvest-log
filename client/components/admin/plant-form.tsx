@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
-import type { Plant, PlantVariety, PlantStatus } from '@/lib/api'
+import type { Plant, PlantStatus } from '@/lib/api'
 
 export interface PlantFormData {
   name: string
@@ -20,7 +20,7 @@ export interface PlantFormData {
 }
 
 interface PlantFormProps {
-  varieties: PlantVariety[]
+  varieties: any[] // Plant varieties functionality removed - keeping for backwards compatibility
   initialData?: Plant
   onSubmit: (data: PlantFormData) => void
   onCancel: () => void
@@ -81,6 +81,17 @@ export const PlantForm = forwardRef<PlantFormRef, PlantFormProps>(
         return
       }
 
+      // Check for invalid characters (allow HTML entities for apostrophes)
+      const validCharRegex = /^[a-zA-Z0-9\s\-_\'\.\&\,\(\);:/+"#x;]*$/
+      if (!validCharRegex.test(name.trim())) {
+        toast({
+          title: 'Validation Error',
+          description: 'Plant name contains invalid characters. Please use only letters, numbers, spaces, and allowed punctuation.',
+          variant: 'destructive',
+        })
+        return
+      }
+
       onSubmit({
         name: name.trim(),
         variety_id: varietyId || undefined,
@@ -109,6 +120,11 @@ export const PlantForm = forwardRef<PlantFormRef, PlantFormProps>(
                 maxLength={100}
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Allowed: letters, numbers, spaces, and common punctuation (- _ &apos; . &amp; , ( ) ; : / + &quot;)
+                <br />
+                Not allowed: &lt; &gt; @ # $ % ^ * [ ] {'{}'} | \ ` ~ ! ?
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -118,7 +134,6 @@ export const PlantForm = forwardRef<PlantFormRef, PlantFormProps>(
                   <SelectValue placeholder="Select a variety..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No variety selected</SelectItem>
                   {varieties.map((variety) => (
                     <SelectItem key={variety.id} value={variety.id}>
                       {variety.name} ({variety.category})

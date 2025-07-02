@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from app.config import settings
-from app.routers import images, events, plants, weather
+from app.routers import images, events, plants, weather, event_images
 from app.database import init_supabase, close_supabase, health_check as db_health_check
 from app.logging_config import setup_logging, get_app_logger
 from app.middleware import LoggingMiddleware, PerformanceMiddleware
@@ -90,7 +90,11 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "images",
-            "description": "Operations for managing harvest images with Supabase Storage",
+            "description": "Legacy operations for managing harvest images with Supabase Storage",
+        },
+        {
+            "name": "event-images",
+            "description": "Unified operations for managing event images (harvest, bloom, snapshot)",
         },
         {
             "name": "plants",
@@ -134,7 +138,8 @@ app.add_exception_handler(ValidationError, pydantic_validation_exception_handler
 app.add_exception_handler(Exception, general_exception_handler)
 
 # Include routers
-app.include_router(images.router)
+app.include_router(images.router)          # Legacy harvest-only image endpoints
+app.include_router(event_images.router)    # New unified event image endpoints
 app.include_router(plants.router)
 app.include_router(events.router)
 app.include_router(weather.router)

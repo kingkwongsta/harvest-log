@@ -103,6 +103,8 @@ export type PlantStatus = 'active' | 'harvested' | 'deceased' | 'dormant';
 export type PlantCategory = 'vegetable' | 'fruit' | 'flower' | 'herb' | 'tree' | 'shrub' | 'other';
 export type BloomStage = 'bud' | 'opening' | 'full_bloom' | 'fading' | 'seed_set';
 
+
+
 export interface PlantVariety {
   id: string;
   name: string;
@@ -144,8 +146,7 @@ export interface PlantEvent {
   produce?: string;
   quantity?: number;
   
-  // Bloom-specific fields
-  plant_variety?: string;
+  // Bloom-specific fields - plant_variety removed, using plant_id instead
   
   // Flexible metrics (primarily for snapshot events)
   metrics?: Record<string, unknown>;
@@ -210,6 +211,18 @@ export interface PlantVarietyCreateData {
   care_instructions?: string;
 }
 
+export interface PlantVarietyUpdateData {
+  name?: string;
+  category?: PlantCategory;
+  description?: string;
+  growing_season?: string;
+  harvest_time_days?: number;
+  typical_yield?: string;
+  care_instructions?: string;
+}
+
+
+
 export interface ImageUploadResponse {
   success: boolean;
   message: string;
@@ -253,7 +266,12 @@ async function apiRequest<T>(
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new ApiError(response.status, errorData.detail || `HTTP ${response.status}`);
+      // Extract validation error details for 422 responses
+      let errorMessage = errorData.detail || `HTTP ${response.status}`;
+      if (response.status === 422 && errorData.detail && Array.isArray(errorData.detail)) {
+        errorMessage = errorData.detail.map((err: any) => err.msg || err.message || String(err)).join(', ');
+      }
+      throw new ApiError(response.status, errorMessage);
     }
 
     return await response.json();
@@ -381,32 +399,19 @@ export const imagesApi = {
 
 // Plant Journey API functions
 export const plantsApi = {
-  // Plant Varieties
-  createVariety: async (data: PlantVarietyCreateData): Promise<ApiResponse<PlantVariety>> => {
-    return apiRequest('/api/plants/varieties', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  getVarieties: async (category?: PlantCategory, search?: string): Promise<ApiResponse<PlantVariety[]>> => {
-    const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    if (search) params.append('search', search);
-    
-    const query = params.toString();
-    return apiRequest(`/api/plants/varieties${query ? `?${query}` : ''}`);
-  },
-
-  getVariety: async (id: string): Promise<ApiResponse<PlantVariety>> => {
-    return apiRequest(`/api/plants/varieties/${id}`);
-  },
 
   // Plants
   createPlant: async (data: PlantCreateData): Promise<ApiResponse<Plant>> => {
+    // Clean the data - remove undefined values and convert empty strings to undefined
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([key, value]) => {
+        return value !== undefined && value !== null && value !== '';
+      })
+    );
+    
     return apiRequest('/api/plants/', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(cleanData),
     });
   },
 
@@ -425,9 +430,16 @@ export const plantsApi = {
   },
 
   updatePlant: async (id: string, data: Partial<PlantCreateData>): Promise<ApiResponse<Plant>> => {
+    // Clean the data - remove undefined values and convert empty strings to undefined
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([key, value]) => {
+        return value !== undefined && value !== null && value !== '';
+      })
+    );
+    
     return apiRequest(`/api/plants/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(cleanData),
     });
   },
 
@@ -450,6 +462,39 @@ export const plantsApi = {
     
     const query = params.toString();
     return apiRequest(`/api/plants/${plantId}/events${query ? `?${query}` : ''}`);
+  },
+
+  // Plant Varieties
+  createVariety: async (data: PlantVarietyCreateData): Promise<ApiResponse<PlantVariety>> => {
+    return apiRequest('/api/plants/varieties', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getVarieties: async (category?: PlantCategory): Promise<ApiResponse<PlantVariety[]>> => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    
+    const query = params.toString();
+    return apiRequest(`/api/plants/varieties${query ? `?${query}` : ''}`);
+  },
+
+  getVariety: async (id: string): Promise<ApiResponse<PlantVariety>> => {
+    return apiRequest(`/api/plants/varieties/${id}`);
+  },
+
+  updateVariety: async (id: string, data: PlantVarietyUpdateData): Promise<ApiResponse<PlantVariety>> => {
+    return apiRequest(`/api/plants/varieties/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteVariety: async (id: string): Promise<ApiResponse<PlantVariety>> => {
+    return apiRequest(`/api/plants/varieties/${id}`, {
+      method: 'DELETE',
+    });
   },
 };
 

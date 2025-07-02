@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useImperativeHandle, forwardRef, useEffect } from 'react'
+import { useState, useImperativeHandle, forwardRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,15 +14,13 @@ import { PhotoUpload } from '@/components/shared/photo-upload'
 import { LocationInput } from '@/components/location/location-input'
 import { WeatherDisplay } from '@/components/location/weather-display'
 
-import type { Plant, PlantVariety, Coordinates, WeatherData } from '@/lib/api'
-import { plantsApi } from '@/lib/api'
+import type { Plant, Coordinates, WeatherData } from '@/lib/api'
 
 export interface BloomFormData {
   plant_id?: string
   event_date: string
   description?: string
   notes?: string
-  plant_variety: string
   location?: string
   coordinates?: Coordinates
   images?: File[]
@@ -47,38 +45,13 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     const [description, setDescription] = useState('')
     const [notes, setNotes] = useState('')
     
-    // Bloom-specific fields
-    const [flowerType, setFlowerType] = useState('')
-    const [customFlowerType, setCustomFlowerType] = useState('')
+    // Image upload
     const [images, setImages] = useState<File[]>([])
     
     // Location and weather fields
     const [location, setLocation] = useState('')
     const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
     const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
-    
-    // Plant varieties from API
-    const [plantVarieties, setPlantVarieties] = useState<PlantVariety[]>([])
-    const [loadingVarieties, setLoadingVarieties] = useState(false)
-
-    // Load plant varieties on component mount
-    useEffect(() => {
-      const loadPlantVarieties = async () => {
-        setLoadingVarieties(true)
-        try {
-          const response = await plantsApi.getVarieties()
-          if (response.success && response.data) {
-            setPlantVarieties(response.data)
-          }
-        } catch (error) {
-          console.error('Failed to load plant varieties:', error)
-        } finally {
-          setLoadingVarieties(false)
-        }
-      }
-
-      loadPlantVarieties()
-    }, [])
 
     const resetForm = () => {
       console.log('🧹 BloomForm resetForm called')
@@ -87,9 +60,7 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
       setEventDate(new Date())
       setDescription('')
       setNotes('')
-      // Reset bloom-specific fields
-      setFlowerType('')
-      setCustomFlowerType('')
+      // Reset image upload
       setImages([])
       // Reset location and weather fields
       setLocation('')
@@ -104,189 +75,140 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     }))
 
     const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+      e.preventDefault()
 
-    const finalPlantVariety = flowerType === 'custom' ? customFlowerType : flowerType
-    if (!finalPlantVariety.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please specify the plant variety.',
-        variant: 'destructive',
+      if (!selectedPlant) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please select a plant for this bloom event.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      onSubmit({
+        plant_id: selectedPlant,
+        event_date: eventDate.toISOString(),
+        description: description.trim() || undefined,
+        notes: notes.trim() || undefined,
+        location: location.trim() || undefined,
+        coordinates: coordinates || undefined,
+        images: images.length > 0 ? images : undefined,
       })
-      return
     }
 
-    if (finalPlantVariety.trim().length > 100) {
-      toast({
-        title: 'Validation Error',
-        description: 'Plant variety must be 100 characters or less.',
-        variant: 'destructive',
-      })
-      return
-    }
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-pink-700 flex items-center">
+              🌸 Bloom Event Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Event Details Section */}
+            <div className="space-y-4">
+              <Label className="text-sm font-medium text-pink-700">Event Information</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="plant">Plant *</Label>
+                  <Select value={selectedPlant} onValueChange={setSelectedPlant} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a plant..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plants.map((plant) => (
+                        <SelectItem key={plant.id} value={plant.id}>
+                          {plant.name} {plant.variety && `(${plant.variety.name})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-    onSubmit({
-      plant_id: selectedPlant || undefined,
-      event_date: eventDate.toISOString(),
-      description: description.trim() || undefined,
-      notes: notes.trim() || undefined,
-      plant_variety: finalPlantVariety.trim(),
-      location: location.trim() || undefined,
-      coordinates: coordinates || undefined,
-      images: images.length > 0 ? images : undefined,
-    })
-  }
-
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-pink-700 flex items-center">
-            🌸 Bloom Event Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Event Details Section */}
-          <div className="space-y-4">
-            <Label className="text-sm font-medium text-pink-700">Event Information</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="plant">Plant (Optional)</Label>
-                <Select value={selectedPlant} onValueChange={setSelectedPlant}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a plant..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {plants.map((plant) => (
-                      <SelectItem key={plant.id} value={plant.id}>
-                        {plant.name} {plant.variety && `(${plant.variety.name})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="event-date">Event Date *</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    id="event-date"
-                    type="datetime-local"
-                    value={eventDate.toISOString().slice(0, 16)}
-                    onChange={(e) => setEventDate(new Date(e.target.value))}
-                    className="pl-10"
-                    required
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="event-date">Event Date *</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      id="event-date"
+                      type="datetime-local"
+                      value={eventDate.toISOString().slice(0, 16)}
+                      onChange={(e) => setEventDate(new Date(e.target.value))}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief description of this bloom event..."
-                maxLength={500}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes (Optional)</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any additional observations, conditions, or details..."
-                rows={3}
-                maxLength={2000}
-              />
-            </div>
-
-            {/* Location Section */}
-            <LocationInput
-              location={location}
-              onLocationChange={setLocation}
-              coordinates={coordinates}
-              onCoordinatesChange={setCoordinates}
-              onWeatherData={setWeatherData}
-              eventDate={eventDate.toISOString().split('T')[0]}
-              disabled={isSubmitting}
-              defaultLocation="Torrance, CA"
-            />
-
-            {/* Weather Display */}
-            {weatherData && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-pink-700">Weather Conditions</Label>
-                <WeatherDisplay weather={weatherData} compact />
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Plant Variety Selection */}
-          <div className="space-y-4">
-            <Label className="text-sm font-medium text-pink-700">Plant Variety</Label>
-            <div className="space-y-2">
-              <Label htmlFor="plant-variety">Plant Variety *</Label>
-              <Select value={flowerType} onValueChange={setFlowerType} required disabled={loadingVarieties}>
-                <SelectTrigger>
-                  <SelectValue placeholder={loadingVarieties ? "Loading varieties..." : "Select plant variety..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {plantVarieties.map((variety) => (
-                    <SelectItem key={variety.id} value={variety.name}>
-                      {variety.name} - {variety.category}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="custom">Custom variety...</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {flowerType === 'custom' && (
-              <div className="space-y-2">
-                <Label htmlFor="custom-variety">Custom Plant Variety</Label>
+                <Label htmlFor="description">Description (Optional)</Label>
                 <Input
-                  id="custom-variety"
-                  value={customFlowerType}
-                  onChange={(e) => setCustomFlowerType(e.target.value)}
-                  placeholder="Enter custom plant variety..."
-                  maxLength={100}
-                  required
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Brief description of this bloom event..."
+                  maxLength={500}
                 />
               </div>
-            )}
-          </div>
 
-          <Separator />
+              <div className="space-y-2">
+                <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Any additional observations, conditions, or details..."
+                  rows={3}
+                  maxLength={2000}
+                />
+              </div>
 
-          {/* Photo Upload Section */}
-          <PhotoUpload
-            images={images}
-            onImagesChange={setImages}
-            maxImages={5}
-            label="Bloom Photos (Optional)"
-            description="Capture or upload bloom photos"
-            themeColor="pink"
-            isProcessing={isSubmitting}
-            disabled={isSubmitting}
-          />
-        </CardContent>
-      </Card>
+              {/* Location Section */}
+              <LocationInput
+                location={location}
+                onLocationChange={setLocation}
+                coordinates={coordinates}
+                onCoordinatesChange={setCoordinates}
+                onWeatherData={setWeatherData}
+                eventDate={eventDate.toISOString().split('T')[0]}
+                disabled={isSubmitting}
+                defaultLocation="Torrance, CA"
+              />
 
-      <div className="flex justify-end space-x-2">
-        <Button type="submit" disabled={isSubmitting} className="bg-pink-500 hover:bg-pink-600 text-white" size="lg">
-          {isSubmitting ? 'Recording Bloom...' : 'Record Bloom Event'}
-        </Button>
-      </div>
-    </form>
-  )
-})
+              {/* Weather Display */}
+              {weatherData && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-pink-700">Weather Conditions</Label>
+                  <WeatherDisplay weather={weatherData} compact />
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Photo Upload Section */}
+            <PhotoUpload
+              images={images}
+              onImagesChange={setImages}
+              maxImages={5}
+              label="Bloom Photos (Optional)"
+              description="Capture or upload bloom photos"
+              themeColor="pink"
+              isProcessing={isSubmitting}
+              disabled={isSubmitting}
+            />
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="submit" disabled={isSubmitting} className="bg-pink-500 hover:bg-pink-600 text-white" size="lg">
+            {isSubmitting ? 'Recording Bloom...' : 'Record Bloom Event'}
+          </Button>
+        </div>
+      </form>
+    )
+  })
 
 BloomForm.displayName = 'BloomForm'

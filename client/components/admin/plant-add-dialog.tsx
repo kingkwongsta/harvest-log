@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { PlantForm, PlantFormData } from './plant-form'
 import type { PlantVariety } from '@/lib/api'
 
@@ -28,6 +28,9 @@ export const PlantAddDialog = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Plant</DialogTitle>
+          <DialogDescription>
+            Add a new plant to your garden. Fill in the details below to track your plant's journey.
+          </DialogDescription>
         </DialogHeader>
         <PlantForm
           varieties={varieties}
