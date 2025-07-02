@@ -267,7 +267,7 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
             <Label className="text-sm font-medium text-green-700">Event Information</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="plant">Plant (Optional)</Label>
+                <Label htmlFor="plant">Plant</Label>
                 <Select value={selectedPlant} onValueChange={setSelectedPlant}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a plant..." />
@@ -299,7 +299,7 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
+              <Label htmlFor="description">Description</Label>
               <Input
                 id="description"
                 value={description}
@@ -310,7 +310,7 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes (Optional)</Label>
+              <Label htmlFor="notes">Additional Notes</Label>
               <Textarea
                 id="notes"
                 value={notes}
@@ -399,7 +399,7 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
 
           {/* Photos Section */}
           <div className="space-y-4">
-            <Label className="text-sm font-medium text-green-700">Harvest Photos (Optional)</Label>
+            <Label className="text-sm font-medium text-green-700">Harvest Photos</Label>
             
             {/* Photo Upload Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

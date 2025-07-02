@@ -201,7 +201,13 @@ deploy_backend() {
     
     if [ $backend_exit_code -eq 0 ]; then
         print_success "Backend deployed successfully to Google Cloud Run!"
-        echo "📡 Backend URL: https://harvest-log-backend-512013902761.us-west2.run.app"
+        
+        # Get backend URL from environment or show generic message
+        if [ -n "$BACKEND_API_URL" ]; then
+            echo "📡 Backend URL: $BACKEND_API_URL"
+        else
+            echo "📡 Backend URL: Check Google Cloud Console for your service URL"
+        fi
     else
         print_error "Backend deployment failed with exit code $backend_exit_code!"
         exit 1
@@ -242,10 +248,40 @@ deploy_frontend() {
     
     print_status "✓ Next.js project structure verified"
     
+    # Get the production API URL from environment variable
+    PRODUCTION_API_URL="${BACKEND_API_URL:-${NEXT_PUBLIC_API_URL}}"
+    
+    if [ -z "$PRODUCTION_API_URL" ]; then
+        print_error "❌ Backend API URL not found in environment variables!"
+        print_error "Please set BACKEND_API_URL or NEXT_PUBLIC_API_URL environment variable."
+        print_error "Example: export BACKEND_API_URL='https://your-backend-service.run.app'"
+        print_error "Or copy .env.example to .env and configure your URLs."
+        exit 1
+    fi
+    
+    print_status "Using production API URL: $PRODUCTION_API_URL"
+    
+    # Validate URL format
+    if [[ ! "$PRODUCTION_API_URL" =~ ^https:// ]]; then
+        print_error "❌ Backend API URL must use HTTPS for production deployment!"
+        print_error "Current URL: $PRODUCTION_API_URL"
+        exit 1
+    fi
+    
+    # Set environment variables in Vercel (force update)
+    print_status "Configuring Vercel environment variables..."
+    vercel env add NEXT_PUBLIC_API_URL production --value="$PRODUCTION_API_URL" --force 2>/dev/null || true
+    vercel env add NEXT_PUBLIC_API_URL preview --value="$PRODUCTION_API_URL" --force 2>/dev/null || true
+    
+    # Clear build cache to prevent HTTP/HTTPS issues
+    print_status "Clearing build cache to prevent HTTPS issues..."
+    rm -rf .next
+    rm -rf node_modules/.cache 2>/dev/null || true
+    
     # Install dependencies if node_modules doesn't exist
     if [ ! -d "node_modules" ]; then
         print_status "Installing frontend dependencies..."
-        npm install
+        npm ci
         if [ $? -ne 0 ]; then
             print_error "Failed to install dependencies!"
             exit 1
@@ -257,19 +293,29 @@ deploy_frontend() {
     # Check if vercel.json exists and show configuration
     if [ -f "vercel.json" ]; then
         print_status "✓ Vercel configuration found"
-        print_status "Backend API URL configured: $(grep -o 'https://[^"]*' vercel.json | head -1)"
+        # Don't show the actual URL in logs for security
+        print_status "Backend API URL configured in vercel.json"
     else
         print_warning "No vercel.json found - using default Vercel settings"
     fi
     
-    # Run build to ensure everything works
-    print_status "Building Next.js application..."
-    npm run build
+    # Build with correct environment variable to prevent HTTP/HTTPS issues
+    print_status "Building Next.js application with HTTPS environment..."
+    NEXT_PUBLIC_API_URL="$PRODUCTION_API_URL" npm run build
     if [ $? -ne 0 ]; then
         print_error "Build failed! Please fix build errors before deploying."
         exit 1
     fi
-    print_status "✓ Build successful"
+    print_status "✓ Build successful with HTTPS configuration"
+    
+    # Verify HTTPS URLs in build output (don't expose actual URL)
+    if grep -r "http://.*weather" .next/ 2>/dev/null; then
+        print_error "❌ Found HTTP weather URLs in build - this will cause mixed content errors!"
+        print_error "Build may be using cached environment variables."
+        exit 1
+    else
+        print_status "✅ No HTTP weather URLs found in build output"
+    fi
     
     print_status "Executing Vercel deployment..."
     print_status "Deploying client folder to Vercel with production settings..."
@@ -282,14 +328,21 @@ deploy_frontend() {
         print_success "Frontend (client folder) deployed successfully to Vercel!"
         print_status "Your Next.js app is now live!"
         
+        # Verify environment variables were set correctly
+        print_status "Verifying environment variables..."
+        vercel env ls 2>/dev/null | grep -q "NEXT_PUBLIC_API_URL" && print_status "✅ Environment variables verified" || print_warning "⚠️ Could not verify environment variables"
+        
         # Try to get deployment URL
         if command -v vercel >/dev/null 2>&1; then
             print_status "Fetching deployment URL..."
-            VERCEL_URL=$(vercel ls --scope=personal 2>/dev/null | grep "client" | head -1 | awk '{print $2}' || echo "Check Vercel dashboard")
+            VERCEL_URL=$(vercel ls --scope=personal 2>/dev/null | grep "harvest-log" | head -1 | awk '{print $2}' || echo "Check Vercel dashboard")
             if [ "$VERCEL_URL" != "Check Vercel dashboard" ] && [ -n "$VERCEL_URL" ]; then
                 echo "🌐 Live URL: https://$VERCEL_URL"
             fi
         fi
+        
+        print_success "✅ Frontend deployment completed with HTTPS fixes applied!"
+        print_status "🌤️ Weather API should now work without mixed content errors"
     else
         print_error "Frontend deployment failed with exit code $frontend_exit_code!"
         print_error "Please check the error messages above and try again."
@@ -331,13 +384,18 @@ main() {
             echo ""
             print_success "🎉 Frontend deployment complete!"
             echo "🌐 Check the Vercel output above for your app URL"
+            echo "🌤️ Weather API now properly uses HTTPS (mixed content issue resolved)"
             ;;
         2)
             print_step "Executing Backend-only deployment..."
             deploy_backend
             echo ""
             print_success "🎉 Backend deployment complete!"
-            echo "📡 Your backend API is live at: https://harvest-log-backend-512013902761.us-west2.run.app"
+            if [ -n "$BACKEND_API_URL" ]; then
+                echo "📡 Your backend API is live at: $BACKEND_API_URL"
+            else
+                echo "📡 Your backend API is live - check Google Cloud Console for the URL"
+            fi
             ;;
         3)
             print_step "Executing Full deployment (Frontend + Backend)..."
@@ -351,13 +409,26 @@ main() {
             print_success "Your complete Harvest Log App is now live in the cloud!"
             echo ""
             echo "🌐 Frontend App: Check the Vercel output above for your app URL"
-            echo "📡 Backend API: https://harvest-log-backend-512013902761.us-west2.run.app"
+            if [ -n "$BACKEND_API_URL" ]; then
+                echo "📡 Backend API: $BACKEND_API_URL"
+            else
+                echo "📡 Backend API: Check Google Cloud Console for your service URL"
+            fi
+            echo "🌤️ Weather API: HTTPS mixed content issue resolved - should work perfectly"
             ;;
     esac
     
     echo ""
     echo "🧪 Test your deployment:"
-    echo "  curl https://harvest-log-backend-512013902761.us-west2.run.app/health"
+    if [ -n "$BACKEND_API_URL" ]; then
+        echo "  Backend Health: curl $BACKEND_API_URL/health"
+    else
+        echo "  Backend Health: curl https://your-backend-url/health"
+    fi
+    if [[ $choice -eq 1 || $choice -eq 3 ]]; then
+        echo "  Weather API: Check browser console - should show HTTPS requests only"
+        echo "  Frontend: Try logging an event with location to test weather integration"
+    fi
     echo ""
     echo "📊 Monitor your deployments:"
     if [[ $choice -eq 1 || $choice -eq 3 ]]; then

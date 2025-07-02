@@ -1,12 +1,5 @@
 {
-  "env": {
-    "NEXT_PUBLIC_API_URL": "https://harvest-log-backend-512013902761.us-west2.run.app"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_API_URL": "https://harvest-log-backend-512013902761.us-west2.run.app"
-    }
-  },
+  "buildCommand": "npm run build",
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30

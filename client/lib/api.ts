@@ -1,6 +1,22 @@
 // API configuration and helper functions
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+
+// Enhanced HTTPS enforcement in production
+if (process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV) {
+  if (API_BASE_URL.startsWith('http://')) {
+    console.warn('⚠️ Initial HTTPS Enforcement: Converting HTTP to HTTPS for production')
+    API_BASE_URL = API_BASE_URL.replace('http://', 'https://')
+    console.log('✅ API_BASE_URL updated to HTTPS:', API_BASE_URL)
+  }
+  
+  // Validate that we have a secure URL in production
+  if (!API_BASE_URL.startsWith('https://')) {
+    console.error('❌ CRITICAL: Production requires HTTPS API_BASE_URL')
+    console.error('❌ Current API_BASE_URL:', API_BASE_URL)
+    console.error('❌ Please ensure NEXT_PUBLIC_API_URL uses HTTPS protocol')
+  }
+}
 
 // Log API configuration on module load
 console.log('🔧 API Configuration:', {
@@ -15,6 +31,13 @@ console.log('🔧 API Configuration:', {
 if (API_BASE_URL && !API_BASE_URL.match(/^https?:\/\//)) {
   console.error('❌ Invalid API_BASE_URL format:', API_BASE_URL);
   console.log('✅ Expected format: http://localhost:8000 or https://your-api.com');
+}
+
+// Additional production validation
+if (process.env.NODE_ENV === 'production' && !API_BASE_URL.startsWith('https://')) {
+  console.error('❌ Production builds must use HTTPS URLs');
+  console.error('❌ Current API_BASE_URL:', API_BASE_URL);
+  console.error('❌ Please set NEXT_PUBLIC_API_URL environment variable to use HTTPS');
 }
 
 export interface HarvestLogData {
@@ -252,7 +275,36 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  let url = `${API_BASE_URL}${endpoint}`;
+  
+  // Runtime HTTPS enforcement - force HTTPS in production
+  if (process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV) {
+    if (url.startsWith('http://')) {
+      console.warn('⚠️ Runtime HTTPS Enforcement: Converting HTTP to HTTPS for production');
+      url = url.replace('http://', 'https://');
+      console.log('✅ URL converted to HTTPS:', url);
+    }
+    
+    // Additional validation - ensure URL is HTTPS in production
+    if (!url.startsWith('https://')) {
+      console.error('❌ CRITICAL: Non-HTTPS URL detected in production:', url);
+      throw new ApiError(0, 'Production environment requires HTTPS URLs');
+    }
+  }
+  
+  // Debug logging for weather API calls
+  if (endpoint.includes('/weather')) {
+    console.log('🌤️ Weather API Request Debug:', {
+      endpoint,
+      API_BASE_URL,
+      constructedURL: url,
+      originalProtocol: API_BASE_URL.split('://')[0],
+      finalProtocol: url.split('://')[0],
+      isHTTPS: url.startsWith('https://'),
+      isProduction: process.env.NODE_ENV === 'production',
+      timestamp: new Date().toISOString()
+    });
+  }
   
   const config: RequestInit = {
     headers: {
@@ -263,8 +315,9 @@ async function apiRequest<T>(
   };
 
   try {
+    console.log(`🔄 Making request to: ${url}`);
     const response = await fetch(url, config);
-    
+  
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
       // Extract validation error details for 422 responses
@@ -281,8 +334,27 @@ async function apiRequest<T>(
       throw error;
     }
     
+    // Special handling for Mixed Content Policy errors
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('Mixed Content') || errorMessage.includes('blocked:mixed-content')) {
+      console.error('🚫 Mixed Content Policy Violation:', {
+        url,
+        endpoint,
+        error: errorMessage,
+        solution: 'Ensure all API URLs use HTTPS in production',
+        timestamp: new Date().toISOString()
+      });
+      throw new ApiError(0, 'Mixed Content Policy: API must use HTTPS in production');
+    }
+    
     // Network or other errors
-    throw new ApiError(0, error instanceof Error ? error.message : 'Network error');
+    console.error('💥 API Request Error:', {
+      url,
+      endpoint,
+      error: errorMessage,
+      timestamp: new Date().toISOString()
+    });
+    throw new ApiError(0, errorMessage);
   }
 }
 
@@ -405,7 +477,7 @@ export const plantsApi = {
   createPlant: async (data: PlantCreateData): Promise<ApiResponse<Plant>> => {
     // Clean the data - remove undefined values and convert empty strings to undefined
     const cleanData = Object.fromEntries(
-      Object.entries(data).filter(([key, value]) => {
+      Object.entries(data).filter(([, value]) => {
         return value !== undefined && value !== null && value !== '';
       })
     );
@@ -433,7 +505,7 @@ export const plantsApi = {
   updatePlant: async (id: string, data: Partial<PlantCreateData>): Promise<ApiResponse<Plant>> => {
     // Clean the data - remove undefined values and convert empty strings to undefined
     const cleanData = Object.fromEntries(
-      Object.entries(data).filter(([key, value]) => {
+      Object.entries(data).filter(([, value]) => {
         return value !== undefined && value !== null && value !== '';
       })
     );
@@ -592,7 +664,17 @@ export const weatherApi = {
       params.append('event_date', eventDate);
     }
     
-    return apiRequest(`/api/v1/weather?${params.toString()}`);
+    // Add cache-busting parameter to force fresh requests
+    params.append('_t', Date.now().toString());
+    
+    return apiRequest(`/api/v1/weather?${params.toString()}`, {
+      // Add cache-busting headers
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   },
   
   geocodeLocation: async (location: string): Promise<ApiResponse<GeocodingResult>> => {
@@ -600,11 +682,30 @@ export const weatherApi = {
       location: location,
     });
     
-    return apiRequest(`/api/v1/weather/geocode?${params.toString()}`);
+    // Add cache-busting parameter
+    params.append('_t', Date.now().toString());
+    
+    return apiRequest(`/api/v1/weather/geocode?${params.toString()}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   },
   
   getDefaultLocation: async (): Promise<ApiResponse<GeocodingResult>> => {
-    return apiRequest('/api/v1/weather/default-location');
+    const params = new URLSearchParams({
+      _t: Date.now().toString()
+    });
+    
+    return apiRequest(`/api/v1/weather/default-location?${params.toString()}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   },
 };
 
