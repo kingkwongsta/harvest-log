@@ -33,28 +33,32 @@ interface TimelineGroup {
 
 const SEASON_CONFIG = {
   spring: {
-    color: 'bg-green-100 border-green-200',
-    accent: 'bg-green-500',
+    color: 'bg-green-50 border-green-100 hover:bg-green-100/50',
+    accent: 'bg-green-600',
     icon: '🌱',
-    theme: 'Spring awakening'
+    theme: 'Spring awakening',
+    gradient: 'from-green-50 to-emerald-50'
   },
   summer: {
-    color: 'bg-yellow-100 border-yellow-200', 
-    accent: 'bg-yellow-500',
-    icon: '☀️',
-    theme: 'Summer abundance'
+    color: 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100/50', 
+    accent: 'bg-emerald-600',
+    icon: '🌿',
+    theme: 'Summer growth',
+    gradient: 'from-emerald-50 to-green-50'
   },
   autumn: {
-    color: 'bg-orange-100 border-orange-200',
-    accent: 'bg-orange-500', 
-    icon: '🍂',
-    theme: 'Autumn gardens'
+    color: 'bg-green-50 border-green-200 hover:bg-green-100/50',
+    accent: 'bg-green-700', 
+    icon: '🍃',
+    theme: 'Autumn harvest',
+    gradient: 'from-green-50 to-lime-50'
   },
   winter: {
-    color: 'bg-blue-100 border-blue-200',
-    accent: 'bg-blue-500',
+    color: 'bg-slate-50 border-slate-100 hover:bg-slate-100/50',
+    accent: 'bg-slate-600',
     icon: '❄️',
-    theme: 'Winter preservation'
+    theme: 'Winter rest',
+    gradient: 'from-slate-50 to-green-50'
   }
 }
 
@@ -105,13 +109,39 @@ const getEventIcon = (eventType: string) => {
 const getEventColor = (eventType: string) => {
   switch (eventType) {
     case 'harvest':
-      return 'text-green-600'
+      return 'text-green-700'
     case 'bloom':
       return 'text-pink-600'
     case 'snapshot':
       return 'text-blue-600'
     default:
-      return 'text-gray-600'
+      return 'text-slate-600'
+  }
+}
+
+const getEventBadgeColor = (eventType: string) => {
+  switch (eventType) {
+    case 'harvest':
+      return 'bg-green-100 text-green-800 border-green-200'
+    case 'bloom':
+      return 'bg-pink-100 text-pink-800 border-pink-200'
+    case 'snapshot':
+      return 'bg-blue-100 text-blue-800 border-blue-200'
+    default:
+      return 'bg-slate-100 text-slate-700 border-slate-200'
+  }
+}
+
+const getEventHighlightColor = (eventType: string) => {
+  switch (eventType) {
+    case 'harvest':
+      return 'bg-green-50 border-green-100 hover:bg-green-100/50'
+    case 'bloom':
+      return 'bg-pink-50 border-pink-100 hover:bg-pink-100/50'
+    case 'snapshot':
+      return 'bg-blue-50 border-blue-100 hover:bg-blue-100/50'
+    default:
+      return 'bg-slate-50 border-slate-100 hover:bg-slate-100/50'
   }
 }
 
@@ -152,10 +182,10 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
       <div className="space-y-8">
         {[...Array(3)].map((_, i) => (
           <div key={i} className="animate-pulse">
-            <div className="h-8 bg-muted rounded mb-4 w-1/4"></div>
+            <div className="h-8 bg-slate-100 rounded-lg mb-4 w-1/4"></div>
             <div className="space-y-4">
-              <div className="h-40 bg-muted rounded"></div>
-              <div className="h-40 bg-muted rounded"></div>
+              <div className="h-40 bg-slate-50 rounded-lg border border-slate-100"></div>
+              <div className="h-40 bg-slate-50 rounded-lg border border-slate-100"></div>
             </div>
           </div>
         ))}
@@ -174,42 +204,45 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
   return (
     <div className="relative">
       {/* Timeline Line */}
-      <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-green-300 via-yellow-300 via-orange-300 to-blue-300 rounded-full opacity-30"></div>
+      <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-green-400 via-emerald-400 to-green-600 rounded-full opacity-40 shadow-sm"></div>
       
-      <div className="space-y-12">
-        {timelineGroups.map((group) => {
+      <div className="space-y-16">
+        {timelineGroups.map((group, groupIndex) => {
           const seasonConfig = SEASON_CONFIG[group.season]
           
           return (
-            <div key={group.period} className="relative">
+            <div key={group.period} className="relative animate-in slide-in-from-bottom-4 duration-700" style={{ animationDelay: `${groupIndex * 100}ms` }}>
               {/* Period Header */}
-              <div className="flex items-center mb-6">
-                <div className={`absolute left-6 w-6 h-6 ${seasonConfig.accent} rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg z-10`}>
+              <div className="flex items-center mb-8">
+                <div className={`absolute left-6 w-8 h-8 ${seasonConfig.accent} rounded-full flex items-center justify-center text-white text-lg font-bold shadow-lg z-10 ring-4 ring-white`}>
                   {seasonConfig.icon}
                 </div>
-                <div className="ml-16">
+                <div className="ml-18">
                   <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
                     {group.period}
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className={`text-xs bg-gradient-to-r ${seasonConfig.gradient} border-0 text-green-800 font-medium`}>
                       {seasonConfig.theme}
                     </Badge>
                   </h2>
-                  <p className="text-sm text-organic">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {group.events.length} event{group.events.length !== 1 ? 's' : ''} this period
                   </p>
                 </div>
               </div>
 
               {/* Event Cards */}
-              <div className="ml-16 space-y-6">
-                {group.events.map((event) => {
+              <div className="ml-18 space-y-8">
+                {group.events.map((event, eventIndex) => {
                   const EventIcon = getEventIcon(event.event_type)
                   const eventColor = getEventColor(event.event_type)
+                  const eventBadgeColor = getEventBadgeColor(event.event_type)
+                  const eventHighlightColor = getEventHighlightColor(event.event_type)
                   
                   return (
                   <Card 
                     key={event.id} 
-                    className={`${seasonConfig.color} hover:shadow-lg transition-all duration-300 overflow-hidden`}
+                    className={`${eventHighlightColor} hover:shadow-xl hover:scale-[1.02] transition-all duration-300 overflow-hidden border-2 backdrop-blur-sm animate-in fade-in-50 slide-in-from-left-4`}
+                    style={{ animationDelay: `${(groupIndex * 100) + (eventIndex * 50)}ms` }}
                   >
                     <CardContent className="p-0">
                       <div className="flex flex-col lg:flex-row">
@@ -240,7 +273,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="absolute bottom-2 right-2 bg-white/80 hover:bg-white"
+                                className={`absolute bottom-2 right-2 bg-white/90 hover:bg-white ${eventColor.replace('600', '700')} hover:${eventColor.replace('600', '800')} border ${eventColor.replace('text-', 'border-').replace('600', '200')} hover:${eventColor.replace('text-', 'border-').replace('600', '300')} shadow-sm`}
                                 onClick={() => setSelectedImage(cleanImageUrl(event.images![0].public_url))}
                               >
                                 <Expand className="w-4 h-4" />
@@ -259,31 +292,31 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                         )}
 
                         {/* Content Section */}
-                        <div className="flex-1 p-6">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4">
+                        <div className="flex-1 p-7">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-5">
                             <div>
-                              <h3 className="text-xl font-semibold text-foreground mb-1 flex items-center gap-2">
+                              <h3 className="text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
                                 <EventIcon className={`w-5 h-5 ${eventColor}`} />
                                 {event.plant?.name || event.produce || 'Plant Event'}
                               </h3>
-                              <p className="text-sm text-organic">
+                              <p className="text-sm text-muted-foreground">
                                 {event.plant?.variety?.name && (
-                                  <span className="font-medium">{event.plant.variety.name} • </span>
+                                  <span className={`font-medium ${eventColor.replace('600', '700')}`}>{event.plant.variety.name} • </span>
                                 )}
                                 {getRelativeTime(event.event_date)}
                               </p>
                             </div>
-                            <div className="flex gap-2 mt-2 sm:mt-0">
+                            <div className="flex gap-2 mt-3 sm:mt-0">
                               <Badge 
                                 variant="outline" 
-                                className={`w-fit capitalize ${eventColor}`}
+                                className={`w-fit capitalize ${eventBadgeColor} font-medium`}
                               >
                                 {event.event_type}
                               </Badge>
                               {event.quantity && (
                                 <Badge 
                                   variant="outline" 
-                                  className="w-fit"
+                                  className={`w-fit bg-white/80 ${eventColor.replace('600', '700')} ${eventColor.replace('text-', 'border-').replace('600', '200')} font-medium`}
                                 >
                                   {event.quantity}
                                 </Badge>
@@ -292,45 +325,45 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                           </div>
 
                           {/* Details Grid */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                            <div className="flex items-center text-sm text-organic">
-                              <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-                              {formatDate(event.event_date)}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Calendar className={`w-4 h-4 mr-3 ${eventColor}`} />
+                              <span className="font-medium">{formatDate(event.event_date)}</span>
                             </div>
                             
                             {event.quantity && (
-                              <div className="flex items-center text-sm text-organic">
-                                <Scale className="w-4 h-4 mr-2 text-muted-foreground" />
-                                {event.quantity}
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Scale className={`w-4 h-4 mr-3 ${eventColor}`} />
+                                <span className="font-medium">{event.quantity}</span>
                               </div>
                             )}
 
                             {event.coordinates && (
-                              <div className="flex items-center text-sm text-organic">
-                                <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
-                                {event.coordinates.latitude.toFixed(4)}, {event.coordinates.longitude.toFixed(4)}
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <MapPin className={`w-4 h-4 mr-3 ${eventColor}`} />
+                                <span className="font-medium">{event.coordinates.latitude.toFixed(4)}, {event.coordinates.longitude.toFixed(4)}</span>
                               </div>
                             )}
 
                             {event.images && event.images.length > 0 && (
-                              <div className="flex items-center text-sm text-organic">
-                                <Camera className="w-4 h-4 mr-2 text-muted-foreground" />
-                                {event.images.length} photo{event.images.length !== 1 ? 's' : ''}
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Camera className={`w-4 h-4 mr-3 ${eventColor}`} />
+                                <span className="font-medium">{event.images.length} photo{event.images.length !== 1 ? 's' : ''}</span>
                               </div>
                             )}
                           </div>
 
                           {/* Notes and Description */}
                           {(event.notes || event.description) && (
-                            <div className="bg-white/50 rounded-lg p-3 border border-white/50">
+                            <div className="bg-white/80 rounded-lg p-4 border border-current/20 shadow-sm">
                               <div className="flex items-start">
-                                <StickyNote className="w-4 h-4 mr-2 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <StickyNote className={`w-4 h-4 mr-3 ${eventColor} mt-0.5 flex-shrink-0`} />
                                 <div className="text-sm text-foreground leading-relaxed">
                                   {event.description && (
-                                    <p className="font-medium mb-1">{event.description}</p>
+                                    <p className={`font-medium mb-2 ${eventColor.replace('600', '800')}`}>{event.description}</p>
                                   )}
                                   {event.notes && (
-                                    <p>{event.notes}</p>
+                                    <p className="text-gray-700">{event.notes}</p>
                                   )}
                                 </div>
                               </div>
@@ -339,15 +372,15 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
 
                           {/* Image Gallery Preview */}
                           {event.images && event.images.length > 1 && (
-                            <div className="mt-4">
-                              <div className="flex gap-2 overflow-x-auto pb-2">
+                            <div className="mt-5">
+                              <div className="flex gap-3 overflow-x-auto pb-2">
                                 {event.images.slice(1, 5).map((image, index) => (
                                   <div 
                                     key={image.id}
                                     className="flex-shrink-0 relative cursor-pointer group"
                                     onClick={() => setSelectedImage(cleanImageUrl(image.public_url))}
                                   >
-                                    <div className="w-16 h-16 relative overflow-hidden rounded-lg border-2 border-white/50">
+                                    <div className={`w-16 h-16 relative overflow-hidden rounded-lg border-2 ${eventColor.replace('text-', 'border-').replace('600', '200')} hover:${eventColor.replace('text-', 'border-').replace('600', '300')} transition-colors duration-200 shadow-sm`}>
                                       <Image
                                         src={cleanImageUrl(image.public_url)}
                                         alt={`${event.plant?.variety?.name || event.produce || 'Plant'} photo ${index + 2}`}
@@ -359,7 +392,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                                   </div>
                                 ))}
                                 {event.images.length > 5 && (
-                                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-600">
+                                  <div className={`w-16 h-16 ${eventColor.replace('text-', 'bg-').replace('600', '50')} border-2 ${eventColor.replace('text-', 'border-').replace('600', '100')} rounded-lg flex items-center justify-center text-xs ${eventColor.replace('600', '700')} font-medium`}>
                                     +{event.images.length - 5}
                                   </div>
                                 )}
@@ -381,7 +414,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
       {/* Image Lightbox */}
       {selectedImage && (
         <div 
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}
         >
           <div className="relative max-w-4xl max-h-full">
@@ -390,9 +423,15 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
               alt="Plant event photo"
               width={800}
               height={600}
-              className="max-w-full max-h-full object-contain rounded-lg"
+              className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
               sizes="(max-width: 768px) 100vw, 800px"
             />
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 w-8 h-8 bg-white/90 hover:bg-white text-gray-800 rounded-full flex items-center justify-center transition-colors duration-200"
+            >
+              ×
+            </button>
           </div>
         </div>
       )}

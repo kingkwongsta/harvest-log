@@ -160,7 +160,7 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="plant-variety">Plant Variety (Optional)</Label>
+                  <Label htmlFor="plant-variety">Plant Variety</Label>
                   <Select value={selectedPlantVariety} onValueChange={setSelectedPlantVariety} disabled={varietiesLoading}>
                     <SelectTrigger>
                       <SelectValue placeholder={varietiesLoading ? "Loading varieties..." : "Select a plant variety..."} />
@@ -192,7 +192,7 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
+                <Label htmlFor="description">Description</Label>
                 <Input
                   id="description"
                   value={description}
@@ -203,7 +203,7 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                <Label htmlFor="notes">Additional Notes</Label>
                 <Textarea
                   id="notes"
                   value={notes}
@@ -242,7 +242,7 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
               images={images}
               onImagesChange={setImages}
               maxImages={5}
-              label="Bloom Photos (Optional)"
+              label="Bloom Photos"
               description="Capture or upload bloom photos"
               themeColor="pink"
               isProcessing={isSubmitting}
