@@ -264,9 +264,12 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                             <div>
                               <h3 className="text-xl font-semibold text-foreground mb-1 flex items-center gap-2">
                                 <EventIcon className={`w-5 h-5 ${eventColor}`} />
-                                {event.plant?.variety?.name || event.produce || 'Plant Event'}
+                                {event.plant?.name || event.produce || 'Plant Event'}
                               </h3>
                               <p className="text-sm text-organic">
+                                {event.plant?.variety?.name && (
+                                  <span className="font-medium">{event.plant.variety.name} • </span>
+                                )}
                                 {getRelativeTime(event.event_date)}
                               </p>
                             </div>
