@@ -1,6 +1,8 @@
 // API configuration and helper functions
 
-let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+// Use HTTPS for production, HTTP for local development
+const defaultUrl = process.env.NODE_ENV === 'production' ? 'https://localhost:8080' : 'http://localhost:8080'
+let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || defaultUrl
 
 // Enhanced HTTPS enforcement in production
 if (process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV) {

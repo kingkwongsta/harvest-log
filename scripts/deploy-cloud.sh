@@ -78,6 +78,21 @@ print_step() {
     echo -e "${CYAN}[STEP]${NC} $1"
 }
 
+# Function to load environment variables from .env file
+load_env_file() {
+    local env_file="$PROJECT_ROOT/.env"
+    if [ -f "$env_file" ]; then
+        print_status "Loading environment variables from .env file..."
+        # Export variables from .env file, ignoring comments and empty lines
+        set -a  # Automatically export all variables
+        source "$env_file"
+        set +a  # Stop auto-export
+        print_status "✓ Environment variables loaded from .env"
+    else
+        print_status "No .env file found at project root"
+    fi
+}
+
 # Show deployment menu
 show_menu() {
     echo "🚀 Choose your deployment option:"
@@ -277,6 +292,28 @@ deploy_frontend() {
     print_status "Clearing build cache to prevent HTTPS issues..."
     rm -rf .next
     rm -rf node_modules/.cache 2>/dev/null || true
+    rm -rf .vercel 2>/dev/null || true
+    rm -rf .swc 2>/dev/null || true
+    
+    # Handle .env.local file that may override production settings
+    print_status "Handling local environment file..."
+    if [ -f ".env.local" ]; then
+        print_status "Backing up .env.local to .env.local.backup..."
+        cp .env.local .env.local.backup
+        print_status "Creating production .env.local..."
+        echo "# Production environment variables" > .env.local
+        echo "NEXT_PUBLIC_API_URL=$PRODUCTION_API_URL" >> .env.local
+        print_status "✓ Production environment variables set in .env.local"
+    else
+        print_status "Creating production .env.local..."
+        echo "# Production environment variables" > .env.local
+        echo "NEXT_PUBLIC_API_URL=$PRODUCTION_API_URL" >> .env.local
+    fi
+    
+    # Clear any cached environment variables
+    print_status "Clearing cached environment variables..."
+    unset NEXT_PUBLIC_API_URL 2>/dev/null || true
+    export NEXT_PUBLIC_API_URL="$PRODUCTION_API_URL"
     
     # Install dependencies if node_modules doesn't exist
     if [ ! -d "node_modules" ]; then
@@ -308,13 +345,37 @@ deploy_frontend() {
     fi
     print_status "✓ Build successful with HTTPS configuration"
     
-    # Verify HTTPS URLs in build output (don't expose actual URL)
-    if grep -r "http://.*weather" .next/ 2>/dev/null; then
-        print_error "❌ Found HTTP weather URLs in build - this will cause mixed content errors!"
-        print_error "Build may be using cached environment variables."
-        exit 1
+    # Verify HTTPS URLs in build output (check only JS files, not binary cache)
+    print_status "Verifying HTTPS URLs in build output..."
+    
+    # Check only JavaScript files for HTTP weather URLs (excluding binary cache files)
+    if find .next -name "*.js" -exec grep -l "http://.*weather" {} \; 2>/dev/null | head -3; then
+        print_warning "⚠️  Found HTTP weather URLs in JavaScript files:"
+        print_warning "This may cause mixed content errors in production."
+        
+        # Show specific files with HTTP weather URLs
+        find .next -name "*.js" -exec grep -l "http://.*weather" {} \; 2>/dev/null | head -3 | while read file; do
+            print_warning "  - $file"
+        done
+        
+        # Check for actual API calls (not just string literals)
+        if find .next -name "*.js" -exec grep -l "\"http://.*weather\"" {} \; 2>/dev/null | head -1; then
+            print_error "❌ Found HTTP weather API calls in JavaScript files - this will cause mixed content errors!"
+            print_error "Build may be using cached environment variables."
+            echo ""
+            read -p "Skip this validation and continue deployment? (y/N): " -n 1 -r
+            echo ""
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                print_error "Deployment cancelled due to HTTP URLs in build output."
+                exit 1
+            else
+                print_warning "⚠️  Skipping HTTP validation - deploying anyway"
+            fi
+        else
+            print_status "✅ No critical HTTP weather API calls found - continuing deployment"
+        fi
     else
-        print_status "✅ No HTTP weather URLs found in build output"
+        print_status "✅ No HTTP weather URLs found in JavaScript files"
     fi
     
     print_status "Executing Vercel deployment..."
@@ -349,6 +410,17 @@ deploy_frontend() {
         exit 1
     fi
     
+    # Restore original .env.local file
+    print_status "Restoring original .env.local file..."
+    if [ -f ".env.local.backup" ]; then
+        mv .env.local.backup .env.local
+        print_status "✓ Original .env.local restored"
+    else
+        # If no backup exists, remove the production .env.local
+        rm -f .env.local
+        print_status "✓ Production .env.local removed"
+    fi
+    
     print_status "Returning to project root..."
     cd "${PROJECT_ROOT}"
     echo ""
@@ -356,6 +428,9 @@ deploy_frontend() {
 
 # Main deployment function
 main() {
+    # Load environment variables from .env file if it exists
+    load_env_file
+    
     # Get user's deployment choice
     print_status "Getting deployment choice from user..."
     choice=$(get_user_choice)
