@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.config import settings
 from app.routers import events, plants, weather, event_images
@@ -116,6 +117,10 @@ app = FastAPI(
 # Add logging middleware
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(PerformanceMiddleware, slow_request_threshold=settings.slow_request_threshold)
+
+# Add trusted host middleware for production
+if not settings.debug:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # Add CORS middleware
 app.add_middleware(
