@@ -234,16 +234,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Nature-themed Header */}
-      {/* Page Header */}
-      <div className="bg-card border-b border-border/50">
-        <div className="max-w-2xl mx-auto px-6 py-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Your Plant Journey</h1>
-            <p className="text-organic">Track what you grow and celebrate your garden&apos;s success</p>
-          </div>
-        </div>
-      </div>
+
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto p-6">
