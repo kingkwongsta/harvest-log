@@ -21,6 +21,12 @@ router = APIRouter(
 
 
 @router.get(
+    "",
+    response_model=dict,
+    summary="Get weather data",
+    description="Get weather data for given coordinates and optional date."
+)
+@router.get(
     "/",
     response_model=dict,
     summary="Get weather data",

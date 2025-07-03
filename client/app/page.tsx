@@ -234,22 +234,12 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Nature-themed Header */}
-      {/* Page Header */}
-      <div className="bg-card border-b border-border/50">
-        <div className="max-w-2xl mx-auto px-6 py-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Your Plant Journey</h1>
-            <p className="text-organic">Track what you grow and celebrate your garden&apos;s success</p>
-          </div>
-        </div>
-      </div>
+
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto p-6">
         {/* Event Type Selection - Persistent Buttons */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-4 text-center">Log Plant Event</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card 
               className={`cursor-pointer transition-all duration-200 border-2 ${

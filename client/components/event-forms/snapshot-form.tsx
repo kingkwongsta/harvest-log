@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useImperativeHandle, forwardRef } from 'react'
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,13 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Calendar } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
 import { PhotoUpload } from '@/components/shared/photo-upload'
 import { LocationInput } from '@/components/location/location-input'
 import { WeatherDisplay } from '@/components/location/weather-display'
-import type { Plant, Coordinates, WeatherData } from '@/lib/api'
+import type { Plant, PlantVariety, Coordinates, WeatherData } from '@/lib/api'
+import { plantsApi } from '@/lib/api'
 
 export interface SnapshotFormData {
   plant_id?: string
+  plant_variety_id?: string
   event_date: string
   description?: string
   notes?: string
@@ -39,9 +42,14 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
   ({ plants, onSubmit, isSubmitting, onReset }, ref) => {
     // Common event fields
     const [selectedPlant, setSelectedPlant] = useState('')
+    const [selectedPlantVariety, setSelectedPlantVariety] = useState('')
     const [eventDate, setEventDate] = useState(new Date())
     const [description, setDescription] = useState('')
     const [notes, setNotes] = useState('')
+    
+    // Plant varieties
+    const [plantVarieties, setPlantVarieties] = useState<PlantVariety[]>([])
+    const [varietiesLoading, setVarietiesLoading] = useState(false)
     
     // Snapshot-specific fields
     const [images, setImages] = useState<File[]>([])
@@ -51,10 +59,35 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
     const [coordinates, setCoordinates] = useState<Coordinates | null>(null)
     const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
 
+    // Fetch plant varieties on component mount
+    useEffect(() => {
+      const fetchPlantVarieties = async () => {
+        try {
+          setVarietiesLoading(true)
+          const response = await plantsApi.getVarieties()
+          if (response.success && response.data) {
+            setPlantVarieties(response.data)
+          }
+        } catch (error) {
+          console.error('Failed to fetch plant varieties:', error)
+          toast({
+            title: 'Error',
+            description: 'Failed to load plant varieties. Please try again.',
+            variant: 'destructive',
+          })
+        } finally {
+          setVarietiesLoading(false)
+        }
+      }
+
+      fetchPlantVarieties()
+    }, [])
+
     const resetForm = () => {
       console.log('🧹 SnapshotForm resetForm called')
       // Reset common fields
       setSelectedPlant('')
+      setSelectedPlantVariety('')
       setEventDate(new Date())
       setDescription('')
       setNotes('')
@@ -77,6 +110,7 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
 
     onSubmit({
       plant_id: selectedPlant || undefined,
+      plant_variety_id: selectedPlantVariety || undefined,
       event_date: eventDate.toISOString(),
       description: description.trim() || undefined,
       notes: notes.trim() || undefined,
@@ -100,7 +134,7 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
             <Label className="text-sm font-medium text-blue-700">Event Information</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="plant">Plant (Optional)</Label>
+                <Label htmlFor="plant">Plant</Label>
                 <Select value={selectedPlant} onValueChange={setSelectedPlant}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a plant..." />
@@ -109,6 +143,22 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
                     {plants.map((plant) => (
                       <SelectItem key={plant.id} value={plant.id}>
                         {plant.name} {plant.variety && `(${plant.variety.name})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="plant-variety">Plant Variety</Label>
+                <Select value={selectedPlantVariety} onValueChange={setSelectedPlantVariety} disabled={varietiesLoading}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={varietiesLoading ? "Loading varieties..." : "Select a plant variety..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plantVarieties.map((variety) => (
+                      <SelectItem key={variety.id} value={variety.id}>
+                        {variety.name} ({variety.category})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -132,7 +182,7 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
+              <Label htmlFor="description">Description</Label>
               <Input
                 id="description"
                 value={description}
@@ -143,7 +193,7 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes (Optional)</Label>
+              <Label htmlFor="notes">Additional Notes</Label>
               <Textarea
                 id="notes"
                 value={notes}
@@ -182,7 +232,7 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
             images={images}
             onImagesChange={setImages}
             maxImages={5}
-            label="Progress Photos (Optional)"
+            label="Progress Photos"
             description="Capture or upload progress photos"
             themeColor="blue"
             isProcessing={isSubmitting}
