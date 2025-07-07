@@ -1,13 +1,13 @@
-# API Logging Implementation Summary
+# Plant Journey API - Logging Implementation Summary
 
 ## 🚀 Overview
-Comprehensive logging has been implemented across all API endpoints in the FastAPI backend to provide detailed visibility into API operations, database interactions, and error tracking.
+Comprehensive logging has been implemented across all Plant Journey API endpoints to provide detailed visibility into API operations, database interactions, and error tracking for the unified plant lifecycle management system.
 
 ## 📊 Logging Architecture
 
 ### 1. **Structured JSON Logging**
 - **Configuration**: `app/logging_config.py`
-- **Format**: JSON with structured fields
+- **Format**: JSON with structured fields for production, colored console for development
 - **Loggers**: Separate loggers for API, Database, Middleware, and Application
 - **Correlation**: Request ID tracking across all operations
 
@@ -17,175 +17,193 @@ Comprehensive logging has been implemented across all API endpoints in the FastA
   - Request/Response logging with timing
   - Performance monitoring (slow request detection)
   - Automatic request ID generation
-  - Error handling with context
+  - Authentication context tracking
+  - Error handling with stack traces
 
 ### 3. **Request Correlation**
 - Every request gets a unique UUID (`request_id`)
-- Passed through all layers: API → Database → Storage
-- Enables tracing of requests across the entire stack
+- Passed through all layers: API → Database → Storage → Background Tasks
+- Enables full tracing of requests across the entire plant journey system
 
 ## 🔍 API Endpoint Logging
 
-### **Harvest Logs API** (`/api/harvest-logs`)
+### **Plant Events API** (`/api/v1/events`)
 
-#### POST `/api/harvest-logs/` - Create Harvest Log
+#### POST `/api/v1/events` - Create Plant Event
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.api",
-  "message": "API: Creating new harvest log for crop 'Tomatoes'",
+  "logger": "plant_journey.api",
+  "message": "API: Creating new plant event of type 'harvest'",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "crop_name": "Tomatoes",
-  "quantity": 5.0
+  "event_type": "harvest",
+  "plant_id": "plant_123",
+  "user_id": "user_456"
 }
 ```
 
-#### GET `/api/harvest-logs/` - List All Harvest Logs
+#### GET `/api/v1/events` - List Plant Events
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO", 
-  "logger": "harvest_log.api",
-  "message": "API: Successfully retrieved 15 harvest logs",
+  "logger": "plant_journey.api",
+  "message": "API: Successfully retrieved 25 plant events",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "record_count": 15
+  "event_count": 25,
+  "event_type_filter": "harvest",
+  "plant_id_filter": "plant_123"
 }
 ```
 
-#### GET `/api/harvest-logs/{id}` - Get Specific Harvest Log
+#### GET `/api/v1/events/{id}` - Get Specific Plant Event
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.api", 
-  "message": "API: Successfully retrieved harvest log 123",
+  "logger": "plant_journey.api", 
+  "message": "API: Successfully retrieved plant event event_789",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "record_id": "123"
+  "event_id": "event_789",
+  "event_type": "bloom"
 }
 ```
 
-#### PUT `/api/harvest-logs/{id}` - Update Harvest Log
+#### PUT `/api/v1/events/{id}` - Update Plant Event
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.api",
-  "message": "API: Successfully updated harvest log 123", 
+  "logger": "plant_journey.api",
+  "message": "API: Successfully updated plant event event_789", 
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "record_id": "123",
-  "fields_updated": ["quantity", "notes"]
+  "event_id": "event_789",
+  "event_type": "harvest",
+  "fields_updated": ["quantity", "notes", "metrics"]
 }
 ```
 
-#### DELETE `/api/harvest-logs/{id}` - Delete Harvest Log
+#### DELETE `/api/v1/events/{id}` - Delete Plant Event
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.api",
-  "message": "API: Successfully deleted harvest log 123",
+  "logger": "plant_journey.api",
+  "message": "API: Successfully deleted plant event event_789",
   "request_id": "550e8400-e29b-41d4-a716-446655440000", 
-  "record_id": "123"
+  "event_id": "event_789",
+  "event_type": "snapshot"
 }
 ```
 
-### **Images API** (`/api/images`)
+### **Plant Management API** (`/api/v1/plants`)
 
-#### POST `/api/images/upload/{harvest_log_id}` - Upload Image
+#### POST `/api/v1/plants` - Create Plant
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.api",
-  "message": "API: Image upload completed successfully - ID: img_123",
+  "logger": "plant_journey.api",
+  "message": "API: Created new plant 'Tomato Plant #1'",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "record_id": "img_123",
-  "harvest_log_id": "log_456", 
-  "filename": "tomato_harvest.jpg",
-  "file_size": 2048576
+  "plant_id": "plant_123",
+  "plant_name": "Tomato Plant #1",
+  "variety_id": "variety_456"
 }
 ```
 
-#### POST `/api/images/upload-multiple/{harvest_log_id}` - Upload Multiple Images
+#### GET `/api/v1/plants/{id}/events` - Get Plant Timeline
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.api", 
-  "message": "API: Multiple upload completed - 3 success, 0 failed",
+  "logger": "plant_journey.api",
+  "message": "API: Retrieved timeline for plant plant_123",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "harvest_log_id": "log_456",
-  "total_uploaded": 3,
-  "total_failed": 0
+  "plant_id": "plant_123",
+  "event_count": 12,
+  "date_range": "2024-01-01 to 2024-01-15"
 }
 ```
 
-#### GET `/api/images/harvest/{harvest_log_id}` - Get Images for Harvest
+### **Plant Varieties API** (`/api/v1/plants/varieties`)
+
+#### POST `/api/v1/plants/varieties` - Create Plant Variety
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.api",
-  "message": "API: Retrieved 3 images for harvest log log_456",
+  "logger": "plant_journey.api",
+  "message": "API: Created new plant variety 'Cherry Tomato'",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "harvest_log_id": "log_456",
+  "variety_id": "variety_789",
+  "variety_name": "Cherry Tomato",
+  "category": "vegetable"
+}
+```
+
+### **Event Images API** (`/api/v1/events/{id}/images`)
+
+#### POST `/api/v1/events/{event_id}/images` - Upload Event Images
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "level": "INFO",
+  "logger": "plant_journey.api",
+  "message": "API: Image upload completed successfully",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "event_id": "event_123",
+  "image_id": "img_456", 
+  "filename": "harvest_photo.jpg",
+  "file_size": 2048576,
+  "compression_ratio": 0.75
+}
+```
+
+#### GET `/api/v1/events/{event_id}/images` - Get Event Images
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "level": "INFO",
+  "logger": "plant_journey.api",
+  "message": "API: Retrieved 3 images for event event_123",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "event_id": "event_123",
   "image_count": 3
 }
 ```
 
-#### DELETE `/api/images/{image_id}` - Delete Image
+### **Weather API** (`/api/v1/weather`)
+
+#### GET `/api/v1/weather` - Get Weather Data
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.api",
-  "message": "API: Successfully deleted harvest image img_123",
+  "logger": "plant_journey.api",
+  "message": "API: Weather data retrieved successfully",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "record_id": "img_123",
-  "file_path": "harvest_images/img_123.jpg"
-}
-```
-
-### **Statistics API**
-
-#### GET `/api/harvest-stats` - Get Harvest Statistics
-```json
-{
-  "timestamp": "2024-01-15T10:30:00Z",
-  "level": "INFO",
-  "logger": "harvest_log.api",
-  "message": "API: Successfully retrieved harvest stats",
-  "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "total_harvests": 150,
-  "this_month": 12,
-  "this_week": 3
+  "latitude": 37.7749,
+  "longitude": -122.4194,
+  "date": "2024-01-15",
+  "weather_code": 3
 }
 ```
 
 ### **Health Check APIs**
 
-#### GET `/` - Basic Health Check
-```json
-{
-  "timestamp": "2024-01-15T10:30:00Z",
-  "level": "INFO",
-  "logger": "harvest_log.app",
-  "message": "API: Basic health check requested",
-  "request_id": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
-
-#### GET `/health` - Detailed Health Check
+#### GET `/health` - Health Check
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO", 
-  "logger": "harvest_log.app",
-  "message": "API: Detailed health check completed successfully",
+  "logger": "plant_journey.app",
+  "message": "API: Health check completed successfully",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "supabase_configured": true,
-  "debug_mode": false
+  "database_status": "healthy",
+  "cache_status": "healthy",
+  "background_tasks_status": "healthy"
 }
 ```
 
@@ -195,126 +213,212 @@ Comprehensive logging has been implemented across all API endpoints in the FastA
 
 All database operations are logged with:
 - Operation type (SELECT, INSERT, UPDATE, DELETE)
-- Table name
-- Record IDs
-- Row counts
-- Execution timing
-- Error details
+- Table name (plant_events, plants, plant_varieties, event_images)
+- Record IDs and counts
+- Query execution time
+
+#### Example Database Logs
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "level": "INFO",
+  "logger": "plant_journey.database",
+  "message": "Database operation completed successfully",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "operation": "INSERT",
+  "table": "plant_events",
+  "record_id": "event_123",
+  "duration_ms": 45.67,
+  "event_type": "harvest"
+}
+```
+
+## 🔐 Authentication Logging
+
+### **JWT Authentication** (`app/auth.py`)
+
+Authentication events are tracked:
+- Login attempts and results
+- Token validation
+- Role-based access checks
+- Authentication failures
 
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "INFO",
-  "logger": "harvest_log.database", 
-  "message": "DB: ✓ Successfully created harvest log with ID: 123",
+  "logger": "plant_journey.auth",
+  "message": "User authenticated successfully",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "record_id": "123",
-  "table": "harvest_logs",
-  "crop_name": "Tomatoes"
-}
-```
-
-## 🔧 Middleware Logging
-
-### **Request/Response Logging**
-```json
-{
-  "timestamp": "2024-01-15T10:30:00Z",
-  "level": "INFO",
-  "logger": "harvest_log.middleware",
-  "message": "Request completed: POST /api/harvest-logs/ - 201",
-  "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "method": "POST",
-  "url": "/api/harvest-logs/",
-  "status_code": 201,
-  "duration_ms": 1250.45
-}
-```
-
-### **Performance Monitoring**
-```json
-{
-  "timestamp": "2024-01-15T10:30:00Z",
-  "level": "WARNING",
-  "logger": "harvest_log.middleware",
-  "message": "Slow request detected: GET /api/harvest-logs/ took 2500ms",
-  "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "method": "GET", 
-  "url": "/api/harvest-logs/",
-  "duration_ms": 2500.0,
-  "slow_request": true
+  "user_id": "user_123",
+  "role": "admin",
+  "token_expiry": "2024-01-16T10:30:00Z"
 }
 ```
 
 ## 🚨 Error Logging
 
-### **API Errors**
+### **Comprehensive Error Tracking**
+
+All errors include:
+- Error type and message
+- Stack traces for debugging
+- Request context
+- User and operation details
+
+#### Validation Errors
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "ERROR",
-  "logger": "harvest_log.api",
-  "message": "API: Failed to create harvest log: Invalid data format",
+  "logger": "plant_journey.api",
+  "message": "Validation failed for event creation",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "crop_name": "Tomatoes",
-  "exception": "ValidationError: Field 'quantity' must be positive"
+  "error_type": "ValidationError",
+  "validation_errors": [
+    {
+      "field": "quantity",
+      "message": "must be greater than 0"
+    }
+  ]
 }
 ```
 
-### **Database Errors**
+#### Database Errors
 ```json
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "level": "ERROR",
-  "logger": "harvest_log.database",
-  "message": "DB: Database error creating harvest log: Connection timeout",
+  "logger": "plant_journey.database",
+  "message": "Database operation failed",
   "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "db_operation": "insert",
-  "table": "harvest_logs",
-  "crop_name": "Tomatoes",
-  "exception": "psycopg2.OperationalError: Connection timeout"
+  "operation": "INSERT",
+  "table": "plant_events",
+  "error_type": "DatabaseError",
+  "error_message": "Foreign key constraint violation"
 }
 ```
 
-## 📈 Log Levels Used
+## ⚡ Performance Logging
 
-- **DEBUG**: Detailed execution flow, SQL queries, internal operations
-- **INFO**: Successful operations, request completion, statistics
-- **WARNING**: Slow requests, missing data, non-critical issues  
-- **ERROR**: Failed operations, exceptions, validation errors
-- **CRITICAL**: System failures, startup/shutdown issues
+### **Request Performance Monitoring**
 
-## 🔍 Searchable Fields
+Performance metrics tracked:
+- Request duration
+- Slow request alerts
+- Database query performance
+- Cache hit/miss ratios
 
-All logs include structured fields for easy searching and filtering:
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "level": "WARNING",
+  "logger": "plant_journey.middleware",
+  "message": "Slow request detected",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "method": "GET",
+  "url": "/api/v1/events",
+  "duration_ms": 1500,
+  "threshold_ms": 1000
+}
+```
 
-- `request_id`: Unique identifier for request correlation
-- `method`: HTTP method (GET, POST, PUT, DELETE)
-- `url`: Request URL/endpoint
-- `status_code`: HTTP response status
-- `duration_ms`: Request processing time
-- `table`: Database table being accessed
-- `db_operation`: Type of database operation
-- `record_id`: Specific record identifier
-- `crop_name`: Harvest crop name (for harvest logs)
-- `file_size`: Image file size (for uploads)
-- `image_count`: Number of images (for bulk operations)
+## 🔧 Background Task Logging
 
-## 🛠️ Configuration
+### **Background Task Operations**
 
-Logging is configured in `app/config.py` with environment variables:
-- `LOG_LEVEL`: Controls verbosity (DEBUG, INFO, WARNING, ERROR)
-- `JSON_LOGS`: Enable/disable JSON formatting
-- `LOG_FILE`: Optional file output path
-- `SLOW_REQUEST_THRESHOLD`: Milliseconds to flag slow requests
+Background tasks are logged:
+- Image processing
+- Cache cleanup
+- Weather data updates
+- System maintenance
 
-## 📊 Benefits
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "level": "INFO",
+  "logger": "plant_journey.background",
+  "message": "Image compression completed",
+  "task_id": "task_123",
+  "image_id": "img_456",
+  "original_size": 5242880,
+  "compressed_size": 1572864,
+  "compression_ratio": 0.7
+}
+```
 
-1. **Request Tracing**: Follow requests end-to-end with request IDs
-2. **Performance Monitoring**: Identify slow endpoints and database queries
-3. **Error Debugging**: Detailed error context with stack traces
-4. **Usage Analytics**: Track API usage patterns and statistics
-5. **Operational Visibility**: Monitor system health and performance
-6. **Compliance**: Audit trail for all data operations
+## 📊 Cache Logging
 
-This comprehensive logging implementation provides full visibility into your FastAPI harvest log application, enabling effective monitoring, debugging, and optimization. 
+### **Cache Operations**
+
+Cache performance is monitored:
+- Cache hits and misses
+- Cache evictions
+- Performance metrics
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "level": "DEBUG",
+  "logger": "plant_journey.cache",
+  "message": "Cache operation completed",
+  "operation": "GET",
+  "key": "plants:user_123",
+  "hit": true,
+  "ttl_remaining": 180
+}
+```
+
+## 🎯 Event Type Specific Logging
+
+### **Harvest Events**
+```json
+{
+  "event_type": "harvest",
+  "produce": "Tomatoes",
+  "quantity": 5.5,
+  "unit": "pounds",
+  "weather_data": {"temperature": 72, "humidity": 65}
+}
+```
+
+### **Bloom Events**
+```json
+{
+  "event_type": "bloom",
+  "flower_type": "Sunflower",
+  "bloom_stage": "full_bloom",
+  "metrics": {"bloom_count": 3, "diameter_cm": 12}
+}
+```
+
+### **Snapshot Events**
+```json
+{
+  "event_type": "snapshot",
+  "metrics": {
+    "height_cm": 45,
+    "health_score": 8,
+    "leaf_count": 24,
+    "new_growth": true
+  }
+}
+```
+
+## 🛠 Configuration & Setup
+
+### **Environment Variables for Logging**
+```env
+LOG_LEVEL=INFO                    # DEBUG, INFO, WARNING, ERROR, CRITICAL
+JSON_LOGS=true                   # true for production, false for development
+LOG_FILE=logs/plant-journey.log  # Optional: file output
+SLOW_REQUEST_THRESHOLD=1000      # Milliseconds
+```
+
+### **Log Rotation**
+- Automatic log file rotation
+- Configurable retention policies
+- Compression of old logs
+- Size-based rotation limits
+
+This comprehensive logging system provides full visibility into the Plant Journey API operations, enabling effective monitoring, debugging, and performance optimization. 

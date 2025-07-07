@@ -1,4 +1,4 @@
-# 🚀 Harvest Log Deployment Guide
+# 🚀 Plant Journey Deployment Guide
 
 Since you'll primarily use the app on your home wifi, **local deployment is recommended** for your use case.
 

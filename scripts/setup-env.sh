@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 🔒 Environment Setup Script for Harvest Log App
+# 🔒 Environment Setup Script for Plant Journey App
 # This script helps you configure environment variables securely
 
 set -e
@@ -14,7 +14,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 print_header() {
-    echo -e "${CYAN}🔒 Harvest Log - Environment Setup${NC}"
+    echo -e "${CYAN}🔒 Plant Journey - Environment Setup${NC}"
     echo -e "${CYAN}=================================${NC}"
     echo ""
 }

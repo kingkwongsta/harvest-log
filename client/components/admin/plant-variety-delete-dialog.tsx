@@ -70,13 +70,13 @@ export function PlantVarietyDeleteDialog({
 
           <div className="space-y-2">
             <Label htmlFor="confirmation">
-              Type the number <span className="font-mono font-bold">8</span> to confirm deletion:
+              Enter the confirmation code to delete:
             </Label>
             <Input
               id="confirmation"
               value={confirmationNumber}
               onChange={(e) => setConfirmationNumber(e.target.value)}
-              placeholder="Enter 8 to confirm"
+              placeholder="Enter code to delete"
               className="font-mono"
               disabled={isDeleting}
             />
@@ -91,12 +91,7 @@ export function PlantVarietyDeleteDialog({
                 {variety.description && (
                   <p><span className="font-medium">Description:</span> {variety.description}</p>
                 )}
-                {variety.growing_season && (
-                  <p><span className="font-medium">Growing Season:</span> {variety.growing_season}</p>
-                )}
-                {variety.harvest_time_days && (
-                  <p><span className="font-medium">Days to Harvest:</span> {variety.harvest_time_days}</p>
-                )}
+
               </div>
             </div>
           )}

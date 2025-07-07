@@ -1,5 +1,5 @@
 """
-Manual testing tools and scripts for the Harvest Log API backend.
+Manual testing tools and scripts for the Plant Journey API backend.
 
 This directory contains tools for manual testing and debugging:
 - Interactive test scripts

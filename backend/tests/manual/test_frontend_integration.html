@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Harvest Log - Test Integration</title>
+    <title>Plant Journey - Test Integration</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -121,8 +121,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>🌱 Harvest Log - Integration Test</h1>
-        <p>Test the complete frontend-backend integration for harvest logging with photos.</p>
+        <h1>🌱 Plant Journey - Integration Test</h1>
+        <p>Test the complete frontend-backend integration for plant journey logging with photos.</p>
         
         <form id="harvestForm">
             <div class="form-group">
@@ -227,9 +227,9 @@
             submitBtn.textContent = 'Logging Harvest...';
             
             try {
-                showStatus('Creating harvest log...', 'loading');
+                showStatus('Creating plant journey event...', 'loading');
                 
-                // Step 1: Create harvest log
+                // Step 1: Create plant journey event
                 const harvestData = {
                     crop_name: document.getElementById('crop').value,
                     quantity: parseFloat(document.getElementById('quantity').value),
@@ -247,16 +247,16 @@
                 });
                 
                 if (!harvestResponse.ok) {
-                    throw new Error(`Failed to create harvest log: ${harvestResponse.status}`);
+                    throw new Error(`Failed to create plant journey event: ${harvestResponse.status}`);
                 }
                 
                 const harvestResult = await harvestResponse.json();
                 if (!harvestResult.success) {
-                    throw new Error(harvestResult.message || 'Failed to create harvest log');
+                    throw new Error(harvestResult.message || 'Failed to create plant journey event');
                 }
                 
                 const harvestId = harvestResult.data.id;
-                console.log('✅ Harvest log created:', harvestId);
+                console.log('✅ Plant journey event created:', harvestId);
                 
                 // Step 2: Upload photos if any
                 if (selectedPhotos.length > 0) {
@@ -284,15 +284,15 @@
                         
                         if (total_failed > 0) {
                             const failedList = failed_uploads.map(f => `${f.filename}: ${f.error}`).join(', ');
-                            showStatus(`✅ Harvest logged! ⚠️ Some photos failed: ${failedList}`, 'error');
+                            showStatus(`✅ Plant journey event logged! ⚠️ Some photos failed: ${failedList}`, 'error');
                         } else {
-                            showStatus(`✅ Success! Harvest logged with ${total_uploaded} photo${total_uploaded > 1 ? 's' : ''}!`, 'success');
+                            showStatus(`✅ Success! Plant journey event logged with ${total_uploaded} photo${total_uploaded > 1 ? 's' : ''}!`, 'success');
                         }
                     } else {
-                        showStatus(`✅ Harvest logged! ❌ Photo upload failed: ${imageResult.message}`, 'error');
+                        showStatus(`✅ Plant journey event logged! ❌ Photo upload failed: ${imageResult.message}`, 'error');
                     }
                 } else {
-                    showStatus('✅ Harvest logged successfully!', 'success');
+                    showStatus('✅ Plant journey event logged successfully!', 'success');
                 }
                 
                 // Reset form

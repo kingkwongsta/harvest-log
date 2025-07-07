@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Local Harvest Log Deployment Script
-echo "🌱 Deploying Harvest Log App Locally..."
+# Local Plant Journey Deployment Script
+echo "🌱 Deploying Plant Journey App Locally..."
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
@@ -32,7 +32,7 @@ sleep 10
 if docker-compose ps | grep -q "Up"; then
     echo "✅ Services are running!"
     echo ""
-    echo "🎉 Harvest Log App is now available at:"
+    echo "🎉 Plant Journey App is now available at:"
     echo "   Frontend: http://localhost:3000"
     echo "   Backend API: http://localhost:8000"
     echo "   API Docs: http://localhost:8000/docs"

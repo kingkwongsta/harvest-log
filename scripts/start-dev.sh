@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Simple Development Server Startup Script
-echo "🌱 Starting Harvest Log App in Development Mode..."
+echo "🌱 Starting Plant Journey App in Development Mode..."
 
 # Detect if we're running from parent directory or scripts directory
 if [ -f "backend/.env" ]; then
@@ -52,7 +52,7 @@ sleep 5
 
 echo "✅ Services are running!"
 echo ""
-echo "🎉 Harvest Log App is now available at:"
+echo "🎉 Plant Journey App is now available at:"
 echo "   Frontend: http://localhost:3000"
 echo "   Backend API: http://localhost:8080"
 echo "   API Docs: http://localhost:8080/docs"

@@ -54,7 +54,7 @@ First, verify your backend API is working by testing directly:
 # Test health endpoint
 curl http://localhost:8000/health
 
-# Test creating a harvest log
+# Test creating a harvest log (legacy endpoint)
 curl -X POST "http://localhost:8000/api/harvest-logs/" \
      -H "Content-Type: application/json" \
      -d '{
@@ -66,7 +66,7 @@ curl -X POST "http://localhost:8000/api/harvest-logs/" \
        "notes": "Test harvest entry"
      }'
 
-# Test getting all harvest logs
+# Test getting all harvest logs (legacy endpoint)
 curl http://localhost:8000/api/harvest-logs/
 ```
 
@@ -87,7 +87,7 @@ If successful, you should be redirected to the harvests page and see your entry.
 ### 3. Test Harvest List
 
 1. Go to `http://localhost:3000/harvests`
-2. You should see any harvest logs you've created
+2. You should see any harvest logs you've created (legacy format)
 3. The page will show a loading state while fetching data from the API
 
 ## What Changed
@@ -128,8 +128,8 @@ Open browser dev tools → Network tab to see if API calls are being made and wh
 Once the basic connection is working, you can:
 
 1. Add photo upload functionality
-2. Implement harvest log editing/deletion
+2. Implement harvest log editing/deletion (legacy support)
 3. Add user authentication
 4. Deploy to production environments
 
-The foundation is now in place for a fully functional harvest logging system! 
+The foundation is now in place for a fully functional plant journey system! 

@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 print_header() {
-    echo -e "${BLUE}🔒 Security Check - Harvest Log App${NC}"
+    echo -e "${BLUE}🔒 Security Check - Plant Journey App${NC}"
     echo -e "${BLUE}===================================${NC}"
     echo ""
 }

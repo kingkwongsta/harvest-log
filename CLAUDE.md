@@ -36,9 +36,9 @@ python -m pytest --tb=short              # Run with short traceback format
 ```
 
 ### Common URLs
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
-- API Documentation: http://localhost:8080/docs
+- Frontend: http://localhost:3000 (local) / https://plant-journey.vercel.app (production)
+- Backend API: http://localhost:8080 (local) / https://plant-journey-backend-512013902761.us-west2.run.app (production)
+- API Documentation: http://localhost:8080/docs (local) / https://plant-journey-backend-512013902761.us-west2.run.app/docs (production)
 
 ## Architecture Overview
 

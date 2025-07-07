@@ -1,324 +1,299 @@
-# Harvest Log Backend
+# Plant Journey Backend API
 
-A FastAPI backend for managing harvest logs and garden data, built following official FastAPI best practices.
+A FastAPI backend for managing complete plant journey lifecycles with unified event tracking, built following modern Python best practices.
 
-## Features
+## 🌱 Overview
 
-- **Harvest Log Management**: Complete CRUD operations for harvest logs
+The Plant Journey API provides comprehensive plant lifecycle management through:
+- **Unified Event System**: Harvest, bloom, and snapshot events in a single, flexible system
+- **Plant Management**: Individual plant tracking with variety catalog
+- **Weather Integration**: Automatic weather data collection using Open-Meteo API
+- **Image Management**: Multi-image support with automatic compression
+- **Production Ready**: JWT authentication, caching, background tasks, and monitoring
+
+## 🚀 Features
+
+### Core Functionality
+- **Plant Journey Events**: Unified logging for harvest, bloom, and snapshot events
+- **Plant Lifecycle Management**: Track individual plants from planting to harvest
+- **Variety Catalog**: Comprehensive plant variety database with growing characteristics
+- **Weather Data**: Automatic weather collection based on location and date
+- **Image Processing**: Multi-image support with compression and metadata
+
+### Technical Features
 - **RESTful API**: Well-structured endpoints following REST conventions
-- **Interactive Documentation**: Automatic API documentation with Swagger UI
-- **CORS Support**: Cross-origin resource sharing enabled for frontend integration
-- **Data Validation**: Comprehensive Pydantic models with validation
-- **Modular Architecture**: Organized codebase following FastAPI best practices
-- **Testing**: Comprehensive test suite with pytest
-- **Configuration Management**: Environment-based configuration
-- **Error Handling**: Proper HTTP status codes and error responses
+- **Interactive Documentation**: Automatic OpenAPI documentation with Swagger UI
+- **JWT Authentication**: Bearer token authentication with role-based access
+- **Comprehensive Caching**: In-memory LRU cache for performance optimization
+- **Background Tasks**: Async processing for image handling and cleanup
+- **Request Logging**: Unique request IDs and comprehensive monitoring
+- **Error Handling**: Proper HTTP status codes and structured error responses
 
-## Project Structure
+## 📊 API Endpoints
 
-```
-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI application factory
-│   ├── config.py            # Application configuration
-│   ├── models.py            # Pydantic models
-│   ├── dependencies.py      # Dependency injection
-│   └── routers/
-│       ├── __init__.py
-│       └── harvest_logs.py  # Harvest logs endpoints
-├── tests/
-│   ├── __init__.py
-│   └── test_harvest_logs.py # Test suite
-├── main.py                  # Application entry point
-├── requirements.txt         # Dependencies
-└── README.md               # This file
-```
+### Plant Events
+- `POST /api/v1/events` - Create plant events (harvest, bloom, snapshot)
+- `GET /api/v1/events` - List events with filtering and pagination
+- `GET /api/v1/events/{id}` - Get specific event details
+- `PUT /api/v1/events/{id}` - Update event information
+- `DELETE /api/v1/events/{id}` - Delete event
 
-## Installation
+### Plant Management
+- `POST /api/v1/plants` - Create new plant
+- `GET /api/v1/plants` - List all plants with filtering
+- `GET /api/v1/plants/{id}` - Get plant details
+- `GET /api/v1/plants/{id}/events` - Get plant's event timeline
+- `PUT /api/v1/plants/{id}` - Update plant information
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd harvest-log/backend
-   ```
+### Plant Varieties
+- `POST /api/v1/plants/varieties` - Create plant variety
+- `GET /api/v1/plants/varieties` - List varieties with filtering
+- `GET /api/v1/plants/varieties/{id}` - Get variety details
 
-2. **Create a virtual environment**
-   ```bash
-   python -m venv venv
-   ```
+### Weather Data
+- `GET /api/v1/weather` - Fetch weather data for date and location
 
-3. **Activate the virtual environment**
-   - On Windows:
-     ```bash
-     venv\Scripts\activate
-     ```
-   - On macOS/Linux:
-     ```bash
-     source venv/bin/activate
-     ```
+### Event Images
+- `POST /api/v1/events/{id}/images` - Upload event images
+- `GET /api/v1/events/{id}/images` - Get event images
+- `DELETE /api/v1/events/{id}/images/{image_id}` - Delete image
 
-4. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 🛠 Installation & Setup
 
-## Running the Application
+### Prerequisites
+- Python 3.9+ 
+- Supabase account and project
+- Environment variables configured
 
-### Development Mode (Recommended)
-
+### Installation
 ```bash
-fastapi dev app/main.py
+# Clone the repository
+git clone <repository-url>
+cd plant-journey/backend
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-### Alternative Development Mode
+### Environment Configuration
+Create `.env` file in the backend directory:
 
+```env
+# Application Settings
+APP_NAME="Plant Journey API"
+APP_VERSION="1.0.0"
+DEBUG=false
+
+# Database Configuration
+SUPABASE_URL=your_supabase_url_here
+SUPABASE_SERVICE_KEY=your_supabase_service_key_here
+
+# Authentication
+JWT_SECRET_KEY=your_jwt_secret_key_here
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_HOURS=24
+
+# API Configuration
+API_VERSION=v1
+HOST=0.0.0.0
+PORT=8080
+
+# CORS Configuration
+CORS_ORIGINS=["https://your-frontend-url.com","http://localhost:3000"]
+CORS_CREDENTIALS=true
+CORS_METHODS=["GET","POST","PUT","DELETE","OPTIONS"]
+CORS_HEADERS=["*"]
+
+# Logging Configuration
+LOG_LEVEL=INFO
+JSON_LOGS=true
+LOG_FILE=logs/plant-journey.log
+SLOW_REQUEST_THRESHOLD=1000
+
+# Caching Configuration
+CACHE_TTL=300
+CACHE_MAX_SIZE=1000
+
+# Background Tasks
+TASK_CLEANUP_INTERVAL=300
+```
+
+### Database Setup
+Execute the migration files in your Supabase dashboard:
+
+1. **Create Tables**: Run `migrations/setup_plant_journey.sql`
+2. **Migrate Data** (if needed): Run `migrations/migrate_to_plant_journey.sql`
+
+## 🏃 Running the Application
+
+### Development Mode
 ```bash
+# Start with auto-reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
+
+# Or use the entry point
 python main.py
 ```
 
 ### Production Mode
-
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Start production server
+uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 4
+
+# Or use Docker
+docker build -t plant-journey-backend .
+docker run -p 8080:8080 plant-journey-backend
 ```
 
-The API will be available at `http://localhost:8000`
+### API Documentation
+- **Swagger UI**: `http://localhost:8080/docs`
+- **ReDoc**: `http://localhost:8080/redoc`
+- **OpenAPI Schema**: `http://localhost:8080/openapi.json`
 
-## Configuration
+## 🧪 Testing
 
-The application uses environment-based configuration. Create a `.env` file in the backend directory:
+### Run Tests
+```bash
+# All tests
+python -m pytest tests/
 
-```env
-# Application Settings
-APP_NAME="Harvest Log API"
-APP_VERSION="1.0.0"
-DEBUG=true
+# Unit tests only
+python -m pytest tests/unit/
 
-# Server Configuration
-HOST="0.0.0.0"
-PORT=8000
+# Integration tests only
+python -m pytest tests/integration/
 
-# CORS Configuration
-CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
-
-# Supabase Configuration
-SUPABASE_URL=your_supabase_url_here
-SUPABASE_ANON_KEY=your_supabase_anon_key_here
-SUPABASE_SERVICE_KEY=your_supabase_service_key_here
-
-# Database Configuration (for future use)
-DATABASE_URL="sqlite:///./harvest_log.db"
-
-# Logging Configuration
-LOG_LEVEL=INFO                 # DEBUG, INFO, WARNING, ERROR, CRITICAL
-LOG_FILE=                      # Optional: path to log file (e.g., logs/app.log)
-JSON_LOGS=false               # Set to true for JSON formatted logs
-SLOW_REQUEST_THRESHOLD=1000.0  # Milliseconds - requests slower than this will be logged as warnings
-
-# Security Configuration (for future use)
-SECRET_KEY="your-secret-key-change-this-in-production"
-ALGORITHM="HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+# With coverage
+python -m pytest tests/ --cov=app --cov-report=html
 ```
 
-## Logging Features
+### Test Structure
+- **Unit Tests**: Fast, isolated component tests
+- **Integration Tests**: Database and external service tests
+- **Manual Tests**: Interactive testing tools
 
-The API includes comprehensive logging to help you monitor and debug your application:
-
-### What Gets Logged
-
-1. **Application Lifecycle**
-   - Startup and shutdown events
-   - Configuration details
-   - Database connection status
-
-2. **HTTP Requests**
-   - All incoming requests with method, URL, client info
-   - Response status codes and timing
-   - Request/response correlation with unique request IDs
-   - Slow request warnings (configurable threshold)
-
-3. **Database Operations**
-   - All CRUD operations on harvest logs
-   - Query execution details
-   - Connection status and errors
-   - Record IDs for tracking specific operations
-
-4. **API Operations**
-   - Endpoint-specific logging
-   - Success/failure status
-   - Data validation errors
-   - Business logic flow
-
-5. **Error Tracking**
-   - Detailed error messages with stack traces
-   - Context information (request ID, user, operation)
-   - Database connection failures
-   - Validation errors
-
-### Log Levels
-
-- **DEBUG**: Detailed diagnostic information (SQL queries, detailed request data)
-- **INFO**: General operational messages (successful operations, startup)
-- **WARNING**: Important events that might need attention (slow requests, missing data)
-- **ERROR**: Error conditions that don't stop the application
-- **CRITICAL**: Serious errors that might stop the application
-
-### Log Output Options
-
-**Console Logs (default):**
-- Colored output for easy reading during development
-- Human-readable timestamps
-- Clean formatting
-
-**JSON Logs:**
-- Structured logging for production environments
-- Easy parsing by log aggregation tools
-- Includes metadata fields for filtering and searching
-
-**File Logs:**
-- Rotating log files with automatic cleanup
-- Configurable with `LOG_FILE` environment variable
-- Uses JSON format for structured data
+## 📈 Monitoring & Logging
 
 ### Request Tracking
+Every request includes:
+- Unique request ID for tracing
+- Request/response logging with timing
+- User context and operation details
+- Error tracking with stack traces
 
-Every request gets a unique `request_id` that appears in:
-- All related log entries
-- HTTP response headers (`X-Request-ID`)
-- Error responses
+### Performance Monitoring
+- Slow request detection (configurable threshold)
+- Cache hit/miss ratios
+- Database query performance
+- Background task monitoring
 
-This makes it easy to trace a specific request through all layers of the application.
+### Health Checks
+- **Basic Health**: `GET /health`
+- **Detailed Health**: `GET /health/detailed`
+- Database connectivity status
+- Cache performance metrics
+- Background task health
 
-### Monitoring Key Metrics
+## 🔐 Authentication & Security
 
-The logging system tracks:
-- **Response times**: Average, min, max request durations
-- **Error rates**: HTTP 4xx/5xx response counts
-- **Database performance**: Query execution times
-- **Resource usage**: Request throughput and patterns
-- **Slow requests**: Requests exceeding the configured threshold
+### JWT Authentication
+- Bearer token authentication
+- Role-based access control
+- Configurable token expiration
+- Secure password hashing
 
-## API Documentation
+### Security Features
+- CORS configuration
+- Request rate limiting
+- Input validation with Pydantic
+- SQL injection prevention
+- Secure error handling
 
-Once the server is running, you can access:
+## 🎯 Data Models
 
-- **Interactive API Documentation (Swagger UI)**: `http://localhost:8000/docs`
-- **Alternative API Documentation (ReDoc)**: `http://localhost:8000/redoc`
-- **OpenAPI Schema**: `http://localhost:8000/openapi.json`
+### Plant Events
+Unified event model supporting:
+- **Harvest Events**: Produce, quantity, quality metrics
+- **Bloom Events**: Flower types, bloom stages, timing
+- **Snapshot Events**: Growth measurements, health observations
 
-## API Endpoints
+### Plant Management
+- **Plants**: Individual plant instances with lifecycle tracking
+- **Varieties**: Plant variety catalog with growing characteristics
+- **Images**: Multi-image support with compression and metadata
 
-### Health Check
+### Weather Integration
+- Automatic weather data collection
+- Historical weather lookup
+- Location-based weather information
+- Integration with Open-Meteo API
 
-- `GET /` - Basic health check
-- `GET /health` - Detailed health check
+## 🔧 Configuration Options
 
-### Harvest Logs
+### Logging Levels
+- **DEBUG**: Detailed diagnostic information
+- **INFO**: General operational messages
+- **WARNING**: Important events requiring attention
+- **ERROR**: Error conditions
+- **CRITICAL**: Serious errors
 
-- `GET /api/harvest-logs` - Get all harvest logs
-- `POST /api/harvest-logs` - Create a new harvest log
-- `GET /api/harvest-logs/{id}` - Get a specific harvest log
-- `PUT /api/harvest-logs/{id}` - Update a harvest log
-- `DELETE /api/harvest-logs/{id}` - Delete a harvest log
+### Cache Configuration
+- **TTL**: Time-to-live for cache entries
+- **Max Size**: Maximum number of cached items
+- **Cleanup**: Automatic expired entry removal
 
-### Example Requests
+### Background Tasks
+- Image processing and compression
+- Temporary file cleanup
+- Cache maintenance
+- Weather data updates
 
-#### Create a harvest log
+## 📦 Deployment
+
+### Docker Deployment
 ```bash
-curl -X POST "http://localhost:8000/api/harvest-logs/" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "crop_name": "Tomatoes",
-       "quantity": 5.5,
-       "unit": "pounds",
-       "harvest_date": "2024-01-15T10:30:00",
-       "location": "Garden Bed A",
-       "notes": "First harvest of the season"
-     }'
+# Build container
+docker build -t plant-journey-backend .
+
+# Run container
+docker run -p 8080:8080 --env-file .env plant-journey-backend
 ```
 
-#### Get all harvest logs
-```bash
-curl -X GET "http://localhost:8000/api/harvest-logs/"
-```
+### Cloud Deployment
+- **Google Cloud Run**: Containerized deployment
+- **Vercel**: Serverless deployment
+- **AWS Lambda**: Serverless with Mangum adapter
 
-## Testing
+### Environment Variables
+Ensure all required environment variables are set:
+- Database credentials
+- Authentication secrets
+- API configuration
+- External service keys
 
-Run the test suite with pytest:
+## 🤝 Contributing
 
-```bash
-# Run all tests
-pytest
+### Development Guidelines
+- Follow Python PEP 8 style guide
+- Use type hints for all functions
+- Write comprehensive tests
+- Update documentation for new features
+- Use meaningful commit messages
 
-# Run tests with coverage
-pytest --cov=app
+### Code Organization
+- Models in `plant_models.py`
+- Routers organized by domain
+- Utilities in dedicated modules
+- Comprehensive error handling
+- Proper logging throughout
 
-# Run tests with verbose output
-pytest -v
-```
-
-## Data Models
-
-### HarvestLog (Complete Model)
-
-- `id`: UUID - Unique identifier (auto-generated)
-- `crop_name`: str - Name of the crop harvested (1-100 chars)
-- `quantity`: float - Amount harvested (must be > 0)
-- `unit`: str - Unit of measurement (1-50 chars)
-- `harvest_date`: datetime - Date and time of harvest
-- `location`: str (optional) - Location where crop was harvested (max 200 chars)
-- `notes`: str (optional) - Additional notes (max 1000 chars)
-- `created_at`: datetime - Timestamp when record was created (auto-generated)
-- `updated_at`: datetime - Timestamp when record was last updated (auto-generated)
-
-### HarvestLogCreate (Input Model)
-
-Used for creating new harvest logs - includes all base fields without ID and timestamps.
-
-### HarvestLogUpdate (Update Model)
-
-Used for updating existing harvest logs - all fields are optional.
-
-## Architecture Benefits
-
-This improved architecture provides:
-
-1. **Separation of Concerns**: Models, routing, configuration, and dependencies are separated
-2. **Dependency Injection**: Proper use of FastAPI's dependency system
-3. **Type Safety**: Full type hints and validation with Pydantic
-4. **Testability**: Modular design enables comprehensive testing
-5. **Scalability**: Easy to add new features and endpoints
-6. **Maintainability**: Clear structure and documentation
-7. **Configuration Management**: Environment-based settings
-8. **Error Handling**: Proper HTTP status codes and error responses
-
-## Future Enhancements
-
-Planned improvements include:
-- Database integration (SQLAlchemy with SQLite/PostgreSQL)
-- User authentication and authorization (JWT tokens)
-- Advanced querying and filtering
-- Data export capabilities (CSV, Excel)
-- Image upload for harvest photos
-- Harvest analytics and reporting
-- API rate limiting
-- Logging and monitoring
-- Docker containerization
-
-## Technology Stack
-
-- **FastAPI 0.115.0**: Modern, fast web framework for Python
-- **Pydantic 2.9.2**: Data validation using Python type annotations
-- **Uvicorn**: ASGI server for running the application
-- **Pytest**: Testing framework
-- **Python 3.8+**: Programming language
-
-## Contributing
-
-1. Follow the existing code structure and patterns
-2. Add tests for new features
-3. Update documentation as needed
-4. Use type hints consistently
-5. Follow FastAPI best practices 
+This backend provides a robust foundation for plant journey management with production-ready features and comprehensive functionality. 

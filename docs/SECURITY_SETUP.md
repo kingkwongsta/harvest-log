@@ -1,6 +1,6 @@
 # 🔒 Security Setup Guide
 
-This guide explains how to securely configure your Harvest Log App without exposing sensitive URLs in your public repository.
+This guide explains how to securely configure your Plant Journey App without exposing sensitive URLs in your public repository.
 
 ## 🚨 Why This Matters
 
@@ -42,7 +42,7 @@ NEXT_PUBLIC_API_URL=https://your-service-name-your-project-id.your-region.run.ap
 
 # Google Cloud configuration
 GOOGLE_CLOUD_PROJECT_ID=your-project-id
-CLOUD_RUN_SERVICE_NAME=harvest-log-backend
+CLOUD_RUN_SERVICE_NAME=plant-journey-backend
 CLOUD_RUN_REGION=us-west2
 ```
 

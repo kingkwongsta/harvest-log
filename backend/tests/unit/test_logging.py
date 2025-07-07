@@ -30,14 +30,14 @@ def test_logging():
     api_logger.info("API request processed", extra={
         "request_id": "12345-67890",
         "method": "POST",
-        "url": "/api/harvest-logs",
+        "url": "/api/v1/events",
         "status_code": 201,
         "duration_ms": 45.67
     })
     
     db_logger.info("Database operation completed", extra={
         "db_operation": "INSERT",
-        "table": "harvest_logs",
+        "table": "plant_events",
         "record_id": "uuid-12345",
         "duration_ms": 12.34
     })
@@ -52,17 +52,18 @@ def test_logging():
     
     app_logger.info("Application started successfully")
     
-    api_logger.info("Processing harvest log creation", extra={
+    api_logger.info("Processing plant event creation", extra={
         "request_id": "req-98765",
         "method": "POST",
-        "url": "/api/harvest-logs",
-        "crop_name": "Tomatoes"
+        "url": "/api/v1/events",
+        "event_type": "harvest",
+        "plant_name": "Tomatoes"
     })
     
     db_logger.info("Record created successfully", extra={
         "db_operation": "INSERT",
-        "table": "harvest_logs",
-        "record_id": "log-uuid-54321",
+        "table": "plant_events",
+        "record_id": "event-uuid-54321",
         "affected_rows": 1
     })
     

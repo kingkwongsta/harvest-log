@@ -29,7 +29,7 @@ async def test_storage_service():
         success, message, file_info = await storage_service.upload_image(
             file_content=file_content,
             original_filename="test_image.jpg",
-            harvest_log_id="test-harvest-123"
+            event_id="test-event-123"
         )
         
         if success:
@@ -62,13 +62,21 @@ async def test_database_connection():
     try:
         client = get_supabase()
         
-        # Test harvest_logs table
-        result = client.table("harvest_logs").select("id", count='exact').limit(1).execute()
-        print(f"✅ harvest_logs table accessible - Count: {result.count}")
+        # Test plant_events table
+        result = client.table("plant_events").select("id", count='exact').limit(1).execute()
+        print(f"✅ plant_events table accessible - Count: {result.count}")
         
-        # Test harvest_images table  
-        result = client.table("harvest_images").select("id", count='exact').limit(1).execute()
-        print(f"✅ harvest_images table accessible - Count: {result.count}")
+        # Test event_images table  
+        result = client.table("event_images").select("id", count='exact').limit(1).execute()
+        print(f"✅ event_images table accessible - Count: {result.count}")
+        
+        # Test plants table
+        result = client.table("plants").select("id", count='exact').limit(1).execute()
+        print(f"✅ plants table accessible - Count: {result.count}")
+        
+        # Test plant_varieties table
+        result = client.table("plant_varieties").select("id", count='exact').limit(1).execute()
+        print(f"✅ plant_varieties table accessible - Count: {result.count}")
         
         # Test storage bucket
         buckets = client.storage.list_buckets()
@@ -87,7 +95,7 @@ if __name__ == "__main__":
     
     print("\n✨ Test completed!")
     print("\n📝 Next steps:")
-    print("1. Apply database schema: Run the setup_supabase.sql in your Supabase dashboard")
+    print("1. Apply database schema: Run the SQL files in migrations/ directory in your Supabase dashboard")
     print("2. Install dependencies: pip install -r requirements.txt")
     print("3. Set environment variables for Supabase")
     print("4. Start the FastAPI server: uvicorn app.main:app --reload")

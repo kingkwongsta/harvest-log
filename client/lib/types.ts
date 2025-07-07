@@ -92,10 +92,10 @@ export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>
 
 // Re-export API types for convenience
 export type {
-  HarvestLogData,
+  HarvestLogData,  // Legacy interface
   HarvestImage,
   ApiResponse,
-  HarvestLogResponse,
+  HarvestLogResponse,  // Legacy interface
   HarvestStats,
   ImageUploadResponse,
   MultipleImageUploadResponse

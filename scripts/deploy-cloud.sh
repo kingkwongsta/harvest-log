@@ -41,7 +41,7 @@ if [ "$(pwd)" != "$PROJECT_ROOT" ]; then
     cd "$PROJECT_ROOT"
 fi
 
-echo "🌱 Harvest Log App - Cloud Deployment"
+echo "🌱 Plant Journey App - Cloud Deployment"
 echo "====================================="
 echo "📁 Project root: $(pwd)"
 echo ""
@@ -448,7 +448,7 @@ main() {
             echo "🎉 FULL DEPLOYMENT COMPLETE! 🎉"
             echo "==============================="
             echo ""
-            print_success "Your complete Harvest Log App is now live in the cloud!"
+            print_success "Your complete Plant Journey App is now live in the cloud!"
             echo ""
             echo "🌐 Frontend App: Check the Vercel output above for your app URL"
             if [ -n "$BACKEND_API_URL" ]; then

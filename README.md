@@ -368,7 +368,7 @@ async def upload_image(file: UploadFile):
     pass
 
 # Pydantic model validation
-class HarvestLogCreate(BaseModel):
+class HarvestLogCreate(BaseModel):  # Legacy model
     crop_name: str = Field(..., min_length=1, max_length=100)
     quantity: float = Field(..., gt=0)
     harvest_date: date = Field(..., le=date.today())

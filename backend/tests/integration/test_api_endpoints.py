@@ -29,7 +29,7 @@ class ImageUploadAPITester:
         return img_buffer.getvalue()
     
     def create_harvest_log(self) -> str:
-        """Create a test harvest log and return its ID"""
+        """Create a test plant journey event and return its ID"""
         harvest_data = {
             "crop_name": "Test Tomatoes",
             "quantity": 2.5,
@@ -47,14 +47,14 @@ class ImageUploadAPITester:
             
             if response.status_code == 201:
                 harvest_id = response.json()["id"]
-                print(f"✅ Created test harvest log: {harvest_id}")
+                print(f"✅ Created test plant journey event: {harvest_id}")
                 return harvest_id
             else:
-                print(f"❌ Failed to create harvest log: {response.status_code} - {response.text}")
+                print(f"❌ Failed to create plant journey event: {response.status_code} - {response.text}")
                 return self.test_harvest_log_id  # fallback to UUID
                 
         except Exception as e:
-            print(f"❌ Error creating harvest log: {e}")
+            print(f"❌ Error creating plant journey event: {e}")
             return self.test_harvest_log_id  # fallback to UUID
     
     def test_server_health(self) -> bool:
@@ -73,7 +73,7 @@ class ImageUploadAPITester:
     
     def test_single_image_upload(self, harvest_log_id: str) -> Dict[str, Any]:
         """Test single image upload endpoint"""
-        print(f"\n📤 Testing single image upload to harvest log: {harvest_log_id}")
+        print(f"\n📤 Testing single image upload to plant journey event: {harvest_log_id}")
         
         # Create test image
         image_data = self.create_test_image('blue', (150, 100))
@@ -113,7 +113,7 @@ class ImageUploadAPITester:
     
     def test_multiple_image_upload(self, harvest_log_id: str) -> List[Dict[str, Any]]:
         """Test multiple image upload endpoint"""
-        print(f"\n📤📤 Testing multiple image upload to harvest log: {harvest_log_id}")
+        print(f"\n📤📤 Testing multiple image upload to plant journey event: {harvest_log_id}")
         
         # Create multiple test images
         image1 = self.create_test_image('green', (120, 80))
@@ -161,7 +161,7 @@ class ImageUploadAPITester:
             
             if response.status_code == 200:
                 images = response.json()
-                print(f"✅ Retrieved {len(images)} images for harvest log")
+                print(f"✅ Retrieved {len(images)} images for plant journey event")
                 for img in images:
                     print(f"   - {img['original_filename']} ({img['file_size']} bytes)")
                 return images
@@ -205,10 +205,10 @@ class ImageUploadAPITester:
             print("\n❌ Cannot proceed - API server is not accessible")
             return
         
-        # Create a test harvest log
+        # Create a test plant journey event
         harvest_log_id = self.create_harvest_log()
         
-        # Wait a moment for the harvest log to be created
+        # Wait a moment for the plant journey event to be created
         time.sleep(1)
         
         # Test single image upload
@@ -233,7 +233,7 @@ class ImageUploadAPITester:
                 print("❌ Image deletion verification failed")
         
         print(f"\n✨ Test suite completed!")
-        print(f"🧪 Test harvest log ID: {harvest_log_id}")
+        print(f"🧪 Test plant journey event ID: {harvest_log_id}")
         print(f"📊 Summary:")
         print(f"   - Single upload: {'✅ Passed' if single_upload_result else '❌ Failed'}")
         print(f"   - Multiple upload: {'✅ Passed' if multiple_upload_results else '❌ Failed'}")

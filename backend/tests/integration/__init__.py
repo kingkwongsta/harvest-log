@@ -1,5 +1,5 @@
 """
-Integration tests for the Harvest Log API backend.
+Integration tests for the Plant Journey API backend.
 
 Integration tests verify that multiple components work together correctly:
 - API endpoints with database operations
