@@ -3,9 +3,22 @@
 # Simple Development Server Startup Script
 echo "🌱 Starting Harvest Log App in Development Mode..."
 
-# Check if .env exists
-if [ ! -f ../backend/.env ]; then
+# Detect if we're running from parent directory or scripts directory
+if [ -f "backend/.env" ]; then
+    # Running from parent directory (harvest-log/)
+    BACKEND_DIR="backend"
+    CLIENT_DIR="client"
+    echo "📁 Detected running from parent directory"
+elif [ -f "../backend/.env" ]; then
+    # Running from scripts directory
+    BACKEND_DIR="../backend"
+    CLIENT_DIR="../client"
+    echo "📁 Detected running from scripts directory"
+else
     echo "⚠️  No backend/.env file found. Please create one with your Supabase credentials."
+    echo "🔍 Checked for .env file in:"
+    echo "   - backend/.env (if running from parent directory)"
+    echo "   - ../backend/.env (if running from scripts directory)"
     exit 1
 fi
 
@@ -20,19 +33,19 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo "🏗️  Starting backend server..."
-cd ../backend
+cd $BACKEND_DIR
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8080 &
 BACKEND_PID=$!
-cd ..
+cd - > /dev/null
 
 echo "⏳ Waiting for backend to start..."
 sleep 3
 
 echo "🎨 Starting frontend server..."
-cd client
+cd $CLIENT_DIR
 npm run dev -- --port 3000 &
 FRONTEND_PID=$!
-cd ..
+cd - > /dev/null
 
 echo "⏳ Waiting for frontend to start..."
 sleep 5

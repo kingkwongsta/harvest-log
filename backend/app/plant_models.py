@@ -249,10 +249,10 @@ class PlantEventBase(BaseModel):
             return InputValidator.validate_datetime(v, 'event_date')
         return v
     
-    @field_validator('description', 'notes')
+    @field_validator('description')
     @classmethod
-    def validate_text_fields(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize text fields"""
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize description field"""
         if v is None:
             return None
         return InputSanitizer.sanitize_notes(v)
@@ -290,8 +290,7 @@ class PlantEventUpdate(BaseModel):
     """Model for updating plant events"""
     plant_id: Optional[UUID] = None
     event_date: Optional[datetime] = None
-    description: Optional[str] = Field(None, max_length=500)
-    notes: Optional[str] = Field(None, max_length=2000)
+    description: Optional[str] = Field(None, max_length=2500)
     location: Optional[str] = Field(None, max_length=200)
     
     # Event-specific fields (only relevant fields will be used based on event_type)

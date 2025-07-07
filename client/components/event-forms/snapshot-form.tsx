@@ -209,23 +209,22 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
                 <WeatherDisplay weather={weatherData} compact />
               </div>
             )}
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Photo Upload Section */}
-          <PhotoUpload
-            images={images}
-            onImagesChange={setImages}
-            maxImages={5}
-            label="Progress Photos"
-            description="Capture or upload progress photos"
-            themeColor="blue"
-            isProcessing={isSubmitting}
-            disabled={isSubmitting}
-          />
-        </CardContent>
-      </Card>
+            {/* Photo Upload Section */}
+            <PhotoUpload
+              images={images}
+              onImagesChange={setImages}
+              maxImages={5}
+              label="Progress Photos"
+              description="Capture or upload progress photos"
+              themeColor="blue"
+              isProcessing={isSubmitting}
+              disabled={isSubmitting}
+            />
+          </CardContent>
+        </Card>
 
       <div className="flex justify-end space-x-2">
         <Button type="submit" disabled={isSubmitting} className="bg-blue-500 hover:bg-blue-600 text-white" size="lg">

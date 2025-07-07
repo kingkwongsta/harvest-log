@@ -19,8 +19,12 @@ import { PlantDeleteDialog } from "@/components/admin/plant-delete-dialog"
 import { PlantVarietyAddDialog } from "@/components/admin/plant-variety-add-dialog"
 import { PlantVarietyEditDialog } from "@/components/admin/plant-variety-edit-dialog"
 import { PlantVarietyDeleteDialog } from "@/components/admin/plant-variety-delete-dialog"
+import { EventAddDialog } from "@/components/admin/event-add-dialog"
+import { EventEditDialog } from "@/components/admin/event-edit-dialog"
+import { EventDeleteDialog } from "@/components/admin/event-delete-dialog"
 import type { PlantFormData } from "@/components/admin/plant-form"
 import type { PlantVarietyFormData } from "@/components/admin/plant-variety-form"
+import type { EventFormData } from "@/components/admin/event-form"
 
 
 export default function AdminPage() {
@@ -32,10 +36,6 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all")
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [eventToDelete, setEventToDelete] = useState<PlantEvent | null>(null)
-  const [deleteConfirmationNumber, setDeleteConfirmationNumber] = useState("")
-  const [isDeleting, setIsDeleting] = useState(false)
   
   // Plant management state
   const [addPlantDialogOpen, setAddPlantDialogOpen] = useState(false)
@@ -54,6 +54,15 @@ export default function AdminPage() {
   const [varietyToDelete, setVarietyToDelete] = useState<PlantVariety | null>(null)
   const [isVarietySubmitting, setIsVarietySubmitting] = useState(false)
   const [isDeletingVariety, setIsDeletingVariety] = useState(false)
+
+  // Event management state
+  const [addEventDialogOpen, setAddEventDialogOpen] = useState(false)
+  const [editEventDialogOpen, setEditEventDialogOpen] = useState(false)
+  const [deleteEventDialogOpen, setDeleteEventDialogOpen] = useState(false)
+  const [eventToEdit, setEventToEdit] = useState<PlantEvent | null>(null)
+  const [eventToDelete, setEventToDelete] = useState<PlantEvent | null>(null)
+  const [isEventSubmitting, setIsEventSubmitting] = useState(false)
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false)
   
 
   useEffect(() => {
@@ -90,7 +99,6 @@ export default function AdminPage() {
   const filteredEvents = events.filter(event => {
     const matchesSearch = !searchTerm || 
       event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.plant?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
               event.plant_variety?.toLowerCase().includes(searchTerm.toLowerCase())
     
@@ -553,7 +561,6 @@ export default function AdminPage() {
                         <EventField label="Event Type" value={event.event_type} highlight />
                         <EventField label="Event Date" value={event.event_date} />
                         <EventField label="Description" value={event.description} />
-                        <EventField label="Notes" value={event.notes} />
                       </div>
                     </div>
                     <div>

@@ -90,7 +90,6 @@ async def create_plant_event(
             "event_type": validated_data.event_type.value,
             "event_date": validated_data.event_date.isoformat() if validated_data.event_date else None,
             "description": validated_data.description,
-            "notes": validated_data.notes,
             "location": validated_data.location,
             "latitude": validated_data.coordinates.latitude if validated_data.coordinates else None,
             "longitude": validated_data.coordinates.longitude if validated_data.coordinates else None,
