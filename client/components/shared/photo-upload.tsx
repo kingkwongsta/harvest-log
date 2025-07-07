@@ -46,35 +46,94 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
     
     try {
       for (const file of files) {
+        // Log file details for debugging
+        console.log('🔍 Processing file:', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          sizeMB: (file.size / (1024 * 1024)).toFixed(2) + 'MB'
+        })
+        
         try {
-          const result = await compressImage(file, {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1600,
-            quality: 0.8,
-            convertToWebP: true
+          // Use conservative compression settings for phone images
+          const isPhoneImage = /^\d+_\d+\.jpg$/i.test(file.name) || 
+                             /^IMG_\d+\.jpg$/i.test(file.name) ||
+                             /^DSC_\d+\.jpg$/i.test(file.name) ||
+                             /^PXL_\d+\.jpg$/i.test(file.name)
+          
+          const compressionOptions = {
+            maxSizeMB: isPhoneImage ? 2.0 : 1.0, // More lenient for phone images
+            maxWidthOrHeight: isPhoneImage ? 2048 : 1600, // Higher resolution for phone images
+            quality: isPhoneImage ? 0.85 : 0.8, // Higher quality for phone images
+            convertToWebP: !isPhoneImage, // Disable WebP for phone images to avoid issues
+            preserveExif: false // Remove EXIF data to avoid orientation issues
+          }
+          
+          console.log('⚙️ Compression settings:', {
+            file: file.name,
+            isPhoneImage,
+            options: compressionOptions
           })
           
-          // Show compression stats
-          console.log('📸 Image compressed:', {
+          const result = await compressImage(file, compressionOptions)
+          
+          // Show compression stats with method used
+          console.log('📸 Image compressed successfully:', {
             original: (result.originalSize / (1024 * 1024)).toFixed(2) + 'MB',
             compressed: (result.compressedSize / (1024 * 1024)).toFixed(2) + 'MB',
-            savings: result.compressionRatio
+            savings: result.compressionRatio,
+            method: result.method,
+            warnings: result.warnings
           })
           
+          // Show warnings to user if any
+          if (result.warnings && result.warnings.length > 0) {
+            console.warn('⚠️ Compression warnings:', result.warnings)
+            toast({
+              title: 'Compression Notice',
+              description: `${file.name}: ${result.warnings.join(', ')}`,
+              variant: 'default',
+            })
+          }
+          
           processedImages.push(result.compressedFile)
+          
         } catch (error) {
-          console.error('Failed to compress image:', file.name, error)
-          toast({
-            title: 'Compression Error',
-            description: `Failed to compress ${file.name}. Using original file.`,
-            variant: 'destructive',
+          console.error('❌ Failed to compress image:', {
+            file: file.name,
+            error: error instanceof Error ? error.message : 'Unknown error'
           })
-          // Use original file if compression fails
-          processedImages.push(file)
+          
+          // Determine if we should use original or skip the file
+          const isTooBig = file.size > 10 * 1024 * 1024 // 10MB
+          
+          if (isTooBig) {
+            toast({
+              title: 'File Too Large',
+              description: `${file.name} is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please choose a smaller image.`,
+              variant: 'destructive',
+            })
+          } else {
+            toast({
+              title: 'Compression Failed',
+              description: `Failed to compress ${file.name}. Using original file (${(file.size / (1024 * 1024)).toFixed(1)}MB).`,
+              variant: 'default',
+            })
+            // Use original file if compression fails and it's not too big
+            processedImages.push(file)
+          }
         }
       }
       
       return processedImages
+    } catch (error) {
+      console.error('❌ Batch processing failed:', error)
+      toast({
+        title: 'Processing Error',
+        description: 'Failed to process images. Please try again.',
+        variant: 'destructive',
+      })
+      return []
     } finally {
       setProcessingImages(false)
     }
@@ -212,7 +271,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
       )}
 
       <div className="text-xs text-muted-foreground text-center">
-        Images will be compressed to 1MB max • Up to {maxImages} photos • WebP format for optimal web performance
+        Images will be automatically compressed • Up to {maxImages} photos • Phone images optimized for best quality
       </div>
 
       {images.length > 0 && (
