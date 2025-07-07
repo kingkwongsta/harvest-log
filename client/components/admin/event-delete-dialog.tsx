@@ -87,11 +87,11 @@ export const EventDeleteDialog = ({
                 type="number"
                 value={confirmationNumber}
                 onChange={(e) => setConfirmationNumber(e.target.value)}
-                placeholder="Confirmation code"
+                placeholder="Enter code to delete"
                 className={confirmationNumber === "8" ? "border-green-500" : ""}
               />
               <p className="text-xs text-gray-500">
-                Enter <strong>8</strong> to confirm deletion
+                Enter the confirmation code to delete
               </p>
             </div>
           </div>
