@@ -9,24 +9,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
-import type { PlantEvent, PlantEventCreateData, Plant, EventType } from '@/lib/api'
+import type { PlantEvent, PlantEventCreateData, PlantEventUpdateData, Plant, EventType } from '@/lib/api'
 
+// This matches the backend PlantEventUpdateData structure
 export interface EventFormData {
   plant_id?: string
-  event_type: EventType
   event_date: string
   description?: string
   location?: string
-  coordinates?: { latitude: number; longitude: number }
   quantity?: number
-  plant_variety_id?: string
+  plant_variety?: string
   metrics?: Record<string, unknown>
+}
+
+// For creating events, we need to include event_type
+export interface EventCreateData extends EventFormData {
+  event_type: EventType
 }
 
 interface EventFormProps {
   plants: Plant[]
   initialData?: PlantEvent
-  onSubmit: (data: EventFormData) => void
+  onSubmit: (data: EventFormData | EventCreateData) => void
   onCancel: () => void
   isSubmitting: boolean
 }
@@ -107,18 +111,26 @@ export const EventForm = forwardRef<EventFormRef, EventFormProps>(
         }
       }
 
-      const formData: EventFormData = {
+      const baseFormData: EventFormData = {
         plant_id: plantId || undefined,
-        event_type: eventType,
         event_date: eventDate,
         description: description.trim() || undefined,
         location: location.trim() || undefined,
         quantity: quantity ? parseFloat(quantity) : undefined,
-        plant_variety_id: plantVarietyId || undefined,
+        plant_variety: plantVarietyId || undefined,
         metrics: parsedMetrics,
       }
 
-      onSubmit(formData)
+      // For creating new events, include event_type. For updates, exclude it.
+      if (initialData) {
+        onSubmit(baseFormData)
+      } else {
+        const createData: EventCreateData = {
+          ...baseFormData,
+          event_type: eventType,
+        }
+        onSubmit(createData)
+      }
     }
 
     return (

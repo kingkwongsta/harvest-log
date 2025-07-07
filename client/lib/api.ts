@@ -226,6 +226,16 @@ export interface PlantEventCreateData {
   metrics?: Record<string, unknown>;
 }
 
+export interface PlantEventUpdateData {
+  plant_id?: string;
+  event_date?: string;
+  description?: string;
+  location?: string;
+  quantity?: number;
+  plant_variety?: string;
+  metrics?: Record<string, unknown>;
+}
+
 export interface PlantCreateData {
   name: string;
   variety_id?: string;
@@ -640,10 +650,32 @@ export const eventsApi = {
     return apiRequest(`/api/events/${id}`);
   },
 
-  update: async (id: string, data: Partial<PlantEventCreateData>): Promise<ApiResponse<PlantEvent>> => {
+  update: async (id: string, data: PlantEventUpdateData): Promise<ApiResponse<PlantEvent>> => {
+    // Transform the data to ensure proper format for backend
+    const updateData: PlantEventUpdateData = {
+      ...data,
+      // Ensure event_date is in ISO format if provided
+      event_date: data.event_date ? new Date(data.event_date).toISOString() : undefined,
+    };
+    
+    // Remove undefined values to avoid sending them to backend
+    const cleanData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, value]) => value !== undefined)
+    );
+
+    // Debug logging
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔍 API Debug: Event update data:', {
+        id,
+        originalData: data,
+        transformedData: updateData,
+        cleanData
+      });
+    }
+
     return apiRequest(`/api/events/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(cleanData),
     });
   },
 

@@ -24,7 +24,8 @@ import { EventEditDialog } from "@/components/admin/event-edit-dialog"
 import { EventDeleteDialog } from "@/components/admin/event-delete-dialog"
 import type { PlantFormData } from "@/components/admin/plant-form"
 import type { PlantVarietyFormData } from "@/components/admin/plant-variety-form"
-import type { EventFormData } from "@/components/admin/event-form"
+import type { EventFormData, EventCreateData } from "@/components/admin/event-form"
+import type { PlantEventUpdateData } from "@/lib/api"
 
 
 export default function AdminPage() {
@@ -117,27 +118,23 @@ export default function AdminPage() {
     }
   }
 
-  const handleDeleteClick = (event: PlantEvent) => {
+  const handleDeleteEventClick = (event: PlantEvent) => {
     setEventToDelete(event)
-    setDeleteConfirmationNumber("")
-    setDeleteDialogOpen(true)
+    setDeleteEventDialogOpen(true)
   }
 
-  const handleDeleteConfirm = async () => {
-    if (deleteConfirmationNumber !== "8" || !eventToDelete) {
-      return
-    }
+  const handleDeleteEvent = async () => {
+    if (!eventToDelete) return
 
     console.log('🗑️ [ADMIN] Starting event deletion:', { eventId: eventToDelete.id, eventType: eventToDelete.event_type })
-    setIsDeleting(true)
+    setIsDeletingEvent(true)
     try {
       const response = await eventsApi.delete(eventToDelete.id)
       if (response.success) {
         console.log('✅ [ADMIN] Event deleted successfully:', { eventId: eventToDelete.id, eventType: eventToDelete.event_type })
         setEvents(prev => prev.filter(e => e.id !== eventToDelete.id))
-        setDeleteDialogOpen(false)
+        setDeleteEventDialogOpen(false)
         setEventToDelete(null)
-        setDeleteConfirmationNumber("")
         toast({
           title: 'Success',
           description: 'Event deleted successfully!',
@@ -159,14 +156,114 @@ export default function AdminPage() {
         variant: 'destructive',
       })
     } finally {
-      setIsDeleting(false)
+      setIsDeletingEvent(false)
     }
   }
 
-  const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false)
+  const handleEditEventClick = (event: PlantEvent) => {
+    setEventToEdit(event)
+    setEditEventDialogOpen(true)
+  }
+
+  const handleCloseEventDialogs = () => {
+    setAddEventDialogOpen(false)
+    setEditEventDialogOpen(false)
+    setDeleteEventDialogOpen(false)
+    setEventToEdit(null)
     setEventToDelete(null)
-    setDeleteConfirmationNumber("")
+  }
+
+  // Event management functions
+  const handleEventSubmit = async (data: EventFormData | EventCreateData) => {
+    if ('event_type' in data) {
+      // This is a create operation
+      await handleAddEvent(data as EventCreateData)
+    } else {
+      // This is an update operation
+      await handleEditEvent(data as EventFormData)
+    }
+  }
+
+  const handleAddEvent = async (data: EventCreateData) => {
+    console.log('📅 [ADMIN] Starting event creation:', { eventData: data })
+    setIsEventSubmitting(true)
+    try {
+      const response = await eventsApi.create(data)
+      if (response.success) {
+        console.log('✅ [ADMIN] Event created successfully:', { eventId: response.data?.id, eventType: response.data?.event_type })
+        setEvents(prev => [...prev, response.data!])
+        setAddEventDialogOpen(false)
+        toast({
+          title: 'Success',
+          description: 'Event created successfully!',
+        })
+      } else {
+        console.error('❌ [ADMIN] Failed to create event:', { data, error: response.message })
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to create event',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('❌ [ADMIN] Error creating event:', { data, error })
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create event'
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsEventSubmitting(false)
+    }
+  }
+
+  const handleEditEvent = async (data: EventFormData) => {
+    if (!eventToEdit) return
+
+    console.log('📅 [ADMIN] Starting event update:', { eventId: eventToEdit.id, eventData: data })
+    setIsEventSubmitting(true)
+    try {
+      // Convert EventFormData to PlantEventUpdateData
+      const updateData: PlantEventUpdateData = {
+        plant_id: data.plant_id || undefined,
+        event_date: data.event_date,
+        description: data.description || undefined,
+        location: data.location || undefined,
+        quantity: data.quantity || undefined,
+        plant_variety: data.plant_variety || undefined,
+        metrics: data.metrics || undefined,
+      }
+
+      const response = await eventsApi.update(eventToEdit.id, updateData)
+      if (response.success) {
+        console.log('✅ [ADMIN] Event updated successfully:', { eventId: eventToEdit.id, eventType: response.data?.event_type })
+        setEvents(prev => prev.map(e => e.id === eventToEdit.id ? response.data! : e))
+        setEditEventDialogOpen(false)
+        setEventToEdit(null)
+        toast({
+          title: 'Success',
+          description: 'Event updated successfully!',
+        })
+      } else {
+        console.error('❌ [ADMIN] Failed to update event:', { eventId: eventToEdit.id, data: updateData, error: response.message })
+        toast({
+          title: 'Error',
+          description: response.message || 'Failed to update event',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('❌ [ADMIN] Error updating event:', { eventId: eventToEdit.id, data, error })
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update event'
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsEventSubmitting(false)
+    }
   }
 
   // Plant management functions
@@ -487,8 +584,19 @@ export default function AdminPage() {
         <TabsContent value="events" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Event Filters</CardTitle>
-              <CardDescription>Filter and search through all logged events</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Event Management</CardTitle>
+                  <CardDescription>Manage all events in your plant journey</CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setAddEventDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Event
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex gap-4 mb-4">
@@ -541,11 +649,18 @@ export default function AdminPage() {
                         {expandedEvent === event.id ? 'Collapse' : 'Expand'}
                       </Button>
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditEventClick(event)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleDeleteClick(event)}
+                        onClick={() => handleDeleteEventClick(event)}
                       >
-                        Delete
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -826,63 +941,31 @@ export default function AdminPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Event</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this event? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {eventToDelete && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={eventToDelete.event_type === 'harvest' ? 'default' : eventToDelete.event_type === 'bloom' ? 'secondary' : 'outline'}>
-                    {eventToDelete.event_type}
-                  </Badge>
-                  <span className="font-medium">
-                    {eventToDelete.plant?.name || eventToDelete.plant_variety || `${eventToDelete.event_type} Event`}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <div>Event ID: {eventToDelete.id}</div>
-                  <div>Date: {new Date(eventToDelete.event_date).toLocaleDateString()}</div>
-                  <div>Created: {formatDistanceToNow(new Date(eventToDelete.created_at), { addSuffix: true })}</div>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="delete-confirmation" className="block text-sm font-medium">
-                  Enter the confirmation code to delete:
-                </label>
-                <Input
-                  id="delete-confirmation"
-                  type="number"
-                  value={deleteConfirmationNumber}
-                  onChange={(e) => setDeleteConfirmationNumber(e.target.value)}
-                  placeholder="Confirmation code"
-                  className={deleteConfirmationNumber === "8" ? "border-green-500" : ""}
-                />
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={handleDeleteCancel} disabled={isDeleting}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteConfirm}
-              disabled={deleteConfirmationNumber !== "8" || isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete Event"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Event Management Dialogs */}
+      <EventAddDialog
+        isOpen={addEventDialogOpen}
+        onClose={handleCloseEventDialogs}
+        plants={plants}
+        onSubmit={handleEventSubmit}
+        isSubmitting={isEventSubmitting}
+      />
+
+      <EventEditDialog
+        isOpen={editEventDialogOpen}
+        onClose={handleCloseEventDialogs}
+        event={eventToEdit}
+        plants={plants}
+        onSubmit={handleEventSubmit}
+        isSubmitting={isEventSubmitting}
+      />
+
+      <EventDeleteDialog
+        isOpen={deleteEventDialogOpen}
+        onClose={handleCloseEventDialogs}
+        event={eventToDelete}
+        onConfirm={handleDeleteEvent}
+        isDeleting={isDeletingEvent}
+      />
 
       {/* Plant Management Dialogs */}
       <PlantAddDialog

@@ -297,6 +297,53 @@ class PlantEventUpdate(BaseModel):
     quantity: Optional[float] = Field(None, gt=0)
     plant_variety: Optional[str] = Field(None, max_length=100)
     metrics: Optional[Dict[str, Any]] = None
+    
+    @field_validator('event_date')
+    @classmethod
+    def validate_event_date(cls, v: Any) -> Optional[datetime]:
+        """Validate event date"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            from app.validators import InputValidator
+            return InputValidator.validate_datetime(v, 'event_date')
+        return v
+    
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize description field"""
+        if v is None:
+            return None
+        from app.validators import InputSanitizer
+        return InputSanitizer.sanitize_notes(v)
+    
+    @field_validator('location')
+    @classmethod
+    def validate_location(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize location"""
+        if v is None:
+            return None
+        from app.validators import InputSanitizer
+        return InputSanitizer.sanitize_location(v)
+    
+    @field_validator('plant_variety')
+    @classmethod
+    def validate_plant_variety(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize plant variety"""
+        if v is None:
+            return None
+        from app.validators import InputSanitizer
+        return InputSanitizer.sanitize_string(v, max_length=100)
+    
+    @field_validator('quantity')
+    @classmethod
+    def validate_quantity(cls, v: Optional[float]) -> Optional[float]:
+        """Validate quantity value"""
+        if v is None:
+            return None
+        from app.validators import InputValidator
+        return InputValidator.validate_quantity(v)
 
 
 class PlantEvent(PlantEventBase):

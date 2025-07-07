@@ -1,14 +1,14 @@
 'use client'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { EventForm, EventFormData } from './event-form'
+import { EventForm, EventFormData, EventCreateData } from './event-form'
 import type { Plant } from '@/lib/api'
 
 interface EventAddDialogProps {
   isOpen: boolean
   onClose: () => void
   plants: Plant[]
-  onSubmit: (data: EventFormData) => void
+  onSubmit: (data: EventFormData | EventCreateData) => void
   isSubmitting: boolean
 }
 
