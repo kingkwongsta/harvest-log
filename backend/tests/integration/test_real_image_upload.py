@@ -143,13 +143,9 @@ async def test_database_connection():
     try:
         client = get_supabase()
         
-        # Test harvest_logs table
-        result = client.table("harvest_logs").select("id", count='exact').limit(1).execute()
-        print(f"✅ harvest_logs table accessible - Count: {result.count}")
-        
-        # Test harvest_images table  
-        result = client.table("harvest_images").select("id", count='exact').limit(1).execute()
-        print(f"✅ harvest_images table accessible - Count: {result.count}")
+        # Test plant_events table
+        result = client.table("plant_events").select("id", count='exact').limit(1).execute()
+        print(f"✅ plant_events table accessible - Count: {result.count}")
         
         # Test storage bucket
         try:

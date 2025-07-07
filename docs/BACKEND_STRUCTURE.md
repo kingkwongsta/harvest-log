@@ -1,64 +1,86 @@
 # Backend Structure Guide
 
-This document outlines the organized structure of the Harvest Log API backend.
+This document outlines the organized structure of the Plant Journey API backend.
 
 ## 📁 Directory Structure
 
 ```
 backend/
-├── app/                    # Core application code
+├── app/                       # Core application code
 │   ├── __init__.py
-│   ├── main.py            # FastAPI application entry point
-│   ├── config.py          # Application configuration
-│   ├── database.py        # Database connection and setup
-│   ├── dependencies.py    # Dependency injection
-│   ├── logging_config.py  # Logging configuration
-│   ├── middleware.py      # Custom middleware
-│   ├── models.py          # Pydantic models
-│   ├── storage.py         # File storage service
-│   └── routers/           # API route handlers
+│   ├── main.py               # FastAPI application entry point
+│   ├── config.py             # Application configuration
+│   ├── database.py           # Database connection and setup
+│   ├── dependencies.py       # Dependency injection
+│   ├── logging_config.py     # Logging configuration
+│   ├── middleware.py         # Custom middleware
+│   ├── plant_models.py       # Plant journey Pydantic models
+│   ├── storage.py            # File storage service
+│   ├── auth.py               # JWT authentication
+│   ├── cache.py              # In-memory caching
+│   ├── background_tasks.py   # Background task management
+│   ├── error_handlers.py     # Global error handling
+│   ├── exceptions.py         # Custom exceptions
+│   ├── geocoding.py          # Location services
+│   ├── health.py             # Health check endpoints
+│   ├── pagination.py         # API pagination utilities
+│   ├── validators.py         # Custom validation logic
+│   ├── versioning.py         # API versioning
+│   ├── weather.py            # Weather API integration
+│   └── routers/              # API route handlers
 │       ├── __init__.py
-│       ├── harvest_logs.py
-│       └── images.py
-├── tests/                 # All test files organized by type
-│   ├── __init__.py        # Test package documentation
-│   ├── unit/              # Fast, isolated unit tests
+│       ├── events.py         # Plant event CRUD (harvest, bloom, snapshot)
+│       ├── plants.py         # Plant and variety management
+│       ├── weather.py        # Weather data endpoints
+│       └── event_images.py   # Event image management
+├── tests/                    # Comprehensive test suite
+│   ├── __init__.py
+│   ├── unit/                 # Fast, isolated unit tests
 │   │   ├── __init__.py
-│   │   ├── test_harvest_logs.py
 │   │   └── test_logging.py
-│   ├── integration/       # Tests requiring external dependencies
+│   ├── integration/          # Tests requiring external dependencies
 │   │   ├── __init__.py
 │   │   ├── test_api_endpoints.py
 │   │   ├── test_image_upload.py
 │   │   └── test_real_image_upload.py
-│   └── manual/            # Manual testing tools
+│   └── manual/               # Manual testing tools
 │       ├── __init__.py
 │       └── test_frontend_integration.html
-├── docs/                  # Documentation files
-│   ├── README.md
-│   └── API_LOGGING_SUMMARY.md
-├── main.py               # Application entry point
-├── requirements.txt      # Python dependencies
-├── setup_supabase.sql   # Database setup script
-└── README.md            # Main backend documentation
+├── migrations/               # Database schema migrations
+│   ├── setup_plant_journey.sql
+│   ├── migrate_to_plant_journey.sql
+│   └── *.sql                # Additional migration files
+├── scripts/                  # Utility scripts
+│   └── setup_migration.py   # Database setup script
+├── main.py                   # Application entry point
+├── requirements.txt          # Python dependencies
+├── Dockerfile               # Container configuration
+└── README.md               # Main backend documentation
 ```
 
 ## 🎯 Organization Principles
 
 ### Core Application (`app/`)
-- Contains all production code
-- Modular structure with clear separation of concerns
-- Each module has a specific responsibility
+- **Models**: `plant_models.py` contains unified Pydantic models for the plant journey system
+- **Routers**: API endpoints organized by domain (events, plants, weather, images)
+- **Services**: Separate concerns for auth, caching, storage, and background tasks
+- **Utilities**: Common functionality like pagination, validation, and error handling
 
-### Testing (`tests/`)
-- **Unit Tests**: Fast, isolated tests for individual components
-- **Integration Tests**: Tests that require external services (database, storage)
-- **Manual Tests**: Interactive tools for manual testing and debugging
+### API Architecture
+- **Unified Events**: Single endpoint handles harvest, bloom, and snapshot events
+- **Plant Management**: Complete CRUD for plants and varieties
+- **Weather Integration**: Automatic weather data collection using Open-Meteo API
+- **Image Management**: Multi-image support for all event types
 
-### Documentation (`docs/`)
-- Technical documentation
-- API guides and implementation details
-- Separated from code for better organization
+### Authentication & Security
+- **JWT-based**: Bearer token authentication with role-based access
+- **Middleware**: Request logging, authentication, and performance monitoring
+- **Error Handling**: Comprehensive error responses with proper HTTP status codes
+
+### Performance & Caching
+- **In-memory Cache**: LRU cache for frequently accessed data
+- **Background Tasks**: Async processing for image handling and cleanup
+- **Pagination**: Cursor-based pagination for large datasets
 
 ## 🚀 Running the Application
 
@@ -68,7 +90,7 @@ backend/
 pip install -r requirements.txt
 
 # Run with auto-reload
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
 
 # Or use the entry point
 python main.py
@@ -83,51 +105,97 @@ python -m pytest tests/
 python -m pytest tests/unit/       # Unit tests only
 python -m pytest tests/integration/ # Integration tests only
 
-# Run specific test files
-python -m pytest tests/unit/test_harvest_logs.py
-
-# Manual testing
-python tests/integration/test_api_endpoints.py
+# Run with coverage
+python -m pytest tests/ --cov=app --cov-report=html
 ```
 
-### Manual Testing
-- Open `tests/manual/test_frontend_integration.html` in a browser
-- Ensure the API server is running first
+### Database Setup
+```bash
+# Execute migration files in Supabase dashboard
+# 1. setup_plant_journey.sql
+# 2. migrate_to_plant_journey.sql (if migrating from legacy system)
+```
 
-## 📝 File Purposes
+## 📝 Key Components
 
-### Core Files
-- `main.py`: Application entry point with uvicorn configuration
-- `app/main.py`: FastAPI app configuration and middleware setup
-- `requirements.txt`: Python package dependencies
-- `setup_supabase.sql`: Database schema and setup
+### Plant Journey System
+- **Events**: Unified logging for harvest, bloom, and snapshot events
+- **Plants**: Individual plant tracking with lifecycle management
+- **Varieties**: Plant variety catalog with growing characteristics
+- **Images**: Multi-image support with automatic compression
 
-### Configuration
-- `app/config.py`: Environment-based configuration
-- `app/logging_config.py`: Structured logging setup
-- `app/middleware.py`: Request/response middleware
+### API Endpoints
+- `POST /api/v1/events` - Create plant events
+- `GET /api/v1/events` - List events with filtering
+- `GET /api/v1/plants` - Plant management
+- `GET /api/v1/plants/varieties` - Variety catalog
+- `GET /api/v1/weather` - Weather data integration
 
-### Data & Storage
-- `app/models.py`: Pydantic data models
-- `app/database.py`: Supabase client configuration
-- `app/storage.py`: File storage service
-- `app/dependencies.py`: Dependency injection patterns
+### Data Models
+- **PlantEvent**: Unified event with type-specific validation
+- **Plant**: Individual plant instances with variety reference
+- **PlantVariety**: Plant types with growing information
+- **EventImage**: Image metadata with compression details
 
-### API Routes
-- `app/routers/harvest_logs.py`: CRUD operations for harvest logs
-- `app/routers/images.py`: Image upload and management
+## 🔧 Configuration
 
-## 🔧 Benefits of This Structure
+### Environment Variables
+```env
+# Application
+APP_NAME="Plant Journey API"
+APP_VERSION="1.0.0"
+DEBUG=false
 
-1. **Clear Separation**: Tests, docs, and core code are properly separated
-2. **Scalable**: Easy to add new test types or documentation
-3. **Maintainable**: Logical grouping makes finding files intuitive
-4. **Professional**: Follows Python project best practices
-5. **CI/CD Ready**: Structure supports automated testing and deployment
+# Database
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_service_key
 
-## 📋 Development Guidelines
+# Authentication
+JWT_SECRET_KEY=your_jwt_secret
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_HOURS=24
 
-- Add new tests to appropriate test directories
-- Update documentation when adding features
-- Keep the structure clean and organized
-- Follow the established patterns for new files 
+# Logging
+LOG_LEVEL=INFO
+JSON_LOGS=true
+SLOW_REQUEST_THRESHOLD=1000
+
+# CORS
+CORS_ORIGINS=["https://your-frontend-url.com"]
+```
+
+## 🛠 Development Guidelines
+
+### Code Organization
+- Keep models in `plant_models.py`
+- Organize routers by domain (events, plants, weather)
+- Use dependency injection for database and authentication
+- Implement proper error handling with custom exceptions
+
+### Testing Strategy
+- Unit tests for business logic
+- Integration tests for database operations
+- Manual tests for complex workflows
+- Cover all API endpoints and edge cases
+
+### Performance Considerations
+- Use caching for frequently accessed data
+- Implement pagination for large datasets
+- Background tasks for heavy operations
+- Monitor slow requests and optimize
+
+## 📊 Monitoring & Logging
+
+### Request Tracking
+- Unique request IDs for tracing
+- Comprehensive request/response logging
+- Performance metrics and slow request alerts
+- Error tracking with context information
+
+### Health Checks
+- `/health` endpoint with system status
+- Database connection monitoring
+- Background task health checks
+- Cache performance metrics
+
+This structure supports a production-ready plant journey management system with comprehensive features for tracking plant lifecycles, events, and analytics. 

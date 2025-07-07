@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 🚀 Quick Setup Script for Harvest Log App
+# 🚀 Quick Setup Script for Plant Journey App
 # This script helps you quickly get started with environment variables
 
 set -e
@@ -11,7 +11,7 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}�� Quick Setup - Harvest Log App${NC}"
+echo -e "${BLUE}🚀 Quick Setup - Plant Journey App${NC}"
 echo ""
 
 # Check if .env exists

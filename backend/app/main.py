@@ -81,8 +81,8 @@ app = FastAPI(
     version=settings.app_version,
     description="A comprehensive API for managing plant journey and garden data",
     contact={
-        "name": "Harvest Log API",
-        "email": "support@harvestlog.com",
+        "name": "Plant Journey API",
+        "email": "support@plantjourney.com",
     },
     license_info={
         "name": "MIT",

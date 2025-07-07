@@ -37,7 +37,7 @@ To run the full stack, I can use the provided scripts:
 
 ## Architecture Overview
 
-This is a modern full-stack harvest logging application with separated frontend and backend:
+This is a modern full-stack plant journey application with separated frontend and backend:
 
 **Frontend**: Next.js 15 with App Router, React 19, TypeScript, and Tailwind CSS
 - Located in `client/` directory
@@ -56,7 +56,7 @@ This is a modern full-stack harvest logging application with separated frontend 
 
 **Database**: Supabase PostgreSQL with Row Level Security (RLS)
 - Schema defined in `backend/setup_supabase.sql`
-- Harvest logs and image metadata tables
+- Plant journey events and image metadata tables
 - RLS policies for data protection
 
 ## Key Files and Entry Points
@@ -65,7 +65,7 @@ This is a modern full-stack harvest logging application with separated frontend 
 - `backend/app/main.py` - FastAPI application entry point with middleware and routes
 - `backend/app/models.py` - Pydantic data models for API validation
 - `backend/app/database.py` - Supabase client and database operations
-- `backend/app/routers/harvest_logs.py` - CRUD operations for harvest data
+- `backend/app/routers/harvest_logs.py` - CRUD operations for harvest data (legacy endpoints)
 - `backend/app/routers/images.py` - Image upload and management endpoints
 - `backend/app/config.py` - Environment-based configuration
 - `backend/app/auth.py` - JWT authentication and authorization utilities
@@ -161,7 +161,7 @@ Background task management for long-running operations:
 
 ## Data Models
 
-**Harvest Log**:
+**Plant Journey Events**:
 - Basic fields: crop_name, quantity, unit, harvest_date
 - Location: GPS coordinates or text description  
 - Conditions: weather, soil_conditions, notes
@@ -212,7 +212,7 @@ The application includes a comprehensive gallery system for viewing and managing
 - **Bulk Operations** - Delete, download, and organize multiple photos
 
 **Gallery Integration**:
-- Seamless integration with harvest logs system
+- Seamless integration with plant journey system
 - Consistent theming and styling across all views
 - Search and filter functionality across all modes
 - Navigation accessible from harvests page header

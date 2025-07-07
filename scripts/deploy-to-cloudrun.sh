@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deploy Harvest Log Backend to Google Cloud Run via Artifact Registry
+# Deploy Plant Journey Backend to Google Cloud Run via Artifact Registry
 # Make sure you have gcloud CLI installed and authenticated
 
 set -e  # Exit on any error
@@ -15,7 +15,7 @@ IMAGE_NAME="backend"
 # Construct the full image path for Artifact Registry
 IMAGE_PATH="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY_NAME}/${IMAGE_NAME}"
 
-echo "🚀 Deploying Harvest Log Backend to Cloud Run"
+echo "🚀 Deploying Plant Journey Backend to Cloud Run"
 echo "Project: ${PROJECT_ID}"
 echo "Region: ${REGION}"
 echo "Service: ${SERVICE_NAME}"

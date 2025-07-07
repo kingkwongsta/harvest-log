@@ -55,7 +55,7 @@ if (process.env.NODE_ENV === 'production' && !API_BASE_URL.startsWith('https://'
   console.error('❌ Please set NEXT_PUBLIC_API_URL environment variable to use HTTPS');
 }
 
-export interface HarvestLogData {
+export interface HarvestLogData {  // Legacy interface
   crop_name: string;
   quantity: number;
   unit: string;
@@ -107,7 +107,7 @@ export interface ApiResponse<T> {
   data?: T;
 }
 
-export interface HarvestLogResponse {
+export interface HarvestLogResponse {  // Legacy interface
   id: string;
   crop_name: string;
   quantity: number;

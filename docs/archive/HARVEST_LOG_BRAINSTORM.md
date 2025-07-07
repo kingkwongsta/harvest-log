@@ -1,7 +1,7 @@
-# Harvest Log App - Comprehensive Brainstorming Report
+# Plant Journey App - Comprehensive Brainstorming Report
 
 ## 🍎 App Overview
-A smart harvest logging application that combines traditional data entry with AI-powered insights, photo analysis, and beautiful visualizations to help users track, analyze, and optimize their fruit harvests.
+A smart plant journey application that combines traditional data entry with AI-powered insights, photo analysis, and beautiful visualizations to help users track, analyze, and optimize their plant growing journeys.
 
 ## 🎯 Core Features
 
@@ -530,7 +530,7 @@ const shortcuts = {
 ## 🔧 Implementation Phases
 
 ### Phase 1: MVP (2-3 months)
-- Basic harvest logging
+- Basic plant journey logging
 - Photo capture and storage
 - Simple data visualization
 - User authentication
@@ -660,7 +660,7 @@ const shortcuts = {
 
 ## 📝 Conclusion
 
-This harvest logging app combines the practical needs of home gardeners with cutting-edge AI technology to create a comprehensive solution for tracking, analyzing, and optimizing fruit harvests. The AI components provide unique value through automated analysis and predictive insights, while the visualization features make the data engaging and actionable.
+This plant journey app combines the practical needs of home gardeners with cutting-edge AI technology to create a comprehensive solution for tracking, analyzing, and optimizing plant growing journeys. The AI components provide unique value through automated analysis and predictive insights, while the visualization features make the data engaging and actionable.
 
 The phased development approach ensures a solid foundation while progressively adding advanced features, and the freemium monetization model allows for broad adoption with sustainable revenue growth.
 

@@ -1,5 +1,5 @@
--- Data Migration Script: Harvest Logs to Plant Journey System
--- This script migrates existing harvest_logs and harvest_images to the new plant journey schema
+-- Data Migration Script: Legacy Harvest Logs to Plant Journey System
+-- This script migrates existing legacy harvest_logs and harvest_images to the new plant journey schema
 
 -- IMPORTANT: Run setup_plant_journey.sql first to create the new schema
 -- IMPORTANT: Backup your database before running this migration
@@ -53,7 +53,7 @@ INSERT INTO plant_varieties (name, category, description, harvest_time_days)
 SELECT 
     crop_name,
     category,
-    'Migrated from harvest logs - ' || crop_name || ' (' || category || ')',
+            'Migrated from legacy harvest logs - ' || crop_name || ' (' || category || ')',
     harvest_time_days
 FROM crop_categories
 ON CONFLICT (name) DO UPDATE SET
@@ -61,7 +61,7 @@ ON CONFLICT (name) DO UPDATE SET
     harvest_time_days = EXCLUDED.harvest_time_days;
 
 -- Step 2: Create individual plants from harvest data
--- Group harvest logs by crop and location to create distinct plants
+    -- Group legacy harvest logs by crop and location to create distinct plants
 WITH plant_groupings AS (
     SELECT 
         hl.crop_name,
@@ -83,10 +83,10 @@ SELECT
         WHEN pg.first_harvest_date > NOW() - INTERVAL '6 months' THEN 'active'
         ELSE 'harvested'
     END,
-    'Migrated from harvest logs - ' || pg.harvest_count || ' recorded harvests'
+            'Migrated from legacy harvest logs - ' || pg.harvest_count || ' recorded harvests'
 FROM plant_groupings pg;
 
--- Step 3: Migrate harvest logs to plant events
+    -- Step 3: Migrate legacy harvest logs to plant events
 -- Match harvest logs to plants based on crop name and location
 INSERT INTO plant_events (
     plant_id, 
@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS migration_log (
 INSERT INTO migration_log (migration_name, notes, original_counts, migrated_counts)
 SELECT 
     'harvest_to_plant_journey',
-    'Migration from harvest_logs system to plant journey system',
+            'Migration from legacy harvest_logs system to plant journey system',
     jsonb_build_object(
         'harvest_logs', (SELECT COUNT(*) FROM harvest_logs),
         'harvest_images', (SELECT COUNT(*) FROM harvest_images)
@@ -251,5 +251,5 @@ DELETE FROM plants;
 DELETE FROM migration_log WHERE migration_name = 'harvest_to_plant_journey';
 COMMIT;
 
--- The original harvest_logs and harvest_images tables remain unchanged
+    -- The original legacy harvest_logs and harvest_images tables remain unchanged
 */

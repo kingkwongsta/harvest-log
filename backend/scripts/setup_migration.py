@@ -2,6 +2,9 @@
 """
 Plant Journey Migration Script
 This script sets up the new plant journey schema and migrates existing harvest data.
+
+⚠️ DEPRECATED: This script is for initial setup/migration only.
+For production deployments, use the SQL files in the migrations/ directory directly.
 """
 
 import os

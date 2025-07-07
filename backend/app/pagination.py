@@ -79,35 +79,43 @@ class PaginationHelper:
     """Helper class for implementing cursor-based pagination."""
     
     @staticmethod
-    def build_harvest_logs_query(
+    def build_events_query(
         client,
         params: PaginationParams,
+        table_name: str = "plant_events",
         additional_filters: Optional[Dict[str, Any]] = None
     ) -> Tuple[Any, Optional[PaginationCursor]]:
         """
-        Build paginated query for harvest logs.
+        Build paginated query for plant events.
         
         Args:
             client: Supabase client
             params: Pagination parameters
+            table_name: Name of the table to query
             additional_filters: Additional query filters
         
         Returns:
             Query object and cursor for positioning
         """
         # Start with base query
-        query = client.table("harvest_logs").select("*")
+        query = client.table(table_name).select("*")
         
         # Apply additional filters
         if additional_filters:
             for field, value in additional_filters.items():
                 if value is not None:
-                    if field == "crop_name_search":
-                        query = query.ilike("crop_name", f"%{value}%")
-                    elif field == "harvest_date_from":
-                        query = query.gte("harvest_date", value.isoformat())
-                    elif field == "harvest_date_to":
-                        query = query.lte("harvest_date", value.isoformat())
+                    if field.endswith("_search"):
+                        # Handle search fields with ilike
+                        base_field = field.replace("_search", "")
+                        query = query.ilike(base_field, f"%{value}%")
+                    elif field.endswith("_from"):
+                        # Handle date range filters
+                        base_field = field.replace("_from", "")
+                        query = query.gte(base_field, value.isoformat())
+                    elif field.endswith("_to"):
+                        # Handle date range filters
+                        base_field = field.replace("_to", "")
+                        query = query.lte(base_field, value.isoformat())
                     else:
                         query = query.eq(field, value)
         
@@ -115,13 +123,11 @@ class PaginationHelper:
         cursor_obj = params.get_cursor_obj()
         if cursor_obj:
             if params.order == "desc":
-                # For descending order: created_at < cursor OR (created_at = cursor AND id < cursor_id)
                 query = query.or_(
                     f"created_at.lt.{cursor_obj.created_at.isoformat()},"
                     f"and(created_at.eq.{cursor_obj.created_at.isoformat()},id.lt.{cursor_obj.id})"
                 )
             else:
-                # For ascending order: created_at > cursor OR (created_at = cursor AND id > cursor_id)
                 query = query.or_(
                     f"created_at.gt.{cursor_obj.created_at.isoformat()},"
                     f"and(created_at.eq.{cursor_obj.created_at.isoformat()},id.gt.{cursor_obj.id})"
@@ -139,13 +145,13 @@ class PaginationHelper:
         return query, cursor_obj
     
     @staticmethod
-    def process_harvest_logs_result(
+    def process_events_result(
         data: List[Dict[str, Any]],
         params: PaginationParams,
         current_cursor: Optional[PaginationCursor] = None
     ) -> PaginationResult:
         """
-        Process paginated query result for harvest logs.
+        Process paginated query result for plant events.
         
         Args:
             data: Query result data
@@ -168,12 +174,10 @@ class PaginationHelper:
             )
             next_cursor = next_cursor_obj.encode()
         
-        # Determine previous cursor (simplified - just use current cursor's reverse)
+        # Determine previous cursor
         has_previous = current_cursor is not None
         previous_cursor = None
         if has_previous and items:
-            # For previous cursor, we'd typically need to reverse the query
-            # This is a simplified implementation
             first_item = items[0]
             prev_cursor_obj = PaginationCursor(
                 created_at=datetime.fromisoformat(first_item['created_at']),
@@ -192,30 +196,35 @@ class PaginationHelper:
     @staticmethod
     def get_total_count(
         client,
+        table_name: str = "plant_events",
         additional_filters: Optional[Dict[str, Any]] = None
     ) -> int:
         """
-        Get total count for harvest logs with filters.
+        Get total count for events with filters.
         
         Args:
             client: Supabase client
+            table_name: Name of the table to query
             additional_filters: Additional query filters
         
         Returns:
             Total count of matching records
         """
-        query = client.table("harvest_logs").select("id", count="exact")
+        query = client.table(table_name).select("id", count="exact")
         
         # Apply additional filters
         if additional_filters:
             for field, value in additional_filters.items():
                 if value is not None:
-                    if field == "crop_name_search":
-                        query = query.ilike("crop_name", f"%{value}%")
-                    elif field == "harvest_date_from":
-                        query = query.gte("harvest_date", value.isoformat())
-                    elif field == "harvest_date_to":
-                        query = query.lte("harvest_date", value.isoformat())
+                    if field.endswith("_search"):
+                        base_field = field.replace("_search", "")
+                        query = query.ilike(base_field, f"%{value}%")
+                    elif field.endswith("_from"):
+                        base_field = field.replace("_from", "")
+                        query = query.gte(base_field, value.isoformat())
+                    elif field.endswith("_to"):
+                        base_field = field.replace("_to", "")
+                        query = query.lte(base_field, value.isoformat())
                     else:
                         query = query.eq(field, value)
         
@@ -223,25 +232,26 @@ class PaginationHelper:
         return result.count or 0
 
 
-class FilterParams(BaseModel):
-    """Filter parameters for harvest logs."""
+class EventFilterParams(BaseModel):
+    """Filter parameters for plant events."""
     
-    crop_name_search: Optional[str] = Field(None, max_length=100, description="Search in crop names")
-    harvest_date_from: Optional[datetime] = Field(None, description="Filter from date")
-    harvest_date_to: Optional[datetime] = Field(None, description="Filter to date")
-    location: Optional[str] = Field(None, max_length=200, description="Filter by location")
+    notes_search: Optional[str] = Field(None, max_length=100, description="Search in notes")
+    event_date_from: Optional[datetime] = Field(None, description="Filter from date")
+    event_date_to: Optional[datetime] = Field(None, description="Filter to date")
+    event_type: Optional[str] = Field(None, description="Filter by event type")
+    plant_id: Optional[str] = Field(None, description="Filter by plant ID")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for query building."""
         return self.model_dump(exclude_none=True)
 
 
-class PaginatedHarvestLogResponse(BaseModel):
-    """Response model for paginated harvest logs."""
+class PaginatedEventResponse(BaseModel):
+    """Response model for paginated events."""
     
     success: bool = Field(True, description="Whether the operation was successful")
     message: str = Field(..., description="Response message")
-    data: List[Any] = Field(..., description="List of harvest logs")
+    data: List[Any] = Field(..., description="List of events")
     pagination: Dict[str, Any] = Field(..., description="Pagination metadata")
     
     class Config:

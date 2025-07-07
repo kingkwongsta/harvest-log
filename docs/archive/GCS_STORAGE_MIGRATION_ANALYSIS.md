@@ -65,7 +65,7 @@ class GCSStorageService:
     def __init__(self):
         # Initialize GCS client - uses GOOGLE_APPLICATION_CREDENTIALS env var
         self.client = storage.Client()
-        self.bucket_name = os.getenv('GCS_BUCKET_NAME', 'harvest-log-images')
+        self.bucket_name = os.getenv('GCS_BUCKET_NAME', 'plant-journey-images')
         self.bucket = self.client.bucket(self.bucket_name)
         self._ensure_bucket_exists()
     
@@ -162,7 +162,7 @@ SUPABASE_SERVICE_KEY=your-service-key
 # .env (NEW - added to existing)
 # Google Cloud Storage Configuration
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
-GCS_BUCKET_NAME=harvest-log-images
+GCS_BUCKET_NAME=plant-journey-images
 GCS_PROJECT_ID=your-gcp-project-id
 
 # Optional: Regional configuration
@@ -177,7 +177,7 @@ class Settings(BaseSettings):
     # ... existing settings ...
     
     # Google Cloud Storage Configuration
-    gcs_bucket_name: str = "harvest-log-images"
+    gcs_bucket_name: str = "plant-journey-images"
     gcs_project_id: str = ""
     gcs_region: str = "us-central1"
     gcs_storage_class: str = "STANDARD"
@@ -285,24 +285,24 @@ storage_service = get_storage_service()
 ### **Phase 1: Preparation (Week 1)**
 ```bash
 # 1. Set up Google Cloud Project
-gcloud projects create harvest-log-images
-gcloud config set project harvest-log-images
+gcloud projects create plant-journey-images
+gcloud config set project plant-journey-images
 
 # 2. Enable Cloud Storage API
 gcloud services enable storage.googleapis.com
 
 # 3. Create service account
 gcloud iam service-accounts create harvest-storage \
-    --display-name="Harvest Log Storage Service"
+    --display-name="Plant Journey Storage Service"
 
 # 4. Grant permissions
-gcloud projects add-iam-policy-binding harvest-log-images \
-    --member="serviceAccount:harvest-storage@harvest-log-images.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding plant-journey-images \
+--member="serviceAccount:plant-storage@plant-journey-images.iam.gserviceaccount.com" \
     --role="roles/storage.admin"
 
 # 5. Create and download key
 gcloud iam service-accounts keys create harvest-storage-key.json \
-    --iam-account=harvest-storage@harvest-log-images.iam.gserviceaccount.com
+    --iam-account=plant-storage@plant-journey-images.iam.gserviceaccount.com
 ```
 
 ### **Phase 2: Dual Storage Implementation (Week 2)**
