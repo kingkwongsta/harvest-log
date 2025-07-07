@@ -5,12 +5,39 @@
 
 set -e
 
-# Configuration
-BACKEND_URL="https://plant-journey-backend-512013902761.us-west2.run.app"
-VERCEL_PROJECT_NAME="plant-journey"
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 
-echo "🔧 Updating Plant Journey Frontend Environment Variables"
-echo "Backend URL: ${BACKEND_URL}"
+echo -e "${BLUE}🔧 Updating Plant Journey Frontend Environment Variables${NC}"
+echo ""
+
+# Get backend URL from environment variable or prompt user
+BACKEND_URL="${BACKEND_API_URL:-${NEXT_PUBLIC_API_URL}}"
+
+if [ -z "$BACKEND_URL" ]; then
+    echo -e "${YELLOW}📝 No backend URL found in environment variables.${NC}"
+    echo "Please enter your backend URL:"
+    echo "Example: https://plant-journey-backend-123456789.us-west2.run.app"
+    echo ""
+    read -p "Backend URL: " BACKEND_URL
+    
+    # Validate URL
+    if [[ -z "$BACKEND_URL" ]]; then
+        echo -e "${RED}❌ Backend URL cannot be empty!${NC}"
+        exit 1
+    fi
+    
+    if [[ ! "$BACKEND_URL" =~ ^https:// ]]; then
+        echo -e "${RED}❌ Backend URL must start with https://!${NC}"
+        exit 1
+    fi
+fi
+
+echo -e "${BLUE}Backend URL: ${BACKEND_URL}${NC}"
 echo ""
 
 # Check if vercel CLI is installed
