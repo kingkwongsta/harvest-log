@@ -5,7 +5,7 @@ echo "🌱 Starting Harvest Log App in Development Mode..."
 
 # Detect if we're running from parent directory or scripts directory
 if [ -f "backend/.env" ]; then
-    # Running from parent directory (harvest-log/)
+    # Running from parent directory (plant-journey/)
     BACKEND_DIR="backend"
     CLIENT_DIR="client"
     echo "📁 Detected running from parent directory"

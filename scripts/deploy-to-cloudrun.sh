@@ -8,8 +8,8 @@ set -e  # Exit on any error
 # Configuration - Update these values for your project
 PROJECT_ID="backend-services-437402"
 REGION="us-west2"
-SERVICE_NAME="harvest-log-backend"
-REPOSITORY_NAME="harvest-log"
+SERVICE_NAME="plant-journey-backend"
+REPOSITORY_NAME="plant-journey"
 IMAGE_NAME="backend"
 
 # Construct the full image path for Artifact Registry
@@ -142,7 +142,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --cpu 1 \
   --max-instances 10 \
   --timeout 300 \
-  --set-env-vars="^|^PYTHONUNBUFFERED=1|SUPABASE_URL=${SUPABASE_URL}|SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}|SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}|CORS_ORIGINS=http://localhost:3000,https://harvest-log.vercel.app,https://harvest-log-git-main-bkwongs-projects.vercel.app,https://harvest-log-bkwongs-projects.vercel.app" \
+  --set-env-vars="^|^PYTHONUNBUFFERED=1|SUPABASE_URL=${SUPABASE_URL}|SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}|SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}|CORS_ORIGINS=http://localhost:3000,https://plant-journey.vercel.app,https://plant-journey-git-main-bkwongs-projects.vercel.app,https://plant-journey-bkwongs-projects.vercel.app" \
   --project ${PROJECT_ID}
 
 echo ""
