@@ -354,17 +354,12 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                           </div>
 
                           {/* Notes and Description */}
-                          {(event.notes || event.description) && (
+                          {event.description && (
                             <div className="bg-white/80 rounded-lg p-4 border border-current/20 shadow-sm">
                               <div className="flex items-start">
                                 <StickyNote className={`w-4 h-4 mr-3 ${eventColor} mt-0.5 flex-shrink-0`} />
                                 <div className="text-sm text-foreground leading-relaxed">
-                                  {event.description && (
-                                    <p className={`font-medium mb-2 ${eventColor.replace('600', '800')}`}>{event.description}</p>
-                                  )}
-                                  {event.notes && (
-                                    <p className="text-gray-700">{event.notes}</p>
-                                  )}
+                                  <p className={`font-medium ${eventColor.replace('600', '800')}`}>{event.description}</p>
                                 </div>
                               </div>
                             </div>

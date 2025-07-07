@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,7 @@ import { LocationInput } from '@/components/location/location-input'
 import { WeatherDisplay } from '@/components/location/weather-display'
 import type { Plant, PlantVariety, WeatherData, Coordinates } from '@/lib/api'
 import { plantsApi } from '@/lib/api'
+import { Scale, Cherry } from 'lucide-react'
 
 export interface HarvestFormData {
   plant_id?: string

@@ -29,7 +29,7 @@ export const PlantAddDialog = ({
         <DialogHeader>
           <DialogTitle>Add New Plant</DialogTitle>
           <DialogDescription>
-            Add a new plant to your garden. Fill in the details below to track your plant's journey.
+            Add a new plant to your garden. You&apos;ll be able to log events for it once created.
           </DialogDescription>
         </DialogHeader>
         <PlantForm

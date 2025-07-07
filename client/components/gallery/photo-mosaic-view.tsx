@@ -527,17 +527,12 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
                     )}
                   </div>
                   
-                  {(selectedPhoto.event.notes || selectedPhoto.event.description) && (
+                  {selectedPhoto.event.description && (
                     <div className="space-y-2">
                       <div className="flex items-start gap-2">
                         <StickyNote className="w-4 h-4 mt-0.5" />
                         <div className="text-white/90">
-                          {selectedPhoto.event.description && (
-                            <p className="font-medium mb-1">{selectedPhoto.event.description}</p>
-                          )}
-                          {selectedPhoto.event.notes && (
-                            <p>{selectedPhoto.event.notes}</p>
-                          )}
+                          <p>{selectedPhoto.event.description}</p>
                         </div>
                       </div>
                     </div>

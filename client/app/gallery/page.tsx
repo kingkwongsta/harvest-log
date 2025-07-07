@@ -83,9 +83,8 @@ export default function GalleryPage() {
     if (searchTerm) {
       filtered = filtered.filter(event =>
         event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.plant?.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         event.plant?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-
         event.plant?.variety?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         event.plant_variety?.toLowerCase().includes(searchTerm.toLowerCase())
       )

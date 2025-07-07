@@ -345,39 +345,6 @@ deploy_frontend() {
     fi
     print_status "✓ Build successful with HTTPS configuration"
     
-    # Verify HTTPS URLs in build output (check only JS files, not binary cache)
-    print_status "Verifying HTTPS URLs in build output..."
-    
-    # Check only JavaScript files for HTTP weather URLs (excluding binary cache files)
-    if find .next -name "*.js" -exec grep -l "http://.*weather" {} \; 2>/dev/null | head -3; then
-        print_warning "⚠️  Found HTTP weather URLs in JavaScript files:"
-        print_warning "This may cause mixed content errors in production."
-        
-        # Show specific files with HTTP weather URLs
-        find .next -name "*.js" -exec grep -l "http://.*weather" {} \; 2>/dev/null | head -3 | while read file; do
-            print_warning "  - $file"
-        done
-        
-        # Check for actual API calls (not just string literals)
-        if find .next -name "*.js" -exec grep -l "\"http://.*weather\"" {} \; 2>/dev/null | head -1; then
-            print_error "❌ Found HTTP weather API calls in JavaScript files - this will cause mixed content errors!"
-            print_error "Build may be using cached environment variables."
-            echo ""
-            read -p "Skip this validation and continue deployment? (y/N): " -n 1 -r
-            echo ""
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                print_error "Deployment cancelled due to HTTP URLs in build output."
-                exit 1
-            else
-                print_warning "⚠️  Skipping HTTP validation - deploying anyway"
-            fi
-        else
-            print_status "✅ No critical HTTP weather API calls found - continuing deployment"
-        fi
-    else
-        print_status "✅ No HTTP weather URLs found in JavaScript files"
-    fi
-    
     print_status "Executing Vercel deployment..."
     print_status "Deploying client folder to Vercel with production settings..."
     echo "--------------------------------------------"

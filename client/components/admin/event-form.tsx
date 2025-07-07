@@ -10,6 +10,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import type { PlantEvent, PlantEventCreateData, PlantEventUpdateData, Plant, EventType } from '@/lib/api'
+import { Badge } from '@/components/ui/badge'
+import { CalendarIcon, MapPin, Camera, Scale, Flower } from 'lucide-react'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 
 // This matches the backend PlantEventUpdateData structure
 export interface EventFormData {

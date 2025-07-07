@@ -358,12 +358,15 @@ function EventForm({ eventType, plants, onSubmit, isSubmitting, formRefs }: Even
 
   const handleSubmit = (eventSpecificData: Partial<PlantEventCreateData> & { images?: File[] }) => {
     const { images, ...eventDataWithoutImages } = eventSpecificData
+    
+    // Combine description and notes into a single description field
+    const combinedDescription = [description, notes].filter(Boolean).join('\n\n')
+    
     const baseEventData: PlantEventCreateData = {
       plant_id: selectedPlant || undefined,
       event_type: eventType,
       event_date: eventDate.toISOString(),
-      description: description || undefined,
-      notes: notes || undefined,
+      description: combinedDescription || undefined,
       // Use location and coordinates from the form data if provided, otherwise fall back to modal state
       location: eventDataWithoutImages.location || location || undefined,
       coordinates: eventDataWithoutImages.coordinates || coordinates || undefined,

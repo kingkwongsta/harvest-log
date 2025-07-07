@@ -26,6 +26,8 @@ import type { PlantFormData } from "@/components/admin/plant-form"
 import type { PlantVarietyFormData } from "@/components/admin/plant-variety-form"
 import type { EventFormData, EventCreateData } from "@/components/admin/event-form"
 import type { PlantEventUpdateData } from "@/lib/api"
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 
 
 export default function AdminPage() {
