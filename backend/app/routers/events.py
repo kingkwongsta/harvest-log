@@ -99,7 +99,7 @@ async def create_plant_event(
         # Add event-type specific fields
         if event_type == EventType.HARVEST.value:
             event_data.update({
-                "produce": validated_data.plant_variety,  # Database uses 'produce' field for harvest events
+                "plant_variety": validated_data.plant_variety,
                 "quantity": validated_data.quantity
             })
         elif event_type == EventType.BLOOM.value:
