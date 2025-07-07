@@ -21,8 +21,7 @@ export interface HarvestFormData {
   plant_variety_id?: string
   event_date: string
   description?: string
-  notes?: string
-  produce: string
+  plant_variety: string
   quantity: number
   location?: string
   coordinates?: Coordinates
@@ -40,7 +39,7 @@ export interface HarvestFormRef {
   reset: () => void
 }
 
-const commonProduce = [
+const commonPlantVarieties = [
   'Tomatoes',
   'Lettuce',
   'Carrots',
@@ -70,15 +69,14 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
     const [selectedPlantVariety, setSelectedPlantVariety] = useState('')
     const [eventDate, setEventDate] = useState(new Date())
     const [description, setDescription] = useState('')
-    const [notes, setNotes] = useState('')
     
     // Plant varieties
     const [plantVarieties, setPlantVarieties] = useState<PlantVariety[]>([])
     const [varietiesLoading, setVarietiesLoading] = useState(false)
     
     // Harvest-specific fields
-    const [produce, setProduce] = useState('')
-    const [customProduce, setCustomProduce] = useState('')
+    const [plantVariety, setPlantVariety] = useState('')
+    const [customPlantVariety, setCustomPlantVariety] = useState('')
     const [quantity, setQuantity] = useState('')
     const [images, setImages] = useState<File[]>([])
     
@@ -113,16 +111,15 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
 
     const resetForm = () => {
       console.log('🧹 HarvestForm resetForm called')
-      console.log('📊 Current values before reset:', { produce, quantity, images: images.length })
+      console.log('📊 Current values before reset:', { plantVariety, quantity, images: images.length })
       // Reset common fields
       setSelectedPlant('')
       setSelectedPlantVariety('')
       setEventDate(new Date())
       setDescription('')
-      setNotes('')
       // Reset harvest-specific fields
-      setProduce('')
-      setCustomProduce('')
+      setPlantVariety('')
+      setCustomPlantVariety('')
       setQuantity('')
       setImages([])
       // Reset location and weather fields
@@ -140,8 +137,8 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault()
 
-      const finalProduce = produce === 'custom' ? customProduce : produce
-      if (!finalProduce.trim()) {
+      const finalPlantVariety = plantVariety === 'custom' ? customPlantVariety : plantVariety
+      if (!finalPlantVariety.trim()) {
         toast({
           title: 'Validation Error',
           description: 'Please specify what you harvested.',
@@ -150,10 +147,10 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
         return
       }
 
-      if (finalProduce.trim().length > 100) {
+      if (finalPlantVariety.trim().length > 100) {
         toast({
           title: 'Validation Error',
-          description: 'Product name must be 100 characters or less.',
+          description: 'Plant variety name must be 100 characters or less.',
           variant: 'destructive',
         })
         return
@@ -173,16 +170,13 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
         plant_variety_id: selectedPlantVariety || undefined,
         event_date: eventDate.toISOString(),
         description: description.trim() || undefined,
-        notes: notes.trim() || undefined,
-        produce: finalProduce,
+        plant_variety: finalPlantVariety,
         quantity: parseFloat(quantity),
         location: location.trim() || undefined,
         coordinates: coordinates || undefined,
         images: images.length > 0 ? images : undefined,
       })
     }
-
-
 
     return (
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -246,25 +240,13 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Description/Notes</Label>
                 <Input
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Brief description of this harvest event..."
                   maxLength={500}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any additional observations, conditions, or details..."
-                  rows={3}
-                  maxLength={2000}
                 />
               </div>
 
@@ -296,18 +278,18 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
               <Label className="text-sm font-medium text-green-700">Harvest Details</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="produce">What did you harvest? *</Label>
-                  <Select value={produce} onValueChange={setProduce} required>
+                  <Label htmlFor="plant-variety">What did you harvest? *</Label>
+                  <Select value={plantVariety} onValueChange={setPlantVariety} required>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select produce..." />
+                      <SelectValue placeholder="Select plant variety..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {commonProduce.map(produceOption => (
-                        <SelectItem key={produceOption} value={produceOption}>
-                          {produceOption}
+                      {commonPlantVarieties.map(varietyOption => (
+                        <SelectItem key={varietyOption} value={varietyOption}>
+                          {varietyOption}
                         </SelectItem>
                       ))}
-                      <SelectItem value="custom">Custom produce...</SelectItem>
+                      <SelectItem value="custom">Custom plant variety...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -327,14 +309,14 @@ export const HarvestForm = forwardRef<HarvestFormRef, HarvestFormProps>(
                 </div>
               </div>
 
-              {produce === 'custom' && (
+              {plantVariety === 'custom' && (
                 <div className="space-y-2">
-                  <Label htmlFor="custom-produce">Custom Produce</Label>
+                  <Label htmlFor="custom-plant-variety">Custom Plant Variety</Label>
                   <Input
-                    id="custom-produce"
-                    value={customProduce}
-                    onChange={(e) => setCustomProduce(e.target.value)}
-                    placeholder="Enter custom produce..."
+                    id="custom-plant-variety"
+                    value={customPlantVariety}
+                    onChange={(e) => setCustomPlantVariety(e.target.value)}
+                    placeholder="Enter custom plant variety..."
                     maxLength={100}
                     required
                   />

@@ -10,8 +10,11 @@ cd client
 npm run dev      # Start development server with Turbopack on localhost:3000
 npm run build    # Build for production
 npm run lint     # Run ESLint code quality checks
+npm run type-check # Run TypeScript type checking
 npm start        # Start production server
 ```
+
+**Note**: This project prefers pnpm over npm/yarn when available, but npm works fine for development.
 
 ### Backend (FastAPI Python)
 ```bash
@@ -20,6 +23,10 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8080  # Start deve
 python -m pytest tests/                  # Run all tests
 python -m pytest tests/unit/             # Run unit tests only
 python -m pytest tests/integration/      # Run integration tests only
+python -m pytest tests/unit/test_specific_file.py  # Run specific test file
+python -m pytest tests/unit/test_specific_file.py::test_function_name  # Run specific test
+python -m pytest -v                      # Run with verbose output
+python -m pytest --tb=short              # Run with short traceback format
 ```
 
 ### Full Stack Development
@@ -361,7 +368,11 @@ The application uses SQL migration files to manage database schema changes:
 
 **Running Migrations**:
 - Apply migration files manually in Supabase SQL editor
-- Use `backend/run_migration.py` script for automated migration execution
+- Use `backend/run_migration.py` script for automated migration execution:
+  ```bash
+  cd backend
+  python run_migration.py migrations/setup_plant_journey.sql
+  ```
 - Always backup database before running major migrations
 - Test migrations on development environment first
 
@@ -395,3 +406,33 @@ The application uses SQL migration files to manage database schema changes:
 - **Database Security**: RLS policies protect user data at database level
 - **API Pagination**: Available for large datasets
 - **Health Monitoring**: System status and background task monitoring
+
+## Code Conventions & Best Practices
+
+### TypeScript/React (Frontend)
+- Use TypeScript for all code with proper type safety
+- Prefer interfaces over types for object definitions
+- Favor React Server Components (RSC) where possible, minimize 'use client' directives
+- Use descriptive names with auxiliary verbs (isLoading, hasError)
+- Prefix event handlers with "handle" (handleClick, handleSubmit)
+- Use early returns for better readability
+- Implement proper error boundaries and loading states
+- Use `useActionState` instead of deprecated `useFormState`
+- Handle async params in layouts/pages: `const params = await props.params`
+
+### Python/FastAPI (Backend)
+- Use type hints for all function signatures
+- Prefer Pydantic models over raw dictionaries for validation
+- Use functional programming patterns, avoid classes where possible
+- Use async def for asynchronous operations, def for pure functions
+- Handle errors at the beginning of functions with guard clauses
+- Use early returns for error conditions
+- Implement proper error logging and user-friendly error messages
+- Use HTTPException for expected errors
+- Optimize for performance with async operations for I/O-bound tasks
+
+### File Structure
+- Frontend: Use lowercase with dashes for directories (components/auth-wizard)
+- Backend: Use lowercase with underscores for directories and files (routers/user_routes.py)
+- Favor named exports for components and utilities
+- Structure logically: exports, subcomponents, helpers, types

@@ -46,7 +46,7 @@ fi
 echo "BACKEND_API_URL=$BACKEND_URL" > .env
 echo "NEXT_PUBLIC_API_URL=$BACKEND_URL" >> .env
 echo "GOOGLE_CLOUD_PROJECT_ID=your-project-id" >> .env
-echo "CLOUD_RUN_SERVICE_NAME=harvest-log-backend" >> .env
+echo "CLOUD_RUN_SERVICE_NAME=plant-journey-backend" >> .env
 echo "CLOUD_RUN_REGION=us-west2" >> .env
 
 echo ""

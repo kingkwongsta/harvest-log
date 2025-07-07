@@ -252,7 +252,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                             <div className="aspect-square lg:aspect-[4/3] relative overflow-hidden">
                               <Image
                                 src={cleanImageUrl(event.images[0].public_url)}
-                                alt={`${event.plant?.variety?.name || event.produce || 'Plant'} ${event.event_type}`}
+                                alt={`${event.plant?.variety?.name || event.plant_variety || 'Plant'} ${event.event_type}`}
                                 fill
                                 className="object-cover hover:scale-105 transition-transform duration-300"
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
@@ -297,7 +297,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                             <div>
                               <h3 className="text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
                                 <EventIcon className={`w-5 h-5 ${eventColor}`} />
-                                {event.plant?.name || event.produce || 'Plant Event'}
+                                {event.plant?.name || event.plant_variety || 'Plant Event'}
                               </h3>
                               <p className="text-sm text-muted-foreground">
                                 {event.plant?.variety?.name && (
@@ -383,7 +383,7 @@ export function TimelineView({ events, loading, error }: TimelineViewProps) {
                                     <div className={`w-16 h-16 relative overflow-hidden rounded-lg border-2 ${eventColor.replace('text-', 'border-').replace('600', '200')} hover:${eventColor.replace('text-', 'border-').replace('600', '300')} transition-colors duration-200 shadow-sm`}>
                                       <Image
                                         src={cleanImageUrl(image.public_url)}
-                                        alt={`${event.plant?.variety?.name || event.produce || 'Plant'} photo ${index + 2}`}
+                                        alt={`${event.plant?.variety?.name || event.plant_variety || 'Plant'} photo ${index + 2}`}
                                         fill
                                         className="object-cover group-hover:scale-110 transition-transform duration-200"
                                         sizes="64px"

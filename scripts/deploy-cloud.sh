@@ -32,7 +32,7 @@ find_project_root() {
 PROJECT_ROOT=$(find_project_root)
 if [ $? -ne 0 ]; then
     echo "❌ Error: Could not find project root directory."
-    echo "Please run this script from within the harvest-log project directory."
+    echo "Please run this script from within the plant-journey project directory."
     exit 1
 fi
 
@@ -396,7 +396,7 @@ deploy_frontend() {
         # Try to get deployment URL
         if command -v vercel >/dev/null 2>&1; then
             print_status "Fetching deployment URL..."
-            VERCEL_URL=$(vercel ls --scope=personal 2>/dev/null | grep "harvest-log" | head -1 | awk '{print $2}' || echo "Check Vercel dashboard")
+            VERCEL_URL=$(vercel ls --scope=personal 2>/dev/null | grep "plant-journey" | head -1 | awk '{print $2}' || echo "Check Vercel dashboard")
             if [ "$VERCEL_URL" != "Check Vercel dashboard" ] && [ -n "$VERCEL_URL" ]; then
                 echo "🌐 Live URL: https://$VERCEL_URL"
             fi

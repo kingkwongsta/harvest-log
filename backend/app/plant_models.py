@@ -163,13 +163,13 @@ class Plant(PlantBase):
 # Event-specific data models
 class HarvestEventData(BaseModel):
     """Data specific to harvest events"""
-    produce: str = Field(..., min_length=1, max_length=100, description="Type of produce harvested")
+    plant_variety: str = Field(..., min_length=1, max_length=100, description="Type of plant variety harvested")
     quantity: float = Field(..., gt=0, description="Quantity harvested")
     
-    @field_validator('produce')
+    @field_validator('plant_variety')
     @classmethod
-    def validate_produce(cls, v: str) -> str:
-        """Validate and sanitize produce name"""
+    def validate_plant_variety(cls, v: str) -> str:
+        """Validate and sanitize plant variety name"""
         return InputSanitizer.sanitize_crop_name(v)
     
     @field_validator('quantity')
@@ -237,8 +237,7 @@ class PlantEventBase(BaseModel):
     plant_id: Optional[UUID] = Field(None, description="ID of the associated plant")
     event_type: EventType = Field(..., description="Type of event")
     event_date: datetime = Field(..., description="Date and time of the event")
-    description: Optional[str] = Field(None, max_length=500, description="Event description")
-    notes: Optional[str] = Field(None, max_length=2000, description="Additional notes about the event")
+    description: Optional[str] = Field(None, max_length=2500, description="Event description and notes")
     location: Optional[str] = Field(None, max_length=200, description="Location where event occurred")
     coordinates: Optional[Coordinates] = Field(None, description="GPS coordinates for weather data")
     
@@ -250,10 +249,10 @@ class PlantEventBase(BaseModel):
             return InputValidator.validate_datetime(v, 'event_date')
         return v
     
-    @field_validator('description', 'notes')
+    @field_validator('description')
     @classmethod
-    def validate_text_fields(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize text fields"""
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize description field"""
         if v is None:
             return None
         return InputSanitizer.sanitize_notes(v)
@@ -291,15 +290,60 @@ class PlantEventUpdate(BaseModel):
     """Model for updating plant events"""
     plant_id: Optional[UUID] = None
     event_date: Optional[datetime] = None
-    description: Optional[str] = Field(None, max_length=500)
-    notes: Optional[str] = Field(None, max_length=2000)
+    description: Optional[str] = Field(None, max_length=2500)
     location: Optional[str] = Field(None, max_length=200)
     
     # Event-specific fields (only relevant fields will be used based on event_type)
-    produce: Optional[str] = Field(None, max_length=100)
     quantity: Optional[float] = Field(None, gt=0)
     plant_variety: Optional[str] = Field(None, max_length=100)
     metrics: Optional[Dict[str, Any]] = None
+    
+    @field_validator('event_date')
+    @classmethod
+    def validate_event_date(cls, v: Any) -> Optional[datetime]:
+        """Validate event date"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            from app.validators import InputValidator
+            return InputValidator.validate_datetime(v, 'event_date')
+        return v
+    
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize description field"""
+        if v is None:
+            return None
+        from app.validators import InputSanitizer
+        return InputSanitizer.sanitize_notes(v)
+    
+    @field_validator('location')
+    @classmethod
+    def validate_location(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize location"""
+        if v is None:
+            return None
+        from app.validators import InputSanitizer
+        return InputSanitizer.sanitize_location(v)
+    
+    @field_validator('plant_variety')
+    @classmethod
+    def validate_plant_variety(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize plant variety"""
+        if v is None:
+            return None
+        from app.validators import InputSanitizer
+        return InputSanitizer.sanitize_string(v, max_length=100)
+    
+    @field_validator('quantity')
+    @classmethod
+    def validate_quantity(cls, v: Optional[float]) -> Optional[float]:
+        """Validate quantity value"""
+        if v is None:
+            return None
+        from app.validators import InputValidator
+        return InputValidator.validate_quantity(v)
 
 
 class PlantEvent(PlantEventBase):
@@ -310,10 +354,9 @@ class PlantEvent(PlantEventBase):
     user_id: Optional[UUID] = Field(None, description="ID of the user who created the event")
     
     # Event-specific fields (nullable based on event type)
-    produce: Optional[str] = Field(None, description="Type of produce harvested (harvest events only)")
     quantity: Optional[float] = Field(None, description="Quantity harvested (harvest events only)")
     unit: Optional[str] = Field(None, description="Unit of measurement (legacy field, being phased out)")
-    plant_variety: Optional[str] = Field(None, description="Plant variety name (bloom events only)")
+    plant_variety: Optional[str] = Field(None, description="Plant variety name (all event types)")
     metrics: Optional[Dict[str, Any]] = Field(None, description="Flexible metrics data (primarily snapshot events)")
     weather: Optional[WeatherData] = Field(None, description="Weather data at the time of the event")
     

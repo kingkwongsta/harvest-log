@@ -1,23 +1,29 @@
-# 🌱 Harvest Log
+# 🌱 Plant Journey Tracker
 
-A modern, full-stack harvest logging application that helps gardeners and farmers track, analyze, and optimize their crop yields. Built with Next.js 15, FastAPI, and Supabase for a seamless experience across web and mobile devices.
+A comprehensive plant lifecycle management application that helps gardeners and farmers track their plants from planting to harvest. Monitor growth stages, log events, capture photos, and analyze plant performance with weather integration. Built with Next.js 15, FastAPI, and Supabase for a seamless experience across web and mobile devices.
 
 ## ✨ Features
 
 ### 🍎 Core Functionality
-- **Harvest Logging**: Easy-to-use forms for recording harvest data with photos
-- **Photo Management**: Upload, compress, and organize harvest photos
-- **Analytics Dashboard**: Visual insights into harvest patterns and productivity
+- **Plant Journey Tracking**: Complete lifecycle management from planting to harvest
+- **Multi-Event System**: Log harvest, bloom, and snapshot events with photos
+- **Weather Integration**: Automatic weather data collection using Open-Meteo API
+- **Plant Variety Management**: Standardized plant classification and variety tracking
+- **Photo Management**: Upload, compress, and organize photos with metadata
+- **Analytics Dashboard**: Visual insights into plant performance and environmental correlations
 - **Mobile-Friendly**: Responsive design optimized for phones and tablets
-- **Data Export**: Export harvest data for analysis and record-keeping
+- **Data Export**: Export plant journey data for analysis and record-keeping
 
 ### 🔧 Technical Highlights
 - **Modern Stack**: Next.js 15 with App Router, React 19, TypeScript
+- **Unified Event Architecture**: Single table storage for harvest, bloom, and snapshot events
+- **Weather Data Integration**: Automatic weather recording with environmental correlation
 - **Enterprise Authentication**: JWT-based auth with role-based access control
 - **Performance Optimization**: In-memory caching with LRU eviction and TTL
 - **Background Processing**: Automated task management and periodic jobs
 - **Real-time Database**: Supabase PostgreSQL with Row Level Security
-- **Image Processing**: Automatic compression and optimization
+- **Image Processing**: Automatic compression and optimization with metadata tracking
+- **Gallery System**: Four viewing modes (timeline, garden, photo wall, data insights)
 - **API Features**: Pagination, versioning, comprehensive validation
 - **Monitoring**: Health checks, structured logging, and request tracing
 - **Security**: Input validation, CORS, middleware stack protection
@@ -33,6 +39,7 @@ A modern, full-stack harvest logging application that helps gardeners and farmer
 │  ┌─────────────────┐ ┌─────────────────┐│
 │  │  React 19 UI    │ │  TypeScript     ││
 │  │  Tailwind CSS   │ │  Radix UI       ││
+│  │  Gallery System │ │  Event Forms    ││
 │  └─────────────────┘ └─────────────────┘│
 └─────────────────┬───────────────────────┘
                   │ HTTP/REST API + JWT Auth
@@ -46,8 +53,10 @@ A modern, full-stack harvest logging application that helps gardeners and farmer
         │ │ • Validation    │ │
         │ └─────────────────┘ │
         │ ┌─────────────────┐ │
-        │ │ Business Logic  │ │
-        │ │ • API Routes    │ │
+        │ │ Plant Journey   │ │
+        │ │ • Events API    │ │
+        │ │ • Plants API    │ │
+        │ │ • Weather API   │ │
         │ │ • Background    │ │
         │ │   Tasks         │ │
         │ └─────────────────┘ │
@@ -58,8 +67,8 @@ A modern, full-stack harvest logging application that helps gardeners and farmer
 ┌───▼────┐ ┌─────▼─────┐ ┌─────▼─────┐
 │Supabase│ │In-Memory  │ │Background │
 │Database│ │Cache      │ │Tasks      │
-│+ RLS   │ │+ Storage  │ │+ Health   │
-│        │ │           │ │  Checks   │
+│+ RLS   │ │+ Storage  │ │+ Weather  │
+│+ Events│ │           │ │  APIs     │
 └────────┘ └───────────┘ └───────────┘
 ```
 
@@ -74,7 +83,7 @@ A modern, full-stack harvest logging application that helps gardeners and farmer
 ### 1. Clone and Setup
 ```bash
 git clone <your-repo-url>
-cd harvest-log
+cd plant-journey
 ```
 
 ### 2. Backend Setup
@@ -100,8 +109,10 @@ echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:8080" > .env.local
 
 ### 4. Database Setup
 ```bash
-# Run the SQL setup script in your Supabase SQL editor
-cat backend/setup_supabase.sql
+# Run the plant journey setup script in your Supabase SQL editor
+cat backend/migrations/setup_plant_journey.sql
+# Or use the migration script:
+cd backend && python run_migration.py migrations/setup_plant_journey.sql
 ```
 
 ### 5. Start Development Servers
@@ -119,11 +130,12 @@ Your app will be available at:
 ## 📁 Project Structure
 
 ```
-harvest-log/
+plant-journey-tracker/
 ├── 📁 backend/                 # FastAPI Python backend
 │   ├── 📁 app/                 # Application code
 │   │   ├── main.py            # FastAPI app configuration
-│   │   ├── models.py          # Pydantic data models
+│   │   ├── models.py          # Legacy Pydantic models (deprecated)
+│   │   ├── plant_models.py    # Plant journey models and validation
 │   │   ├── config.py          # Settings and configuration
 │   │   ├── database.py        # Supabase client setup
 │   │   ├── auth.py            # JWT authentication system
@@ -137,26 +149,37 @@ harvest-log/
 │   │   ├── health.py          # Health check endpoints
 │   │   ├── versioning.py      # API versioning utilities
 │   │   └── 📁 routers/        # API endpoints
-│   │       ├── harvest_logs.py # CRUD operations
+│   │       ├── events.py      # Unified event management
+│   │       ├── plants.py      # Plant and variety management
+│   │       ├── weather.py     # Weather data integration
 │   │       ├── images.py      # Image upload/management
-│   │       ├── auth.py        # Authentication endpoints
-│   │       └── health.py      # System monitoring
+│   │       └── auth.py        # Authentication endpoints
+│   ├── 📁 migrations/         # Database schema migrations
+│   │   ├── setup_plant_journey.sql # Core plant journey schema
+│   │   ├── migrate_to_plant_journey.sql # Migration script
+│   │   └── *.sql              # Additional migration files
 │   ├── 📁 tests/              # Comprehensive test suite
 │   │   ├── 📁 unit/           # Unit tests for components
 │   │   ├── 📁 integration/    # Integration tests with database
 │   │   └── 📁 manual/         # Manual testing and utilities
 │   ├── requirements.txt       # Python dependencies
-│   ├── setup_supabase.sql     # Database schema and RLS policies
+│   ├── run_migration.py       # Migration execution script
 │   └── .env.example           # Environment variable template
 ├── 📁 client/                 # Next.js 15 frontend
 │   ├── 📁 app/                # App Router pages
-│   │   ├── page.tsx           # Homepage with quick entry
-│   │   ├── 📁 harvests/       # Harvest management
-│   │   ├── 📁 analytics/      # Data visualization
-│   │   └── 📁 photos/         # Photo gallery
+│   │   ├── page.tsx           # Homepage with plant journey overview
+│   │   ├── 📁 admin/          # Admin panel for data management
+│   │   ├── 📁 gallery/        # Gallery with 4 viewing modes
+│   │   └── layout.tsx         # Root layout component
 │   ├── 📁 components/         # React components
-│   │   └── 📁 ui/             # Reusable UI components
+│   │   ├── 📁 event-forms/    # Event type forms (harvest, bloom, snapshot)
+│   │   ├── 📁 gallery/        # Gallery view components
+│   │   ├── 📁 dialogs/        # Dialog components
+│   │   ├── 📁 ui/             # Reusable UI components
+│   │   ├── camera-capture.tsx # Camera integration
+│   │   └── event-logging-modal.tsx # Unified event creation
 │   ├── 📁 lib/                # Utilities and API client
+│   │   └── api.ts             # Centralized API client
 │   ├── package.json           # Node.js dependencies
 │   └── next.config.ts         # Next.js configuration
 ├── 📁 docs/                   # Documentation
@@ -169,6 +192,7 @@ harvest-log/
 │   ├── deploy-local.sh        # Docker deployment
 │   └── deploy-to-cloudrun.sh  # Cloud deployment
 ├── docker-compose.yml         # Docker multi-service setup
+├── CLAUDE.md                  # Claude Code guidance
 └── README.md                  # This file
 ```
 
@@ -193,10 +217,11 @@ npm test
 - **Authentication**: Test JWT endpoints with Bearer tokens
 
 ### Adding New Features
-1. **Backend**: Add routes in `backend/app/routers/`
+1. **Backend**: Add routes in `backend/app/routers/` (follow existing patterns in events.py, plants.py)
 2. **Frontend**: Add pages in `client/app/` or components in `client/components/`
-3. **Database**: Update `backend/setup_supabase.sql` for schema changes
+3. **Database**: Create migration files in `backend/migrations/` and run with `python run_migration.py`
 4. **Tests**: Add tests in appropriate `tests/` directories
+5. **Plant Journey**: Use unified event system for new event types, extend plant_models.py
 
 ## 🐳 Deployment
 
@@ -219,17 +244,23 @@ See `docs/DEPLOYMENT.md` for detailed deployment instructions.
 
 ## 📊 Data Model
 
-### Harvest Logs
-- **Basic Info**: Crop name, quantity, unit, date
-- **Location**: GPS coordinates or text description
-- **Conditions**: Weather, soil conditions, notes
-- **Images**: Multiple photos with automatic compression
+### Plant Journey System
+- **Plants**: Individual plant instances with variety information and lifecycle tracking
+- **Plant Varieties**: Standardized plant types and cultivars with hierarchical organization
+- **Events**: Three types of events (harvest, bloom, snapshot) with unified storage
+- **Weather Integration**: Automatic weather data collection for environmental correlation
+- **Images**: Multiple photos per event with automatic compression and metadata
+
+### Event Types
+- **Harvest Events**: Yield recording, quantities, quality ratings, harvest-specific metrics
+- **Bloom Events**: Flowering stages, bloom characteristics, flower counts
+- **Snapshot Events**: General observations, growth measurements, status updates
 
 ### Image Management
 - **Upload**: Drag-and-drop with progress indicators
 - **Processing**: Automatic compression and resizing
 - **Storage**: Supabase Storage with CDN delivery
-- **Metadata**: File size, dimensions, compression ratios
+- **Metadata**: File size, dimensions, compression ratios, event associations
 
 ## 🔒 Authentication & Authorization
 
@@ -452,6 +483,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Happy Harvesting! 🌾**
+**Happy Plant Journey Tracking! 🌱**
+
+Track your plants from seed to harvest with comprehensive lifecycle management, weather integration, and beautiful data visualization.
 
 For questions or support, please open an issue or check the documentation in the `docs/` folder. 

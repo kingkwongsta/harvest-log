@@ -13,16 +13,16 @@ class Settings(BaseSettings):
     )
     
     # API Configuration
-    app_name: str = "Harvest Log API"
+    app_name: str = "Plant Journey API"
     app_version: str = "1.0.0"
     debug: bool = False
     
     # CORS Configuration - can be overridden via CORS_ORIGINS env var (comma-separated)
     cors_origins: Union[str, List[str]] = [
         "http://localhost:3000",  # Local development
-        "https://harvest-log.vercel.app",  # Production Vercel deployment
-        "https://harvest-log-git-main-bkwongs-projects.vercel.app",  # Vercel deployment branch
-        "https://harvest-log-bkwongs-projects.vercel.app",  # Vercel alternate
+        "https://plant-journey.vercel.app",  # Production Vercel deployment
+        "https://plant-journey-git-main-bkwongs-projects.vercel.app",  # Vercel deployment branch
+        "https://plant-journey-bkwongs-projects.vercel.app",  # Vercel alternate
         "https://*.vercel.app",  # All Vercel preview deployments
     ]
     cors_credentials: bool = True
@@ -84,10 +84,10 @@ class Settings(BaseSettings):
     health_check_interval: int = 60  # seconds
     
     # API Configuration
-    api_title: str = "Harvest Log API"
-    api_description: str = "A comprehensive API for managing harvest logs and garden data"
-    api_contact_name: str = "Harvest Log API"
-    api_contact_email: str = "support@harvestlog.com"
+    api_title: str = "Plant Journey API"
+    api_description: str = "A comprehensive API for managing plant lifecycle events and garden data"
+    api_contact_name: str = "Plant Journey API"
+    api_contact_email: str = "support@plant-journey.com"
     api_license_name: str = "MIT"
     api_license_url: str = "https://opensource.org/licenses/MIT"
     

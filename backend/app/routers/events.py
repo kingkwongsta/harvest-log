@@ -55,7 +55,7 @@ async def create_plant_event(
     Create a new plant event with dynamic validation.
     
     The event_type field determines which validation model is used:
-    - **harvest**: Requires produce, quantity
+    - **harvest**: Requires plant_variety, quantity
     - **bloom**: Requires plant_id (no additional fields)
     - **snapshot**: Optional metrics for growth tracking
     
@@ -90,7 +90,6 @@ async def create_plant_event(
             "event_type": validated_data.event_type.value,
             "event_date": validated_data.event_date.isoformat() if validated_data.event_date else None,
             "description": validated_data.description,
-            "notes": validated_data.notes,
             "location": validated_data.location,
             "latitude": validated_data.coordinates.latitude if validated_data.coordinates else None,
             "longitude": validated_data.coordinates.longitude if validated_data.coordinates else None,
@@ -100,7 +99,7 @@ async def create_plant_event(
         # Add event-type specific fields
         if event_type == EventType.HARVEST.value:
             event_data.update({
-                "produce": validated_data.produce,
+                "plant_variety": validated_data.plant_variety,
                 "quantity": validated_data.quantity
             })
         elif event_type == EventType.BLOOM.value:
@@ -264,7 +263,7 @@ async def get_plant_events(
             
             # Fetch plant data if plant_id exists
             if event_data.get("plant_id"):
-                plant_result = client.table("plants").select("id, name, variety_id, planted_date, status, notes").eq("id", event_data["plant_id"]).execute()
+                plant_result = client.table("plants").select("id, name, variety_id, planted_date, status, notes, variety:plant_varieties(*)").eq("id", event_data["plant_id"]).execute()
                 event_data["plant"] = plant_result.data[0] if plant_result.data else None
             else:
                 event_data["plant"] = None
@@ -645,7 +644,7 @@ async def get_plant_event_by_id(event_id: UUID, client, request_id: str) -> Opti
         
         # Fetch plant data if plant_id exists
         if event_data.get("plant_id"):
-            plant_result = client.table("plants").select("id, name, variety_id, planted_date, status, notes").eq("id", event_data["plant_id"]).execute()
+            plant_result = client.table("plants").select("id, name, variety_id, planted_date, status, notes, variety:plant_varieties(*)").eq("id", event_data["plant_id"]).execute()
             event_data["plant"] = plant_result.data[0] if plant_result.data else None
         else:
             event_data["plant"] = None

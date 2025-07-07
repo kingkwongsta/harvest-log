@@ -87,8 +87,8 @@ done
 read -p "Enter your Google Cloud Project ID (optional): " PROJECT_ID
 
 # Get Cloud Run service name
-read -p "Enter your Cloud Run service name (default: harvest-log-backend): " SERVICE_NAME
-SERVICE_NAME=${SERVICE_NAME:-harvest-log-backend}
+read -p "Enter your Cloud Run service name (default: plant-journey-backend): " SERVICE_NAME
+SERVICE_NAME=${SERVICE_NAME:-plant-journey-backend}
 
 # Get Cloud Run region
 read -p "Enter your Cloud Run region (default: us-west2): " REGION

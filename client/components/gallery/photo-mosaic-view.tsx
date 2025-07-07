@@ -118,7 +118,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
 
   // Group photos by plant variety for color coding
   const cropColors: Record<string, string> = {}
-  const uniqueCrops = Array.from(new Set(events.map(e => e.plant?.variety?.name || e.produce || 'Unknown Plant')))
+  const uniqueCrops = Array.from(new Set(events.map(e => e.plant?.variety?.name || e.plant_variety || 'Unknown Plant')))
   const colors = [
     'bg-red-100 border-red-200',
     'bg-green-100 border-green-200', 
@@ -295,12 +295,12 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
                 onClick={() => openLightbox(photo)}
               >
                 <div 
-                  className={`border-2 ${cropColors[photo.event.plant?.variety?.name || photo.event.produce || 'Unknown Plant']} ${eventTypeColors[photo.event.event_type]} rounded-lg overflow-hidden`}
+                  className={`border-2 ${cropColors[photo.event.plant?.variety?.name || photo.event.plant_variety || 'Unknown Plant']} ${eventTypeColors[photo.event.event_type]} rounded-lg overflow-hidden`}
                   style={{ aspectRatio: photo.aspectRatio }}
                 >
                   <Image
                     src={cleanImageUrl(photo.image.public_url)}
-                    alt={`${photo.event.plant?.variety?.name || photo.event.produce || 'Plant'} ${photo.event.event_type}`}
+                    alt={`${photo.event.plant?.variety?.name || photo.event.plant_variety || 'Plant'} ${photo.event.event_type}`}
                     width={400}
                     height={400 / photo.aspectRatio}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -320,7 +320,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
                             <span className="text-white/80 text-xs capitalize">{photo.event.event_type}</span>
                           </div>
                           <h3 className="text-white font-semibold text-sm">
-                            {photo.event.plant?.variety?.name || photo.event.produce || 'Plant Event'}
+                            {photo.event.plant?.variety?.name || photo.event.plant_variety || 'Plant Event'}
                           </h3>
                           <p className="text-white/80 text-xs">
                             {formatDate(photo.event.event_date)}
@@ -362,11 +362,11 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
             onClick={() => openLightbox(photo)}
           >
             <div 
-              className={`border-2 ${cropColors[photo.event.plant?.variety?.name || photo.event.produce || 'Unknown Plant']} ${eventTypeColors[photo.event.event_type]} rounded-lg overflow-hidden aspect-square`}
+              className={`border-2 ${cropColors[photo.event.plant?.variety?.name || photo.event.plant_variety || 'Unknown Plant']} ${eventTypeColors[photo.event.event_type]} rounded-lg overflow-hidden aspect-square`}
             >
               <Image
                 src={cleanImageUrl(photo.image.public_url)}
-                alt={`${photo.event.plant?.variety?.name || photo.event.produce || 'Plant'} ${photo.event.event_type}`}
+                alt={`${photo.event.plant?.variety?.name || photo.event.plant_variety || 'Plant'} ${photo.event.event_type}`}
                 width={300}
                 height={300}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -386,7 +386,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
                         <span className="text-white/80 text-xs capitalize">{photo.event.event_type}</span>
                       </div>
                       <h3 className="text-white font-semibold text-sm">
-                        {photo.event.plant?.variety?.name || photo.event.produce || 'Plant Event'}
+                        {photo.event.plant?.variety?.name || photo.event.plant_variety || 'Plant Event'}
                       </h3>
                       <p className="text-white/80 text-xs">
                         {formatDate(photo.event.event_date)}
@@ -463,7 +463,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
           <div className="relative max-w-4xl max-h-full p-4">
             <Image
               src={cleanImageUrl(selectedPhoto.image.public_url)}
-              alt={`${selectedPhoto.event.plant?.variety?.name || selectedPhoto.event.produce || 'Plant'} ${selectedPhoto.event.event_type}`}
+              alt={`${selectedPhoto.event.plant?.variety?.name || selectedPhoto.event.plant_variety || 'Plant'} ${selectedPhoto.event.event_type}`}
               width={800}
               height={600}
               className="max-w-full max-h-full object-contain rounded-lg"
@@ -485,7 +485,7 @@ export function PhotoMosaicView({ events, loading, error }: PhotoMosaicViewProps
                       <span className="text-white/80 text-sm capitalize">{selectedPhoto.event.event_type}</span>
                     </div>
                     <h2 className="text-xl font-semibold mb-1">
-                      {selectedPhoto.event.plant?.variety?.name || selectedPhoto.event.produce || 'Plant Event'}
+                      {selectedPhoto.event.plant?.variety?.name || selectedPhoto.event.plant_variety || 'Plant Event'}
                     </h2>
                     <p className="text-white/80 text-sm">
                       Photo {selectedIndex + 1} of {allPhotos.length}
