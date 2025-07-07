@@ -21,7 +21,6 @@ export interface SnapshotFormData {
   plant_variety_id?: string
   event_date: string
   description?: string
-  notes?: string
   location?: string
   coordinates?: Coordinates
   images?: File[]
@@ -45,7 +44,6 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
     const [selectedPlantVariety, setSelectedPlantVariety] = useState('')
     const [eventDate, setEventDate] = useState(new Date())
     const [description, setDescription] = useState('')
-    const [notes, setNotes] = useState('')
     
     // Plant varieties
     const [plantVarieties, setPlantVarieties] = useState<PlantVariety[]>([])
@@ -90,7 +88,6 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
       setSelectedPlantVariety('')
       setEventDate(new Date())
       setDescription('')
-      setNotes('')
       // Reset snapshot-specific fields
       setImages([])
       // Reset location and weather fields
@@ -106,102 +103,91 @@ export const SnapshotForm = forwardRef<SnapshotFormRef, SnapshotFormProps>(
     }))
 
     const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+      e.preventDefault()
 
-    onSubmit({
-      plant_id: selectedPlant || undefined,
-      plant_variety_id: selectedPlantVariety || undefined,
-      event_date: eventDate.toISOString(),
-      description: description.trim() || undefined,
-      notes: notes.trim() || undefined,
-      location: location.trim() || undefined,
-      coordinates: coordinates || undefined,
-      images: images.length > 0 ? images : undefined,
-    })
-  }
+      onSubmit({
+        plant_id: selectedPlant || undefined,
+        plant_variety_id: selectedPlantVariety || undefined,
+        event_date: eventDate.toISOString(),
+        description: description.trim() || undefined,
+        location: location.trim() || undefined,
+        coordinates: coordinates || undefined,
+        images: images.length > 0 ? images : undefined,
+      })
+    }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-blue-700 flex items-center">
-            📸 Plant Snapshot Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Event Details Section */}
-          <div className="space-y-4">
-            <Label className="text-sm font-medium text-blue-700">Event Information</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="plant">Plant</Label>
-                <Select value={selectedPlant} onValueChange={setSelectedPlant}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a plant..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {plants.map((plant) => (
-                      <SelectItem key={plant.id} value={plant.id}>
-                        {plant.name} {plant.variety && `(${plant.variety.name})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-blue-700 flex items-center">
+              📸 Plant Snapshot Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Event Details Section */}
+            <div className="space-y-4">
+              <Label className="text-sm font-medium text-blue-700">Event Information</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="plant">Plant</Label>
+                  <Select value={selectedPlant} onValueChange={setSelectedPlant}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a plant..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plants.map((plant) => (
+                        <SelectItem key={plant.id} value={plant.id}>
+                          {plant.name} {plant.variety && `(${plant.variety.name})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="plant-variety">Plant Variety</Label>
-                <Select value={selectedPlantVariety} onValueChange={setSelectedPlantVariety} disabled={varietiesLoading}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={varietiesLoading ? "Loading varieties..." : "Select a plant variety..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {plantVarieties.map((variety) => (
-                      <SelectItem key={variety.id} value={variety.id}>
-                        {variety.name} ({variety.category})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plant-variety">Plant Variety</Label>
+                  <Select value={selectedPlantVariety} onValueChange={setSelectedPlantVariety} disabled={varietiesLoading}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={varietiesLoading ? "Loading varieties..." : "Select a plant variety..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plantVarieties.map((variety) => (
+                        <SelectItem key={variety.id} value={variety.id}>
+                          {variety.name} ({variety.category})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="event-date">Event Date *</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    id="event-date"
-                    type="datetime-local"
-                    value={eventDate.toISOString().slice(0, 16)}
-                    onChange={(e) => setEventDate(new Date(e.target.value))}
-                    className="pl-10"
-                    required
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="event-date">Event Date *</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      id="event-date"
+                      type="datetime-local"
+                      value={eventDate.toISOString().slice(0, 16)}
+                      onChange={(e) => setEventDate(new Date(e.target.value))}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief description of this snapshot event..."
-                maxLength={500}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any additional observations, conditions, or details..."
-                rows={3}
-                maxLength={2000}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="description">Description/Notes</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Description of this snapshot event and any additional observations..."
+                  rows={3}
+                  maxLength={2500}
+                />
+              </div>
             </div>
 
             {/* Location Section */}

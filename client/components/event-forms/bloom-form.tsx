@@ -22,7 +22,6 @@ export interface BloomFormData {
   plant_variety_id?: string
   event_date: string
   description?: string
-  notes?: string
   location?: string
   coordinates?: Coordinates
   images?: File[]
@@ -46,7 +45,6 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
     const [selectedPlantVariety, setSelectedPlantVariety] = useState('')
     const [eventDate, setEventDate] = useState(new Date())
     const [description, setDescription] = useState('')
-    const [notes, setNotes] = useState('')
     
     // Plant varieties
     const [plantVarieties, setPlantVarieties] = useState<PlantVariety[]>([])
@@ -91,7 +89,6 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
       setSelectedPlantVariety('')
       setEventDate(new Date())
       setDescription('')
-      setNotes('')
       // Reset image upload
       setImages([])
       // Reset location and weather fields
@@ -123,7 +120,6 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
         plant_variety_id: selectedPlantVariety || undefined,
         event_date: eventDate.toISOString(),
         description: description.trim() || undefined,
-        notes: notes.trim() || undefined,
         location: location.trim() || undefined,
         coordinates: coordinates || undefined,
         images: images.length > 0 ? images : undefined,
@@ -192,25 +188,14 @@ export const BloomForm = forwardRef<BloomFormRef, BloomFormProps>(
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
+                <Label htmlFor="description">Description/Notes</Label>
+                <Textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Brief description of this bloom event..."
-                  maxLength={500}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any additional observations, conditions, or details..."
+                  placeholder="Description of this bloom event and any additional observations..."
                   rows={3}
-                  maxLength={2000}
+                  maxLength={2500}
                 />
               </div>
 

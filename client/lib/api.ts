@@ -60,7 +60,6 @@ export interface HarvestLogData {
   quantity: number;
   unit: string;
   harvest_date: string;
-  notes?: string;
   coordinates?: Coordinates;
 }
 
@@ -114,7 +113,6 @@ export interface HarvestLogResponse {
   quantity: number;
   unit: string;
   harvest_date: string;
-  notes?: string;
   created_at: string;
   updated_at: string;
   images?: HarvestImage[];
@@ -176,12 +174,10 @@ export interface PlantEvent {
   event_type: EventType;
   event_date: string;
   description?: string;
-  notes?: string;
   coordinates?: Coordinates;
   weather?: WeatherData;
   
   // Harvest-specific fields
-  produce?: string;
   quantity?: number;
   
   // Bloom-specific fields
@@ -217,12 +213,10 @@ export interface PlantEventCreateData {
   event_type: EventType;
   event_date: string;
   description?: string;
-  notes?: string;
   location?: string;
   coordinates?: Coordinates;
   
   // Harvest-specific fields
-  produce?: string;
   quantity?: number;
   
   // Bloom-specific fields

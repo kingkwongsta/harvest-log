@@ -163,13 +163,13 @@ class Plant(PlantBase):
 # Event-specific data models
 class HarvestEventData(BaseModel):
     """Data specific to harvest events"""
-    produce: str = Field(..., min_length=1, max_length=100, description="Type of produce harvested")
+    plant_variety: str = Field(..., min_length=1, max_length=100, description="Type of plant variety harvested")
     quantity: float = Field(..., gt=0, description="Quantity harvested")
     
-    @field_validator('produce')
+    @field_validator('plant_variety')
     @classmethod
-    def validate_produce(cls, v: str) -> str:
-        """Validate and sanitize produce name"""
+    def validate_plant_variety(cls, v: str) -> str:
+        """Validate and sanitize plant variety name"""
         return InputSanitizer.sanitize_crop_name(v)
     
     @field_validator('quantity')
@@ -237,8 +237,7 @@ class PlantEventBase(BaseModel):
     plant_id: Optional[UUID] = Field(None, description="ID of the associated plant")
     event_type: EventType = Field(..., description="Type of event")
     event_date: datetime = Field(..., description="Date and time of the event")
-    description: Optional[str] = Field(None, max_length=500, description="Event description")
-    notes: Optional[str] = Field(None, max_length=2000, description="Additional notes about the event")
+    description: Optional[str] = Field(None, max_length=2500, description="Event description and notes")
     location: Optional[str] = Field(None, max_length=200, description="Location where event occurred")
     coordinates: Optional[Coordinates] = Field(None, description="GPS coordinates for weather data")
     
@@ -296,7 +295,6 @@ class PlantEventUpdate(BaseModel):
     location: Optional[str] = Field(None, max_length=200)
     
     # Event-specific fields (only relevant fields will be used based on event_type)
-    produce: Optional[str] = Field(None, max_length=100)
     quantity: Optional[float] = Field(None, gt=0)
     plant_variety: Optional[str] = Field(None, max_length=100)
     metrics: Optional[Dict[str, Any]] = None
@@ -310,10 +308,9 @@ class PlantEvent(PlantEventBase):
     user_id: Optional[UUID] = Field(None, description="ID of the user who created the event")
     
     # Event-specific fields (nullable based on event type)
-    produce: Optional[str] = Field(None, description="Type of produce harvested (harvest events only)")
     quantity: Optional[float] = Field(None, description="Quantity harvested (harvest events only)")
     unit: Optional[str] = Field(None, description="Unit of measurement (legacy field, being phased out)")
-    plant_variety: Optional[str] = Field(None, description="Plant variety name (bloom events only)")
+    plant_variety: Optional[str] = Field(None, description="Plant variety name (all event types)")
     metrics: Optional[Dict[str, Any]] = Field(None, description="Flexible metrics data (primarily snapshot events)")
     weather: Optional[WeatherData] = Field(None, description="Weather data at the time of the event")
     

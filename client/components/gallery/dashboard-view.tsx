@@ -158,7 +158,7 @@ export function DashboardView({ events, loading, error }: DashboardViewProps) {
   const cropStats: Record<string, { quantity: number; events: number; photos: number }> = {}
   
   events.forEach(event => {
-    const crop = event.plant?.variety?.name || event.produce || 'Unknown Plant'
+            const crop = event.plant?.variety?.name || event.plant_variety || 'Unknown Plant'
     if (!cropStats[crop]) {
       cropStats[crop] = { quantity: 0, events: 0, photos: 0 }
     }

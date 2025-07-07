@@ -279,7 +279,7 @@ function EventTypeSelector({ onSelect }: { onSelect: (type: EventType) => void }
         <CardContent className="pt-0">
           <ul className="text-sm text-muted-foreground space-y-1">
             <li>• Track quantity and units</li>
-            <li>• Record produce type</li>
+                              <li>• Record plant variety</li>
             <li>• Add harvest photos</li>
             <li>• Note harvest conditions</li>
           </ul>

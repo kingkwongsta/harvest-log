@@ -50,7 +50,7 @@ export default function GalleryPage() {
           id: e.id,
           type: e.event_type,
           images: e.images?.length || 0,
-          produce: e.produce || e.plant_variety || 'Unknown'
+          produce: e.plant_variety || 'Unknown'
         })))
         
         // Debug: Log actual image URLs to see if they have trailing ? characters
@@ -85,8 +85,9 @@ export default function GalleryPage() {
         event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         event.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         event.plant?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.produce?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.plant?.variety?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+
+        event.plant?.variety?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.plant_variety?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 

@@ -110,9 +110,9 @@ export function CropGardenView({ events, loading, error }: CropGardenViewProps) 
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [expandedCrop, setExpandedCrop] = useState<string | null>(null)
 
-  // Group events by plant variety or produce name
+  // Group events by plant variety name
   const cropGroups = events.reduce((acc, event) => {
-    const cropName = event.plant?.variety?.name || event.produce || 'Unknown Plant'
+    const cropName = event.plant?.variety?.name || event.plant_variety || 'Unknown Plant'
     if (!acc[cropName]) {
       acc[cropName] = []
     }

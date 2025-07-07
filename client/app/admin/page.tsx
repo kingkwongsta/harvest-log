@@ -92,7 +92,7 @@ export default function AdminPage() {
       event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.plant?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.produce?.toLowerCase().includes(searchTerm.toLowerCase())
+              event.plant_variety?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesType = eventTypeFilter === "all" || event.event_type === eventTypeFilter
     
@@ -518,7 +518,7 @@ export default function AdminPage() {
                         {event.event_type}
                       </Badge>
                       <CardTitle className="text-lg">
-                        {event.plant?.name || event.produce || `${event.event_type} Event`}
+                        {event.plant?.name || event.plant_variety || `${event.event_type} Event`}
                       </CardTitle>
                       <span className="text-sm text-gray-500">
                         {formatDistanceToNow(new Date(event.event_date), { addSuffix: true })}
@@ -572,7 +572,7 @@ export default function AdminPage() {
                         <div>
                           <h4 className="font-semibold mb-2">Event-Specific Data</h4>
                           <div className="space-y-1">
-                            <EventField label="Produce" value={event.produce} />
+                            <EventField label="Plant Variety" value={event.plant_variety} />
                             <EventField label="Quantity" value={event.quantity} />
                             {/* Plant Variety field removed - using Plant field instead */}
                             <EventField label="Metrics" value={event.metrics} />
@@ -836,7 +836,7 @@ export default function AdminPage() {
                     {eventToDelete.event_type}
                   </Badge>
                   <span className="font-medium">
-                    {eventToDelete.plant?.name || eventToDelete.produce || `${eventToDelete.event_type} Event`}
+                    {eventToDelete.plant?.name || eventToDelete.plant_variety || `${eventToDelete.event_type} Event`}
                   </span>
                 </div>
                 <div className="text-sm text-gray-600">
