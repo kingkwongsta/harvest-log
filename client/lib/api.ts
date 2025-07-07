@@ -146,10 +146,6 @@ export interface PlantVariety {
   name: string;
   category: PlantCategory;
   description?: string;
-  growing_season?: string;
-  harvest_time_days?: number;
-  typical_yield?: string;
-  care_instructions?: string;
   created_at: string;
   updated_at: string;
 }
@@ -182,9 +178,6 @@ export interface PlantEvent {
   
   // Bloom-specific fields
   plant_variety?: string;
-  
-  // Flexible metrics (primarily for snapshot events)
-  metrics?: Record<string, unknown>;
   
   created_at: string;
   updated_at: string;
@@ -221,9 +214,6 @@ export interface PlantEventCreateData {
   
   // Bloom-specific fields
   plant_variety_id?: string;
-  
-  // Snapshot-specific fields (flexible metrics)
-  metrics?: Record<string, unknown>;
 }
 
 export interface PlantEventUpdateData {

@@ -234,7 +234,6 @@ export default function AdminPage() {
         location: data.location || undefined,
         quantity: data.quantity || undefined,
         plant_variety: data.plant_variety || undefined,
-        metrics: data.metrics || undefined,
       }
 
       const response = await eventsApi.update(eventToEdit.id, updateData)
@@ -698,8 +697,6 @@ export default function AdminPage() {
                           <div className="space-y-1">
                             <EventField label="Plant Variety" value={event.plant_variety} />
                             <EventField label="Quantity" value={event.quantity} />
-                            {/* Plant Variety field removed - using Plant field instead */}
-                            <EventField label="Metrics" value={event.metrics} />
                           </div>
                         </div>
                         <div>
@@ -921,10 +918,6 @@ export default function AdminPage() {
                   <div className="space-y-2">
                     <EventField label="Category" value={variety.category} />
                     <EventField label="Description" value={variety.description} />
-                    <EventField label="Growing Season" value={variety.growing_season} />
-                    <EventField label="Days to Harvest" value={variety.harvest_time_days} />
-                    <EventField label="Typical Yield" value={variety.typical_yield} />
-                    <EventField label="Care Instructions" value={variety.care_instructions} />
                     <EventField label="Created At" value={variety.created_at} />
                     <EventField label="Updated At" value={variety.updated_at} />
                   </div>

@@ -25,7 +25,6 @@ export interface EventFormData {
   location?: string
   quantity?: number
   plant_variety?: string
-  metrics?: Record<string, unknown>
 }
 
 // For creating events, we need to include event_type
@@ -62,9 +61,7 @@ export const EventForm = forwardRef<EventFormRef, EventFormProps>(
     const [location, setLocation] = useState('')
     const [quantity, setQuantity] = useState(initialData?.quantity?.toString() || '')
     const [plantVarietyId, setPlantVarietyId] = useState(initialData?.plant_variety || '')
-    const [metrics, setMetrics] = useState(
-      initialData?.metrics ? JSON.stringify(initialData.metrics, null, 2) : ''
-    )
+
 
     const resetForm = () => {
       setPlantId('')
@@ -74,7 +71,6 @@ export const EventForm = forwardRef<EventFormRef, EventFormProps>(
       setLocation('')
       setQuantity('')
       setPlantVarietyId('')
-      setMetrics('')
     }
 
     useImperativeHandle(ref, () => ({
@@ -102,21 +98,6 @@ export const EventForm = forwardRef<EventFormRef, EventFormProps>(
         return
       }
 
-      // Parse metrics if provided
-      let parsedMetrics: Record<string, unknown> | undefined
-      if (metrics.trim()) {
-        try {
-          parsedMetrics = JSON.parse(metrics)
-        } catch (error) {
-          toast({
-            title: 'Validation Error',
-            description: 'Invalid JSON format in metrics field.',
-            variant: 'destructive',
-          })
-          return
-        }
-      }
-
       const baseFormData: EventFormData = {
         plant_id: plantId || undefined,
         event_date: eventDate,
@@ -124,7 +105,6 @@ export const EventForm = forwardRef<EventFormRef, EventFormProps>(
         location: location.trim() || undefined,
         quantity: quantity ? parseFloat(quantity) : undefined,
         plant_variety: plantVarietyId || undefined,
-        metrics: parsedMetrics,
       }
 
       // For creating new events, include event_type. For updates, exclude it.
@@ -248,20 +228,7 @@ export const EventForm = forwardRef<EventFormRef, EventFormProps>(
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="metrics">Metrics (Optional JSON)</Label>
-              <Textarea
-                id="metrics"
-                value={metrics}
-                onChange={(e) => setMetrics(e.target.value)}
-                placeholder='{"temperature": 75, "humidity": 60, "notes": "example"}'
-                rows={4}
-                className="font-mono text-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                Optional JSON data for measurements and observations. Must be valid JSON format.
-              </p>
-            </div>
+
           </CardContent>
         </Card>
 

@@ -142,9 +142,8 @@ async def create_plant_event(
             # Set the plant_variety field for database constraint
             event_data["plant_variety"] = variety_name
         elif event_type == EventType.SNAPSHOT.value:
-            event_data.update({
-                "metrics": validated_data.metrics
-            })
+            # Snapshot events only use base fields (description, location, images)
+            pass
         
         # Insert into database
         logger.debug("API: Inserting event into database", 

@@ -91,12 +91,7 @@ export function PlantVarietyDeleteDialog({
                 {variety.description && (
                   <p><span className="font-medium">Description:</span> {variety.description}</p>
                 )}
-                {variety.growing_season && (
-                  <p><span className="font-medium">Growing Season:</span> {variety.growing_season}</p>
-                )}
-                {variety.harvest_time_days && (
-                  <p><span className="font-medium">Days to Harvest:</span> {variety.harvest_time_days}</p>
-                )}
+
               </div>
             </div>
           )}

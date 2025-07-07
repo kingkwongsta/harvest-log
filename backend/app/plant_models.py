@@ -41,10 +41,6 @@ class PlantVarietyBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Name of the plant variety")
     category: PlantCategory = Field(..., description="Category of the plant variety")
     description: Optional[str] = Field(None, max_length=2000, description="Description of the plant variety")
-    growing_season: Optional[str] = Field(None, max_length=50, description="Growing season for this variety")
-    harvest_time_days: Optional[int] = Field(None, gt=0, description="Typical days to harvest")
-    typical_yield: Optional[str] = Field(None, max_length=100, description="Typical yield expectations")
-    care_instructions: Optional[str] = Field(None, max_length=2000, description="Care instructions")
     
     @field_validator('name')
     @classmethod
@@ -52,22 +48,13 @@ class PlantVarietyBase(BaseModel):
         """Validate and sanitize variety name"""
         return InputSanitizer.sanitize_crop_name(v)
     
-    @field_validator('description', 'care_instructions')
+    @field_validator('description')
     @classmethod
-    def validate_text_fields(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize text fields"""
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize description field"""
         if v is None:
             return None
         return InputSanitizer.sanitize_notes(v)
-    
-    @field_validator('growing_season', 'typical_yield')
-    @classmethod
-    def validate_optional_fields(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize optional string fields"""
-        if v is None:
-            return None
-        # Basic sanitization for these fields
-        return InputSanitizer.sanitize_string(v, max_length=100)
 
 
 class PlantVarietyCreate(PlantVarietyBase):
@@ -80,10 +67,6 @@ class PlantVarietyUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     category: Optional[PlantCategory] = None
     description: Optional[str] = Field(None, max_length=2000)
-    growing_season: Optional[str] = Field(None, max_length=50)
-    harvest_time_days: Optional[int] = Field(None, gt=0)
-    typical_yield: Optional[str] = Field(None, max_length=100)
-    care_instructions: Optional[str] = Field(None, max_length=2000)
     
     @field_validator('name')
     @classmethod
@@ -93,10 +76,10 @@ class PlantVarietyUpdate(BaseModel):
             return None
         return InputSanitizer.sanitize_crop_name(v)
     
-    @field_validator('description', 'care_instructions')
+    @field_validator('description')
     @classmethod
-    def validate_text_fields(cls, v: Optional[str]) -> Optional[str]:
-        """Validate and sanitize text fields"""
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate and sanitize description field"""
         if v is None:
             return None
         return InputSanitizer.sanitize_notes(v)
@@ -195,36 +178,9 @@ class BloomEventData(BaseModel):
 
 class SnapshotEventData(BaseModel):
     """Data specific to snapshot events"""
-    metrics: Dict[str, Any] = Field(default_factory=dict, description="Growth and health metrics")
-    
-    @field_validator('metrics')
-    @classmethod
-    def validate_metrics(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate metrics data"""
-        # Ensure numeric values are within reasonable ranges
-        validated_metrics = {}
-        for key, value in v.items():
-            # Sanitize key
-            clean_key = InputSanitizer.sanitize_string(str(key), max_length=50)
-            
-            # Validate common metric types
-            if key in ['height_cm', 'width_cm'] and isinstance(value, (int, float)):
-                if 0 <= value <= 10000:  # Reasonable range for plant measurements
-                    validated_metrics[clean_key] = value
-            elif key == 'health_score' and isinstance(value, (int, float)):
-                if 0 <= value <= 10:  # Health score 0-10
-                    validated_metrics[clean_key] = value
-            elif key in ['leaf_count', 'bloom_count'] and isinstance(value, int):
-                if 0 <= value <= 10000:  # Reasonable count range
-                    validated_metrics[clean_key] = value
-            elif isinstance(value, bool):
-                validated_metrics[clean_key] = value
-            elif isinstance(value, str):
-                validated_metrics[clean_key] = InputSanitizer.sanitize_string(value, max_length=200)
-            elif isinstance(value, (int, float)):
-                validated_metrics[clean_key] = value
-        
-        return validated_metrics
+    # Snapshot events now only use the base fields (description, location, images)
+    # No additional specific fields needed
+    pass
 
 
 # Import weather models from weather module to avoid duplication
@@ -296,7 +252,6 @@ class PlantEventUpdate(BaseModel):
     # Event-specific fields (only relevant fields will be used based on event_type)
     quantity: Optional[float] = Field(None, gt=0)
     plant_variety: Optional[str] = Field(None, max_length=100)
-    metrics: Optional[Dict[str, Any]] = None
     
     @field_validator('event_date')
     @classmethod
@@ -355,9 +310,7 @@ class PlantEvent(PlantEventBase):
     
     # Event-specific fields (nullable based on event type)
     quantity: Optional[float] = Field(None, description="Quantity harvested (harvest events only)")
-    unit: Optional[str] = Field(None, description="Unit of measurement (legacy field, being phased out)")
     plant_variety: Optional[str] = Field(None, description="Plant variety name (all event types)")
-    metrics: Optional[Dict[str, Any]] = Field(None, description="Flexible metrics data (primarily snapshot events)")
     weather: Optional[WeatherData] = Field(None, description="Weather data at the time of the event")
     
     created_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the event was created")
