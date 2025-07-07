@@ -473,14 +473,6 @@ For more troubleshooting information, see the documentation in the `docs/` folde
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
-
-- **Next.js** team for the excellent React framework
-- **FastAPI** for the high-performance Python web framework
-- **Supabase** for the backend-as-a-service platform
-- **Radix UI** for accessible component primitives
-- **Tailwind CSS** for the utility-first CSS framework
-
 ---
 
 **Happy Plant Journey Tracking! 🌱**
